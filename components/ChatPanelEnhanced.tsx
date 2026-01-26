@@ -229,6 +229,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+  const pendingCandidates = useRef<RTCIceCandidate[]>([]);
 
   const t = TRANSLATIONS[language] || TRANSLATIONS['en'];
   const availableCitiesReg = useMemo(() => COUNTRIES_DATA.find(c => c.name === regCountry)?.cities || [], [regCountry]);
@@ -451,36 +452,62 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     cleanups.push(socketService.onSignalReceived(async ({ fromUserId, signal }) => {
       if (currentUser.blockedUsers.includes(fromUserId)) return;
       
-      if (signal.type === 'offer') {
          // Incoming call
-         if (callStatus !== 'idle') {
-             // Busy? For now just ignore or auto-reject
-             return;
-         }
+         if (callStatus !== 'idle') return;
          
-         const partner = onlineUsers.find(u => u.id === fromUserId);
+         // Try to find partner in online users OR active sessions
+         let partner = onlineUsers.find(u => u.id === fromUserId);
+         if (!partner) {
+             const session = Array.from(activeSessions.values()).find(s => s.partnerId === fromUserId);
+             if (session) partner =  session.partnerProfile || getPartnerFromSession(session);
+         }
+
          if (partner) {
              setCallPartner(partner);
              setCallStatus('ringing');
-             // Play ringtone?
-             playNotificationSound('knock'); // Reuse knock for now or add ringtone
+             playNotificationSound('knock'); 
              
-             // Setup peer connection for answer
              const pc = createPeerConnection(fromUserId);
              peerConnectionRef.current = pc;
+             pendingCandidates.current = []; // Reset queue
+             
              await pc.setRemoteDescription(new RTCSessionDescription(signal));
+             
+             // Process queued candidates
+             if (pendingCandidates.current.length > 0) {
+                 console.log(`[WEBRTC] Processing ${pendingCandidates.current.length} queued candidates`);
+                 for (const candidate of pendingCandidates.current) {
+                     await pc.addIceCandidate(candidate).catch(e => console.warn("Queue ICE error:", e));
+                 }
+                 pendingCandidates.current = [];
+             }
          }
       } else if (signal.type === 'answer') {
           if (callStatus === 'calling' && peerConnectionRef.current) {
               await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(signal));
               setCallStatus('connected');
+              
+              // Process queued candidates
+              if (pendingCandidates.current.length > 0) {
+                  console.log(`[WEBRTC] Processing ${pendingCandidates.current.length} queued candidates (answer)`);
+                  for (const candidate of pendingCandidates.current) {
+                      await peerConnectionRef.current.addIceCandidate(candidate).catch(e => console.warn("Queue ICE error:", e));
+                  }
+                  pendingCandidates.current = [];
+              }
           }
       } else if (signal.candidate) {
           if (peerConnectionRef.current) {
-              try {
-                  await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(signal.candidate));
-              } catch (e) {
-                  console.warn("ICE Candidate error (ignoring):", e);
+              if (peerConnectionRef.current.remoteDescription) {
+                 try {
+                     await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                 } catch (e) {
+                     console.warn("ICE Candidate error (ignoring):", e);
+                 }
+              } else {
+                  // Queue candidate if remote description not set
+                  console.log("[WEBRTC] Queueing ICE candidate (no remote desc)");
+                  pendingCandidates.current.push(new RTCIceCandidate(signal.candidate));
               }
           }
       } else if (signal.type === 'bye') {
@@ -841,8 +868,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
               console.log("[WEBRTC] Adding track:", track.kind);
               pc.addTrack(track, stream);
           });
+              pc.addTrack(track, stream);
+          });
           
-          const offer = await pc.createOffer();
+          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
           await pc.setLocalDescription(offer);
           
           console.log("[CALL] Sending offer signal");
