@@ -20,7 +20,9 @@ const io = new Server(server, {
 // ============================================
 
 const USER_TTL = 24 * 60 * 60 * 1000; // 24 hours
-const MESSAGE_TTL = 60 * 1000; // 1 minute
+const MEDIA_TTL = 30 * 1000; // 30 seconds
+const TEXT_TTL = 60 * 1000; // 60 seconds
+const MAX_MESSAGES_PER_SESSION = 50;
 
 const storage = require('./storage');
 
@@ -82,7 +84,8 @@ setInterval(() => {
   for (const [sessionId, messageList] of messages.entries()) {
     const freshMessages = messageList.filter(msg => {
       const age = now - msg.timestamp;
-      return age < MESSAGE_TTL;
+      const ttl = (msg.messageType === 'image' || msg.messageType === 'audio' || msg.messageType === 'video') ? MEDIA_TTL : TEXT_TTL;
+      return age < ttl;
     });
     
     if (freshMessages.length !== messageList.length) {
@@ -357,6 +360,8 @@ io.on('connection', (socket) => {
     }
     
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const ttl = (messageType === 'image' || messageType === 'audio' || messageType === 'video') ? MEDIA_TTL : TEXT_TTL;
+    
     const message = {
       id: messageId,
       sessionId,
@@ -369,13 +374,20 @@ io.on('connection', (socket) => {
         flagReason
       },
       timestamp: Date.now(),
-      expiresAt: Date.now() + MESSAGE_TTL
+      expiresAt: Date.now() + ttl
     };
     
     if (!messages.has(sessionId)) {
       messages.set(sessionId, []);
     }
-    messages.get(sessionId).push(message);
+    
+    const list = messages.get(sessionId);
+    list.push(message);
+    
+    // Enforce message cap (Keep last 50)
+    if (list.length > MAX_MESSAGES_PER_SESSION) {
+      messages.set(sessionId, list.slice(-MAX_MESSAGES_PER_SESSION));
+    }
     
     session.participants.forEach(userId => {
       const user = activeUsers.get(userId);
@@ -501,9 +513,10 @@ app.post('/api/moderation/ban', (req, res) => {
 // ============================================
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
   console.log(`🚀 StreamFlow Server running on port ${PORT}`);
   console.log(`   - Users: 24h TTL`);
-  console.log(`   - Messages: 1min TTL`);
-  console.log(`   - E2EE: Relay only`);
+  console.log(`   - Text Msgs: 60s TTL (Newest on Top)`);
+  console.log(`   - Media Msgs: 30s TTL`);
+  console.log(`   - Capacity: Max ${MAX_MESSAGES_PER_SESSION} per chat`);
 });
