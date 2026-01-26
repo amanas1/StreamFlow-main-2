@@ -228,6 +228,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   const t = TRANSLATIONS[language] || TRANSLATIONS['en'];
   const availableCitiesReg = useMemo(() => COUNTRIES_DATA.find(c => c.name === regCountry)?.cities || [], [regCountry]);
@@ -255,7 +256,33 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       });
     }, 1000);
     return () => clearInterval(pruneInterval);
+    return () => clearInterval(pruneInterval);
   }, []);
+
+  // Ringtone Management
+  useEffect(() => {
+     if (callStatus === 'ringing') {
+         console.log("🔔 Ringtone started");
+         if (!ringtoneRef.current) {
+             ringtoneRef.current = new Audio('/sounds/call.mp3');
+             ringtoneRef.current.loop = true;
+         }
+         ringtoneRef.current.play().catch(err => console.error("Ringtone play error", err));
+     } else {
+         if (ringtoneRef.current) {
+             console.log("🔕 Ringtone stopped");
+             ringtoneRef.current.pause();
+             ringtoneRef.current.currentTime = 0;
+         }
+     }
+     
+     return () => {
+         if (ringtoneRef.current) {
+             ringtoneRef.current.pause();
+             ringtoneRef.current.currentTime = 0;
+         }
+     };
+  }, [callStatus]);
 
   // Socket.IO connection setup
   useEffect(() => {
@@ -722,6 +749,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
               { urls: 'stun:stun.l.google.com:19302' },
               { urls: 'stun:stun1.l.google.com:19302' },
               { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' },
               { urls: 'stun:global.stun.twilio.com:3478' }
           ]
       });
@@ -740,6 +769,17 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       
       pc.onconnectionstatechange = () => {
           console.log("[WEBRTC] Connection State:", pc.connectionState);
+          if (pc.connectionState === 'connected') {
+              setCallStatus('connected');
+              // Ensure remote audio plays
+              const audioEl = document.getElementById('remote-audio') as HTMLAudioElement;
+              if (audioEl && remoteStream) {
+                  audioEl.srcObject = remoteStream;
+                  audioEl.play().catch(e => console.error("Force play error", e));
+              }
+          } else if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+              endCall(false);
+          }
       };
       
       return pc;
@@ -1270,7 +1310,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         <button 
                             onPointerDown={startRecording} 
                             onPointerUp={stopRecording} 
-                            onPointerLeave={isRecording ? stopRecording : undefined} 
+                            style={{ touchAction: 'none' }}
                             className={`p-2.5 md:p-3 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0 ${isRecording ? 'bg-red-500 text-white animate-pulse scale-110' : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'}`}
                         >
                             <MicrophoneIcon className="w-5 h-5 md:w-6 h-6" />
@@ -1322,6 +1362,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 
                 {/* Invisible audio element for remote stream */}
                 <audio 
+                    id="remote-audio"
                     ref={el => { 
                         if(el && remoteStream) {
                             console.log("[UI] Attaching remote stream to audio element", remoteStream.active);
@@ -1332,7 +1373,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     autoPlay 
                     playsInline 
                     controls={true}
-                    style={{ opacity: 0, position: 'absolute', pointerEvents: 'none' }}
+                    style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', height: 0, width: 0 }}
                 />
             </div>
         )}

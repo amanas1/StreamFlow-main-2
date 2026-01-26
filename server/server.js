@@ -11,8 +11,9 @@ app.use(express.json());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
-  maxHttpBufferSize: 1e7, // 10MB for media  pingTimeout: 5000,
-  pingInterval: 10000
+  maxHttpBufferSize: 1e8, // 100MB to be safe
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // ============================================
