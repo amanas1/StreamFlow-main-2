@@ -830,7 +830,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       
       pc.oniceconnectionstatechange = () => {
           const debugEl = document.getElementById('call-debug');
-          if (debugEl && pc) debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}`;
+          if (debugEl && pc) {
+              const tracks = pc.getReceivers().map(r => r.track?.kind + ':' + r.track?.readyState).join(',');
+              debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}\nTracks: ${tracks}`;
+          }
       };
       
       return pc;
@@ -1408,9 +1411,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <button 
                         onClick={() => {
                             const audioEl = document.getElementById('remote-audio') as HTMLAudioElement;
-                            if (audioEl) {
-                                audioEl.play();
-                                alert("Audio enabled!");
+                            if (audioEl && remoteStream) {
+                                console.log("[UI] Manually re-attaching stream and playing");
+                                audioEl.srcObject = null;
+                                setTimeout(() => {
+                                    audioEl.srcObject = remoteStream;
+                                    audioEl.play().then(() => alert(`Audio playing! Tracks: ${remoteStream.getAudioTracks().length}`)).catch(e => alert("Play error: " + e));
+                                }, 100);
+                            } else {
+                                alert("No stream found!");
                             }
                         }}
                         className="mb-8 px-4 py-2 bg-white/10 rounded-full text-xs font-bold text-white uppercase hover:bg-white/20 transition-colors animate-bounce"
