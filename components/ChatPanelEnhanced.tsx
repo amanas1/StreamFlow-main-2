@@ -226,6 +226,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const availableCitiesSearch = useMemo(() => COUNTRIES_DATA.find(c => c.name === searchCountry)?.cities || [], [searchCountry]);
 
   useEffect(() => { setRegCity(availableCitiesReg[0]); }, [availableCitiesReg]);
+  useEffect(() => { scrollToBottom(); }, [messages, view]);
   
   // Message pruning for ephemeral chat (30s media, 60s text, 50 cap)
   useEffect(() => {
@@ -388,6 +389,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (message.senderId !== currentUser.id) {
           playNotificationSound('knock');
       }
+      
+      scrollToBottom();
     }));
     
     // Listen for message expiration
@@ -567,12 +570,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     
     console.log(`[CLIENT] Sending message to session ${activeSession.sessionId}`);
     socketService.sendMessage(
-      activeSession.sessionId,
-      encrypted,
-      'text'
+        activeSession.sessionId,
+        encrypted,
+        'text'
     );
     
     setInputText('');
+    scrollToBottom();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1012,7 +1016,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 <div className="flex-1 flex flex-col h-full relative">
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar pb-32">
                         <div className="text-center py-6"><span className="text-[10px] bg-white/5 px-3 py-1 rounded-full text-slate-500 uppercase font-bold tracking-widest">{t.today}</span></div>
-                        {[...messages].sort((a,b) => b.timestamp - a.timestamp).map(msg => {
+                        {[...messages].sort((a,b) => a.timestamp - b.timestamp).map(msg => {
                             const isMsgFlagged = msg.flagged && !showFlagged[msg.id];
                             return (
                              <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} group animate-in slide-in-from-bottom-2 duration-300`}>
