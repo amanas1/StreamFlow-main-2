@@ -769,17 +769,29 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       
       pc.onconnectionstatechange = () => {
           console.log("[WEBRTC] Connection State:", pc.connectionState);
+          // Update debug info on screen
+          const debugEl = document.getElementById('call-debug');
+          if (debugEl) debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}`;
+          
           if (pc.connectionState === 'connected') {
               setCallStatus('connected');
               // Ensure remote audio plays
               const audioEl = document.getElementById('remote-audio') as HTMLAudioElement;
               if (audioEl && remoteStream) {
                   audioEl.srcObject = remoteStream;
-                  audioEl.play().catch(e => console.error("Force play error", e));
+                  audioEl.play().catch(e => {
+                      console.error("Force play error", e);
+                      alert("Tap the speaker button to hear audio!");
+                  });
               }
           } else if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
               endCall(false);
           }
+      };
+      
+      pc.oniceconnectionstatechange = () => {
+          const debugEl = document.getElementById('call-debug');
+          if (debugEl && pc) debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}`;
       };
       
       return pc;
@@ -1336,11 +1348,29 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 </div>
                 
                 <h2 className="text-2xl font-bold text-white mb-2">{callPartner.name}</h2>
-                <p className="text-sm text-slate-400 uppercase tracking-widest mb-12 animate-pulse">
+                <div id="call-debug" className="text-[10px] items-center text-slate-500 font-mono mb-2 bg-black/40 px-2 py-1 rounded hidden md:block">
+                    Init...
+                </div>
+                <p className="text-sm text-slate-400 uppercase tracking-widest mb-8 animate-pulse">
                     {callStatus === 'calling' ? 'Calling...' : 
                      callStatus === 'ringing' ? 'Incoming Call...' : 
                      'Connected'}
                 </p>
+                
+                {callStatus === 'connected' && (
+                    <button 
+                        onClick={() => {
+                            const audioEl = document.getElementById('remote-audio') as HTMLAudioElement;
+                            if (audioEl) {
+                                audioEl.play();
+                                alert("Audio enabled!");
+                            }
+                        }}
+                        className="mb-8 px-4 py-2 bg-white/10 rounded-full text-xs font-bold text-white uppercase hover:bg-white/20 transition-colors animate-bounce"
+                    >
+                        🔊 Tap if no sound
+                    </button>
+                )}
                 
                 <div className="flex items-center gap-8">
                     {callStatus === 'ringing' ? (
