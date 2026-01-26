@@ -832,13 +832,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
           setRemoteStream(event.streams[0]);
       };
       
-      pc.onconnectionstatechange = () => {
-          console.log("[WEBRTC] Connection State:", pc.connectionState);
-          // Update debug info on screen
+      const handleConnectionChange = () => {
           const debugEl = document.getElementById('call-debug');
-          if (debugEl) debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}`;
+          if (debugEl && pc) {
+              const tracks = pc.getReceivers().map(r => r.track?.kind + ':' + r.track?.readyState).join(',');
+              debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}\nTracks: ${tracks}`;
+          }
           
-          if (pc.connectionState === 'connected') {
+          // Permissive check: If ICE is connected, media path is open. Don't wait for 'connectionState'.
+          if (pc.connectionState === 'connected' || pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
               setCallStatus('connected');
               // Ensure remote audio plays
               const audioEl = document.getElementById('remote-audio') as HTMLAudioElement;
@@ -846,21 +848,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                   audioEl.srcObject = remoteStream;
                   audioEl.play().catch(e => {
                       console.error("Force play error", e);
-                      alert("Tap the speaker button to hear audio!");
                   });
               }
           } else if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
               endCall(false);
           }
       };
-      
-      pc.oniceconnectionstatechange = () => {
-          const debugEl = document.getElementById('call-debug');
-          if (debugEl && pc) {
-              const tracks = pc.getReceivers().map(r => r.track?.kind + ':' + r.track?.readyState).join(',');
-              debugEl.innerText = `Conn: ${pc.connectionState}\nICE: ${pc.iceConnectionState}\nTracks: ${tracks}`;
-          }
-      };
+
+      pc.onconnectionstatechange = handleConnectionChange;
+      pc.oniceconnectionstatechange = handleConnectionChange;
       
       return pc;
   };
@@ -1445,12 +1441,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     audioEl.play().then(() => alert(`Audio playing! Tracks: ${remoteStream.getAudioTracks().length}`)).catch(e => alert("Play error: " + e));
                                 }, 100);
                             } else {
-                                alert("No stream found!");
+                                alert("No stream found! (Wait for connection)");
                             }
                         }}
-                        className="mb-8 px-4 py-2 bg-white/10 rounded-full text-xs font-bold text-white uppercase hover:bg-white/20 transition-colors animate-bounce"
+                        className="mb-8 px-4 py-2 bg-cyan-500 hover:bg-cyan-400 rounded-full text-xs font-bold text-black uppercase transition-colors animate-bounce shadow-lg shadow-cyan-500/20"
                     >
-                        🔊 Fix Audio (v2)
+                        🔊 Force Audio (V3)
                     </button>
                 )}
                 
