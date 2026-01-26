@@ -322,6 +322,16 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     cleanups.push(socketService.onPresenceList((users) => {
       setOnlineUsers(users);
     }));
+
+    // Mobile: Reconnect on visibility change
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && !socketService.isConnected) {
+            console.log("📱 App foregrounded, reconnecting socket...");
+            socketService.connect();
+        }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    cleanups.push(() => document.removeEventListener('visibilitychange', handleVisibilityChange));
     
     // Sound effects
     const playNotificationSound = (type: 'knock' | 'door') => {
@@ -354,6 +364,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (currentUser.blockedUsers.includes(data.fromUserId)) return;
       playNotificationSound('knock');
       setPendingKnocks(prev => [...prev, data]);
+      // DEBUG: Force alert on mobile to prove receipt
+      if (window.innerWidth < 768) {
+          alert(`🔔 KNOCK RECEIVED from ${data.fromUser?.name || 'User'}!`);
+      }
     }));
 
     // RE-REGISTER ON RECONNECT (Fix for server restarts)
@@ -1054,7 +1068,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         <div className="flex-1 overflow-hidden relative flex flex-col bg-transparent">
             {/* Notification Banner for Pending Knocks */}
             {pendingKnocks.length > 0 && view !== 'inbox' && (
-                <div className="px-4 py-2 bg-gradient-to-r from-secondary/80 to-primary/80 backdrop-blur-md flex items-center justify-between animate-in slide-in-from-top duration-300 relative z-40 cursor-pointer" onClick={() => setView('inbox')}>
+                <div className="px-4 py-3 bg-gradient-to-r from-secondary/90 to-primary/90 backdrop-blur-md flex items-center justify-between animate-in slide-in-from-top duration-300 relative z-[9999] cursor-pointer shadow-2xl border-b border-white/20" onClick={() => setView('inbox')}>
                     <div className="flex items-center gap-2 text-white">
                         <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                         <span className="text-xs font-bold font-mono tracking-tight">
