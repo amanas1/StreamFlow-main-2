@@ -406,13 +406,22 @@ io.on('connection', (socket) => {
 
   // WEBRTC SIGNALING RELAY
   socket.on('webrtc:signal', ({ targetUserId, signal }) => {
-    if (!boundUserId) return;
+    if (!boundUserId) {
+        console.log('[SIGNAL] Rejected: User not bound');
+        return;
+    }
+    
+    console.log(`[SIGNAL] Relay from ${boundUserId} to ${targetUserId} (${signal.type || 'candidate'})`);
+    
     const targetUser = activeUsers.get(targetUserId);
     if (targetUser && targetUser.socketId) {
+      console.log(`[SIGNAL] Forwarding to socket ${targetUser.socketId}`);
       io.to(targetUser.socketId).emit('webrtc:signal', {
         fromUserId: boundUserId,
         signal
       });
+    } else {
+      console.log(`[SIGNAL] Failed: Target user ${targetUserId} not found or has no socket`);
     }
   });
 

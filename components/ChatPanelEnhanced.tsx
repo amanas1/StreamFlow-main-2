@@ -734,12 +734,24 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   const initiateCall = async () => {
-      if (!activeSession) return;
+      console.log("[CALL] Initiate call clicked");
+      if (!activeSession) {
+          console.error("[CALL] No active session");
+          return;
+      }
       const partner = getPartnerFromSession(activeSession);
-      if (!partner) return;
+      if (!partner) {
+          console.error("[CALL] No partner found");
+          return;
+      }
+      
+      console.log(`[CALL] Calling partner: ${partner.name} (${partner.id})`);
       
       try {
+          console.log("[CALL] Requesting microphone access...");
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          console.log("[CALL] Microphone access granted");
+          
           setLocalStream(stream);
           localStreamRef.current = stream;
           setCallPartner(partner);
@@ -753,10 +765,11 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           
+          console.log("[CALL] Sending offer signal");
           socketService.sendSignal(partner.id, { type: 'offer', sdp: offer.sdp });
       } catch (err) {
-          console.error("Call init failed", err);
-          alert("Could not access microphone");
+          console.error("[CALL] Call init failed", err);
+          alert("Could not access microphone: " + err);
       }
   };
 

@@ -242,14 +242,25 @@ class SocketService {
 
   // WebRTC Signaling
   sendSignal(targetUserId: string, signal: any) {
-    if (!this.socket) return;
+    if (!this.socket) {
+        console.error("[SOCKET] Cannot send signal - socket not connected");
+        return;
+    }
+    console.log(`[SOCKET] Sending signal to ${targetUserId}:`, signal.type || 'candidate');
     this.socket.emit('webrtc:signal', { targetUserId, signal });
   }
 
   onSignalReceived(callback: (data: { fromUserId: string; signal: any }) => void): () => void {
     if (!this.socket) return () => {};
-    this.socket.on('webrtc:signal', callback);
-    return () => this.socket?.off('webrtc:signal', callback);
+    console.log("[SOCKET] Listening for webrtc:signal");
+    
+    const handler = (data: any) => {
+        console.log(`[SOCKET] Received signal from ${data.fromUserId}:`, data.signal.type || 'candidate');
+        callback(data);
+    };
+    
+    this.socket.on('webrtc:signal', handler);
+    return () => this.socket?.off('webrtc:signal', handler);
   }
 }
 
