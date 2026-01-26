@@ -16,17 +16,20 @@ const io = new Server(server, {
 });
 
 // ============================================
-// IN-MEMORY STORAGE WITH TTL
+// IN-MEMORY STORAGE WITH TTL & PERSISTENCE
 // ============================================
 
 const USER_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const MESSAGE_TTL = 60 * 1000; // 1 minute
 
+const storage = require('./storage');
+
 // Map: userId -> { profile, socketId, expiresAt }
 const activeUsers = new Map();
 
 // Map: sessionId -> { participants: [userId1, userId2], createdAt }
-const activeSessions = new Map();
+// Load existing sessions from storage
+const activeSessions = new Map(Object.entries(storage.load('sessions', {})));
 
 // Map: sessionId -> Message[]
 const messages = new Map();
@@ -63,6 +66,8 @@ setInterval(() => {
     }
     activeUsers.delete(userId);
   });
+  
+  // Also clean sessions if participants are gone (optional, keeping for 24h)
   
   if (expiredUsers.length > 0) {
     syncGlobalPresence();
@@ -112,7 +117,7 @@ setInterval(() => {
 function syncGlobalPresence() {
   // Only send online users (with active socketId)
   const userList = Array.from(activeUsers.values())
-    .filter(u => u.socketId !== null) // Filter out disconnected users
+    .filter(u => u.socketId !== null)
     .map(u => ({
       ...u.profile,
       status: 'online'
@@ -129,6 +134,10 @@ function findSession(userId1, userId2) {
   return null;
 }
 
+function saveSessions() {
+    storage.save('sessions', Object.fromEntries(activeSessions));
+}
+
 // ============================================
 // SOCKET.IO EVENTS
 // ============================================
@@ -136,10 +145,6 @@ function findSession(userId1, userId2) {
 io.on('connection', (socket) => {
   console.log(`[SOCKET] New connection: ${socket.id}`);
   
-  socket.onAny((event, ...args) => {
-    console.log(`[EVENT] ${event}`, args);
-  });
-
   let boundUserId = null;
 
   // USER JOINS
@@ -168,10 +173,24 @@ io.on('connection', (socket) => {
 
     console.log(`[USER] Registered: ${boundUserId} (Socket: ${socket.id})`);
     
+    // Find all active sessions for this user to sync
+    const userSessions = Array.from(activeSessions.entries())
+        .filter(([_, session]) => session.participants.includes(boundUserId))
+        .map(([sessionId, session]) => {
+            const partnerId = session.participants.find(id => id !== boundUserId);
+            const partner = activeUsers.get(partnerId);
+            return {
+                sessionId,
+                partnerId,
+                partnerProfile: partner?.profile || { id: partnerId, name: 'User', status: 'offline' }
+            };
+        });
+
     socket.emit('user:registered', {
       userId: boundUserId,
       expiresAt,
-      ttl: USER_TTL
+      ttl: USER_TTL,
+      activeSessions: userSessions // Send active sessions for recovery
     });
     
     syncGlobalPresence();
@@ -219,7 +238,7 @@ io.on('connection', (socket) => {
     }
 
     const target = activeUsers.get(targetUserId);
-    if (!target) {
+    if (!target || !target.socketId) {
       socket.emit('knock:error', { message: 'User not found or offline' });
       return;
     }
@@ -261,6 +280,7 @@ io.on('connection', (socket) => {
         participants: [boundUserId, fromUserId],
         createdAt: Date.now()
       });
+      saveSessions();
       console.log(`[SESSION] Created new session ${sessionId} for [${boundUserId}, ${fromUserId}]`);
       messages.set(sessionId, []);
     }
@@ -307,20 +327,15 @@ io.on('connection', (socket) => {
 
   // SEND MESSAGE (E2EE - server just relays encrypted payload)
   socket.on('message:send', ({ sessionId, encryptedPayload, messageType, metadata }) => {
-    if (!boundUserId) {
-        console.warn(`[ERROR] message:send rejected - Socket ${socket.id} not bound to user`);
-        return;
-    }
+    if (!boundUserId) return;
 
-    // 1. Check Ban
     if (moderation.isUserBanned(boundUserId)) {
         socket.emit('message:error', { message: 'Your messages are temporarily restricted.' });
         return;
     }
 
-    // 2. Rate Limit / Anti-Spam
     if (moderation.checkRateLimit(boundUserId)) {
-        const mutedUntil = moderation.mutedUntil(boundUserId);
+        const mutedUntil = moderation.getMutedUntil(boundUserId);
         socket.emit('message:error', { 
             message: 'You are sending messages too fast. Temporarily muted.',
             mutedUntil
@@ -330,12 +345,10 @@ io.on('connection', (socket) => {
     
     const session = activeSessions.get(sessionId);
     if (!session || !session.participants.includes(boundUserId)) {
-      console.warn(`[ERROR] message:send rejected - Invalid session ${sessionId} or user ${boundUserId} not in participants [${session?.participants}]`);
       socket.emit('message:error', { message: 'Invalid session' });
       return;
     }
 
-    // 3. Content Filtering (Server-side metadata tagging)
     const flagReason = metadata?.text ? moderation.getFilterViolation(metadata.text) : null;
     const isFlagged = flagReason !== null;
     
@@ -348,8 +361,8 @@ io.on('connection', (socket) => {
       id: messageId,
       sessionId,
       senderId: boundUserId,
-      encryptedPayload, // Encrypted content
-      messageType, // 'text', 'image', 'audio', 'video'
+      encryptedPayload,
+      messageType,
       metadata: {
         ...metadata,
         flagged: isFlagged,
@@ -359,14 +372,11 @@ io.on('connection', (socket) => {
       expiresAt: Date.now() + MESSAGE_TTL
     };
     
-    // Store message
     if (!messages.has(sessionId)) {
       messages.set(sessionId, []);
     }
     messages.get(sessionId).push(message);
     
-    // Relay to all participants
-    console.log(`[MSG] Sending message in session ${sessionId} from ${boundUserId} (Flagged: ${isFlagged})`);
     session.participants.forEach(userId => {
       const user = activeUsers.get(userId);
       if (user?.socketId) {
@@ -378,16 +388,7 @@ io.on('connection', (socket) => {
   // USER REPORT
   socket.on('user:report', ({ targetUserId, reason, messageId }) => {
     if (!boundUserId) return;
-    
-    console.log(`[REPORT] User ${boundUserId} reported ${targetUserId}. Reason: ${reason}`);
-    moderation.addReport({
-        fromUserId: boundUserId,
-        targetUserId,
-        reason,
-        messageId,
-        timestamp: Date.now()
-    });
-    
+    moderation.logViolation(targetUserId, `report:${reason}`, `Reported by ${boundUserId}. Msg: ${messageId || 'none'}`);
     socket.emit('report:acknowledged', { success: true });
   });
 
@@ -403,8 +404,6 @@ io.on('connection', (socket) => {
     
     const sessionMessages = messages.get(sessionId) || [];
     const now = Date.now();
-    
-    // Only send non-expired messages
     const validMessages = sessionMessages.filter(msg => now < msg.expiresAt);
     
     socket.emit('messages:list', {
@@ -416,19 +415,13 @@ io.on('connection', (socket) => {
   // TYPING INDICATOR
   socket.on('typing:start', ({ sessionId }) => {
     if (!boundUserId) return;
-    
     const session = activeSessions.get(sessionId);
     if (!session) return;
-    
     session.participants.forEach(userId => {
       if (userId !== boundUserId) {
         const user = activeUsers.get(userId);
         if (user?.socketId) {
-          io.to(user.socketId).emit('typing:indicator', {
-            sessionId,
-            userId: boundUserId,
-            isTyping: true
-          });
+          io.to(user.socketId).emit('typing:indicator', { sessionId, userId: boundUserId, isTyping: true });
         }
       }
     });
@@ -436,19 +429,13 @@ io.on('connection', (socket) => {
 
   socket.on('typing:stop', ({ sessionId }) => {
     if (!boundUserId) return;
-    
     const session = activeSessions.get(sessionId);
     if (!session) return;
-    
     session.participants.forEach(userId => {
       if (userId !== boundUserId) {
         const user = activeUsers.get(userId);
         if (user?.socketId) {
-          io.to(user.socketId).emit('typing:indicator', {
-            sessionId,
-            userId: boundUserId,
-            isTyping: false
-          });
+          io.to(user.socketId).emit('typing:indicator', { sessionId, userId: boundUserId, isTyping: false });
         }
       }
     });
@@ -458,8 +445,12 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (boundUserId) {
       console.log(`[DISCONNECT] User ${boundUserId} disconnected`);
-      // Remove user completely from activeUsers
-      activeUsers.delete(boundUserId);
+      // Keep user in memory but clear socketId
+      const userData = activeUsers.get(boundUserId);
+      if (userData) {
+          userData.socketId = null;
+          activeUsers.set(boundUserId, userData);
+      }
       syncGlobalPresence();
     }
   });

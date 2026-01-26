@@ -76,7 +76,7 @@ class SocketService {
   }
   
   // User registration
-  registerUser(profile: UserProfile, callback: (data: { userId: string; expiresAt: number; ttl: number }) => void) {
+  registerUser(profile: UserProfile, callback: (data: { userId: string; expiresAt: number; ttl: number; activeSessions?: any[] }) => void) {
     if (!this.socket) {
       console.error('Socket not connected');
       return;

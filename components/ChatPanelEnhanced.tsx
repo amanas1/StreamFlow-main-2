@@ -108,24 +108,26 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ options, value, onChange, label
 };
 
 // Message TTL countdown component
-const MessageTTLIndicator = ({ timestamp }: { timestamp: number }) => {
-    const [remaining, setRemaining] = useState(60);
+const MessageTTLIndicator = ({ msg }: { msg: any }) => {
+    const ttl = (msg.messageType === 'image' || msg.messageType === 'audio' || msg.messageType === 'video') ? 30 : 60;
+    const [remaining, setRemaining] = useState(ttl);
     
     useEffect(() => {
-        const interval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - timestamp) / 1000);
-            const left = Math.max(0, 60 - elapsed);
+        const update = () => {
+            const elapsed = Math.floor((Date.now() - msg.timestamp) / 1000);
+            const left = Math.max(0, ttl - elapsed);
             setRemaining(left);
-            if (left === 0) clearInterval(interval);
-        }, 1000);
+        };
+        const interval = setInterval(update, 1000);
+        update();
         return () => clearInterval(interval);
-    }, [timestamp]);
+    }, [msg.timestamp, ttl]);
     
-    if (remaining > 50) return null; // Only show in last 10 seconds
+    if (remaining > 15) return null; // Only show in last 15 seconds
     
     return (
-        <div className="text-[8px] text-red-400 font-bold mt-1 flex items-center gap-1">
-            <span className="animate-pulse">⏱</span>
+        <div className={`text-[8px] font-bold mt-1 flex items-center gap-1 ${remaining <= 5 ? 'text-red-500' : 'text-orange-400'}`}>
+            <span className={remaining <= 5 ? "animate-pulse" : ""}>⏱</span>
             {remaining}s
         </div>
     );
@@ -224,7 +226,27 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const availableCitiesSearch = useMemo(() => COUNTRIES_DATA.find(c => c.name === searchCountry)?.cities || [], [searchCountry]);
 
   useEffect(() => { setRegCity(availableCitiesReg[0]); }, [availableCitiesReg]);
-  useEffect(() => { scrollToBottom(); }, [messages, view]);
+  
+  // Message pruning for ephemeral chat (30s media, 60s text, 50 cap)
+  useEffect(() => {
+    const pruneInterval = setInterval(() => {
+      setMessages(prev => {
+        const now = Date.now();
+        const filtered = prev.filter(msg => {
+          const age = now - msg.timestamp;
+          if (msg.messageType === 'image' || msg.messageType === 'audio' || msg.messageType === 'video') {
+            return age < 30000; // 30s for media
+          }
+          return age < 60000; // 60s for text
+        });
+        
+        // Keep only top 50 strictly
+        if (filtered.length > 50) return filtered.slice(-50);
+        return filtered;
+      });
+    }, 1000);
+    return () => clearInterval(pruneInterval);
+  }, []);
 
   // Socket.IO connection setup
   useEffect(() => {
@@ -375,8 +397,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (message.senderId !== currentUser.id) {
           playNotificationSound('knock');
       }
-      
-      scrollToBottom();
     }));
     
     // Listen for message expiration
@@ -562,7 +582,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     );
     
     setInputText('');
-    // Don't scroll yet - will scroll when message arrives from server
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -577,10 +596,20 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     try {
       const compressedBase64 = await compressImage(file);
       
-      // Encrypt and send - NO optimistic UI, wait for server
+      // Optimistic UI update for image
+      const tempId = `temp_img_${Date.now()}`;
+      const optimisticMessage: any = {
+          id: tempId,
+          sessionId: activeSession.sessionId,
+          senderId: currentUser.id,
+          messageType: 'image',
+          image: compressedBase64, // Display raw base64 immediately
+          timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, optimisticMessage]);
+
       const encrypted = encryptionService.encryptBinary(compressedBase64, activeSession.sessionId);
       
-      console.log(`[CLIENT] Sending image to session ${activeSession.sessionId}`);
       socketService.sendMessage(
         activeSession.sessionId,
         encrypted,
@@ -992,7 +1021,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 <div className="flex-1 flex flex-col h-full relative">
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar pb-32">
                         <div className="text-center py-6"><span className="text-[10px] bg-white/5 px-3 py-1 rounded-full text-slate-500 uppercase font-bold tracking-widest">{t.today}</span></div>
-                        {messages.map(msg => {
+                        {[...messages].sort((a,b) => b.timestamp - a.timestamp).map(msg => {
                             const isMsgFlagged = msg.flagged && !showFlagged[msg.id];
                             return (
                              <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'} group animate-in slide-in-from-bottom-2 duration-300`}>
@@ -1026,7 +1055,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             <button onClick={() => handleReportUser(msg.senderId, msg.id)} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-orange-400">!</button>
                                         )}
                                     </div>
-                                    <MessageTTLIndicator timestamp={msg.timestamp} />
+                                    <MessageTTLIndicator msg={msg} />
                                 </div>
                              </div>
                             );
