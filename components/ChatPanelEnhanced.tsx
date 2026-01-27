@@ -6,7 +6,7 @@ import {
     PlayIcon, PauseIcon, CameraIcon, SearchIcon,
     NextIcon, PreviousIcon, VolumeIcon, ChevronDownIcon, ChevronUpIcon,
     HeartIcon, PhoneIcon, VideoCameraIcon, ArrowLeftIcon, UserIcon, ChatBubbleIcon,
-    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon
+    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon
 } from './Icons';
 import { ChatMessage, UserProfile, Language, RadioStation, ChatSession, VisualMode } from '../types';
 import AudioVisualizer from './AudioVisualizer';
@@ -1266,8 +1266,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             </div>
                         )}
                         <div className="flex flex-col ml-1 hidden sm:block">
-                            <h2 className="text-xs font-black tracking-widest text-slate-400 uppercase">
-                                {view === 'search' ? (language === 'ru' ? 'Глобал' : 'Global') : (view === 'inbox' ? (language === 'ru' ? 'Диалоги' : 'Inbox') : '')}
+                            <h2 className="text-xs font-black tracking-widest text-slate-400 uppercase flex items-center gap-2">
+                                {view === 'search' ? (
+                                    <>
+                                        <GlobeIcon className="w-3.5 h-3.5 text-primary/80 animate-[spin_10s_linear_infinite]" />
+                                        {language === 'ru' ? 'Вокруг Света' : 'Around World'}
+                                    </>
+                                ) : (view === 'inbox' ? (language === 'ru' ? 'Диалоги' : 'Inbox') : '')}
                             </h2>
                             {!socketService.isConnected ? (
                                 <span className="text-[9px] text-red-500 font-bold uppercase animate-pulse">Offline</span>
