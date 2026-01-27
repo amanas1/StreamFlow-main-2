@@ -286,9 +286,7 @@ export const UserIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 export const SpeakIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12 21.5c-4.5 0-8-2.5-8-5.5s3.5-5.5 8-5.5 8 2.5 8 5.5-3.5 5.5-8 5.5zM12 11c-4.14 0-7 2.36-7 4.5s2.86 4.5 7 4.5 7-2.36 7-4.5-2.86-4.5-7-4.5z" opacity=".2"/>
-    <path d="M20 16c0 3.31-3.58 6-8 6s-8-2.69-8-6 3.58-6 8-6 8 2.69 8 6zm-8 4.5c3.31 0 6-1.57 6-3.5 0-1.12-.89-2.12-2.35-2.78-1.04-.47-2.31-.72-3.65-.72s-2.61.25-3.65.72C5.89 15.38 5 16.38 5 17.5c0 1.93 2.69 3.5 6 3.5z"/>
-    <path d="M12 14c-2.21 0-4 .89-4 2 0 .58.5 1.11 1.34 1.48.7.31 1.63.52 2.66.52s1.96-.21 2.66-.52c.84-.37 1.34-.9 1.34-1.48 0-1.11-1.79-2-4-2z" fill="#ff4d6d"/>
-  </svg>
+  <span className={className} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1em' }}>
+    👄
+  </span>
 );
