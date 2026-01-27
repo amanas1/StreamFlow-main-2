@@ -748,7 +748,7 @@ export default function App(): React.JSX.Element {
         {isIdleView && (
            <div className="fixed inset-0 z-0 animate-in fade-in duration-1000 bg-[#02040a]">
               {/* Separate Cosmic Background with Moon */}
-              <CosmicBackground />
+              <CosmicBackground showMoon={visualizerVariant !== 'bubbles'} />
 
               <div className="absolute inset-0 w-full h-full z-10">
                 {!vizSettings.energySaver && (
