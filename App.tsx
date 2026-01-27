@@ -117,10 +117,28 @@ export default function App(): React.JSX.Element {
 
   const [sleepTimer, setSleepTimer] = useState<number | null>(null); 
   const [eqGains, setEqGains] = useState<number[]>(new Array(10).fill(0));
-  const [currentTheme, setCurrentTheme] = useState<ThemeName>('default');
-  const [baseTheme, setBaseTheme] = useState<BaseTheme>('dark');
+  const [currentTheme, setCurrentTheme] = useState<ThemeName>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('streamflow_current_theme') as ThemeName;
+      if (saved) return saved;
+    }
+    return 'volcano';
+  });
+  const [baseTheme, setBaseTheme] = useState<BaseTheme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('streamflow_base_theme') as BaseTheme;
+      if (saved) return saved;
+    }
+    return 'dark';
+  });
   const [customCardColor, setCustomCardColor] = useState<string | null>(null);
-  const [language, setLanguage] = useState<Language>('ru');
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('streamflow_language') as Language;
+      if (saved) return saved;
+    }
+    return 'ru';
+  });
   const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>('galaxy');
   const [vizSettings, setVizSettings] = useState<VisualizerSettings>(DEFAULT_VIZ_SETTINGS);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -548,7 +566,13 @@ export default function App(): React.JSX.Element {
     } else {
         root.style.removeProperty('--card-bg'); root.style.removeProperty('--panel-bg'); root.style.removeProperty('--input-bg'); root.style.removeProperty('--card-border'); root.style.removeProperty('--panel-border');
     }
+    localStorage.setItem('streamflow_current_theme', currentTheme);
+    localStorage.setItem('streamflow_base_theme', baseTheme);
   }, [currentTheme, baseTheme, customCardColor]);
+
+  useEffect(() => {
+    localStorage.setItem('streamflow_language', language);
+  }, [language]);
 
   const loadCategory = useCallback(async (category: CategoryInfo | null, mode: ViewMode, autoPlay: boolean = false) => { 
     const requestId = Date.now();
