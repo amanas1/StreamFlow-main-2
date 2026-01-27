@@ -480,7 +480,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (boundUserId) {
       console.log(`[DISCONNECT] User ${boundUserId} disconnected`);
-      // Keep user in memory but clear socketId
       const userData = activeUsers.get(boundUserId);
       if (userData) {
           userData.socketId = null;
@@ -488,6 +487,27 @@ io.on('connection', (socket) => {
       }
       syncGlobalPresence();
     }
+  });
+
+  // FEEDBACK VIA SOCKET
+  socket.on('feedback:send', ({ rating, message }) => {
+    const feedbackEntry = {
+        timestamp: new Date().toISOString(),
+        userId: boundUserId || 'guest',
+        rating,
+        message
+    };
+
+    console.log(`[SOCKET FEEDBACK] Received rating ${rating}/5`);
+
+    const logPath = path.join(__dirname, 'feedback.log');
+    const logLine = JSON.stringify(feedbackEntry) + '\n';
+    
+    fs.appendFile(logPath, logLine, (err) => {
+        if (err) console.error('[FEEDBACK] Error writing to log:', err);
+    });
+
+    socket.emit('feedback:received', { success: true });
   });
 });
 
@@ -510,36 +530,6 @@ app.get('/stats', (req, res) => {
     sessions: activeSessions.size,
     totalMessages: Array.from(messages.values()).reduce((sum, msgs) => sum + msgs.length, 0)
   });
-});
-
-// --- Feedback API ---
-const fs = require('fs');
-const path = require('path');
-
-app.post('/api/feedback', (req, res) => {
-    const { rating, message, userId } = req.body;
-    
-    const feedbackEntry = {
-        timestamp: new Date().toISOString(),
-        userId,
-        rating,
-        message
-    };
-
-    console.log(`[FEEDBACK] Received rating ${rating}/5: ${message.substring(0, 50)}...`);
-
-    // Log to file
-    const logPath = path.join(__dirname, 'feedback.log');
-    const logLine = JSON.stringify(feedbackEntry) + '\n';
-    
-    fs.appendFile(logPath, logLine, (err) => {
-        if (err) console.error('[FEEDBACK] Error writing to log:', err);
-    });
-
-    // NOTE: In a real production environment, you would use nodemailer here 
-    // to send this data to amanaas5535332@gmail.com
-    
-    res.json({ success: true, message: 'Feedback received' });
 });
 
 // --- Moderation Admin API ---

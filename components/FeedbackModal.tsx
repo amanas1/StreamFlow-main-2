@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { XMarkIcon, EnvelopeIcon } from './Icons';
 import { TRANSLATIONS } from '../constants';
 import { Language } from '../types';
+import { socketService } from '../services/socketService';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -16,37 +17,38 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
-
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // React to feedback confirmation
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const cleanup = socketService.onFeedbackReceived((data) => {
+        if (data.success) {
+            setIsSending(false);
+            setSent(true);
+            setTimeout(() => {
+                setSent(true); // Redundant but safe
+                setTimeout(() => {
+                    setSent(false);
+                    setMessage('');
+                    setRating(0);
+                    onClose();
+                }, 2000);
+            }, 500);
+        }
+    });
+    return cleanup;
+  }, [isOpen, onClose]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() && rating === 0) return;
 
     setIsSending(true);
+    socketService.sendFeedback(rating, message);
     
-    try {
-        const response = await fetch(`${window.location.protocol}//${window.location.hostname}:3001/api/feedback`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rating, message, userId: 'current_user' })
-        });
-
-        if (response.ok) {
-            setSent(true);
-            setTimeout(() => {
-                setSent(false);
-                setMessage('');
-                setRating(0);
-                onClose();
-            }, 2500);
-        }
-    } catch (err) {
-        console.error('Failed to send feedback:', err);
-        // Fallback or error state could be here
-    } finally {
-        setIsSending(false);
-    }
+    // Safety timeout: if server doesn't respond in 5s, stop spinner
+    setTimeout(() => setIsSending(false), 5000);
   };
 
   return (

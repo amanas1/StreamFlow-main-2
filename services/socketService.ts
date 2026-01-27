@@ -220,6 +220,18 @@ class SocketService {
     return () => this.socket?.off('typing:indicator', callback);
   }
   
+  // Feedback
+  sendFeedback(rating: number, message: string) {
+    if (!this.socket) return;
+    this.socket.emit('feedback:send', { rating, message });
+  }
+
+  onFeedbackReceived(callback: (data: { success: boolean }) => void): () => void {
+    if (!this.socket) return () => {};
+    this.socket.on('feedback:received', callback);
+    return () => this.socket?.off('feedback:received', callback);
+  }
+
   // Reporting
   sendReport(targetUserId: string, reason: string, messageId?: string) {
     if (!this.socket) return;

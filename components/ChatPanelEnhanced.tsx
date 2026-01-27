@@ -441,8 +441,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       };
       
       // Show ALL messages from server (including our own)
-      // Server is the single source of truth
-      setMessages(prev => [...prev, decrypted]);
+      // Server is the single source of truth. OPTIMISTIC UI SYNC: 
+      // If we received our own message back, remove the optimistic placeholders
+      setMessages(prev => {
+          const filtered = prev.filter(m => !m.metadata?.optimistic || m.id !== decrypted.id);
+          return [...filtered, decrypted];
+      });
       
       // If our own message was flagged, show warning
       if (decrypted.senderId === currentUser.id && decrypted.flagged) {
@@ -792,8 +796,24 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     
     const textContent = inputText.trim();
     
-    // Encrypt and send - NO optimistic UI, wait for server confirmation
+    // Encrypt
     const encrypted = encryptionService.encrypt(textContent, activeSession.sessionId);
+    
+    // OPTIMISTIC UI: Add message locally first so it appears instantly
+    const tempId = `temp_${Date.now()}`;
+    const optimisticMsg: any = {
+        id: tempId,
+        sessionId: activeSession.sessionId,
+        senderId: currentUser.id,
+        encryptedPayload: encrypted,
+        messageType: 'text',
+        metadata: { text: textContent, optimistic: true },
+        timestamp: Date.now(),
+        expiresAt: Date.now() + 60000
+    };
+    
+    setMessages(prev => [...prev, optimisticMsg]);
+    scrollToBottom();
     
     console.log(`[CLIENT] Sending message to session ${activeSession.sessionId}`);
     socketService.sendMessage(
@@ -803,7 +823,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     );
     
     setInputText('');
-    scrollToBottom();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
