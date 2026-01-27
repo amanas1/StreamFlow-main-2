@@ -471,11 +471,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
               }
               speakMessage(decrypted.text, partnerGender);
           }
-      } else {
-          // Voice Mode: Read outgoing message
-          if (decrypted.text && voiceModeRef.current) {
-              speakMessage(decrypted.text, currentUser.gender);
-          }
       }
       
       scrollToBottom();
