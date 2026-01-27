@@ -405,28 +405,53 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     
     // Listen for session creation
     cleanups.push(socketService.onSessionCreated((data) => {
-      setActiveSessions(prev => new Map(prev).set(data.sessionId, data));
-      // Auto-open chat if we just accepted a knock
-      setActiveSession(data);
-      playNotificationSound('door');
-      setView('chat');
-      // Load messages for this session
-      socketService.getMessages(data.sessionId, ({ messages: msgs }) => {
-        const decrypted = msgs.map(msg => ({
-          ...msg,
-          text: msg.messageType === 'text' && msg.encryptedPayload 
-            ? encryptionService.decrypt(msg.encryptedPayload, data.sessionId)
-            : undefined,
-          image: msg.messageType === 'image' && msg.encryptedPayload
-            ? encryptionService.decryptBinary(msg.encryptedPayload, data.sessionId)
-            : undefined,
-          audioBase64: msg.messageType === 'audio' && msg.encryptedPayload
-            ? encryptionService.decryptBinary(msg.encryptedPayload, data.sessionId)
-            : undefined,
-          flagged: msg.metadata?.flagged || false
-        }));
-        setMessages(decrypted);
-      });
+      console.log("[CLIENT] Session created:", data);
+      
+      try {
+          setActiveSessions(prev => new Map(prev).set(data.sessionId, data));
+          
+          // Force view change first to ensure user sees the chat
+          setActiveSession(data);
+          setView('chat');
+          
+          // Clean up any pending knocks that match this partner
+          setPendingKnocks(prev => prev.filter(k => k.fromUserId !== data.partnerId));
+          // Also clear sent knocks since we are now connected
+          setSentKnocks(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(data.partnerId);
+              return newSet;
+          });
+
+          // Try playing sound safely
+          try {
+             playNotificationSound('door');
+          } catch(e) {
+             console.warn("Sound play failed", e);
+          }
+
+          // Load messages for this session
+          socketService.getMessages(data.sessionId, ({ messages: msgs }) => {
+            const decrypted = msgs.map(msg => ({
+              ...msg,
+              text: msg.messageType === 'text' && msg.encryptedPayload 
+                ? encryptionService.decrypt(msg.encryptedPayload, data.sessionId)
+                : undefined,
+              image: msg.messageType === 'image' && msg.encryptedPayload
+                ? encryptionService.decryptBinary(msg.encryptedPayload, data.sessionId)
+                : undefined,
+              audioBase64: msg.messageType === 'audio' && msg.encryptedPayload
+                ? encryptionService.decryptBinary(msg.encryptedPayload, data.sessionId)
+                : undefined,
+              flagged: msg.metadata?.flagged || false
+            }));
+            setMessages(decrypted);
+          });
+      } catch (err) {
+          console.error("[CLIENT] Error handling session creation:", err);
+          // Fallback: try to switch view anyway if critical error
+          setView('chat'); 
+      }
     }));
     
     // Listen for new messages
