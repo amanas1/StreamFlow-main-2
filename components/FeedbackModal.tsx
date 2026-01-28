@@ -48,17 +48,16 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
     setError(null);
     
     try {
-      // Direct client-side submission to Web3Forms to bypass server-side Cloudflare blocks
-      const response = await fetch('https://api.web3forms.com/submit', {
+      // Direct client-side submission to FormSubmit.co
+      const response = await fetch('https://formsubmit.co/ajax/amanas5535332@gmail.com', {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         },
         body: JSON.stringify({
-           access_key: 'a7869d54-b5ea-44f4-a6bd-fe1a9e3bfa96',
-           subject: `⭐ Feedback: ${rating}/5 Stars`,
-           from_name: 'StreamFlow User',
+           _subject: `⭐ Feedback: ${rating}/5 Stars`,
+           _captcha: 'false',
            message: `
 Rating: ${'⭐'.repeat(rating)} (${rating}/5)
 
