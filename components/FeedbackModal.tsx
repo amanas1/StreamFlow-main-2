@@ -48,13 +48,27 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
     setError(null);
     
     try {
-      const response = await fetch('/api/send-feedback', {
+      // Direct client-side submission to Web3Forms to bypass server-side Cloudflare blocks
+      const response = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
         body: JSON.stringify({
-           rating,
-           message,
-           userId: currentUserId || 'Anonymous'
+           access_key: 'a7869d54-b5ea-44f4-a6bd-fe1a9e3bfa96',
+           subject: `⭐ Feedback: ${rating}/5 Stars`,
+           from_name: 'StreamFlow User',
+           message: `
+Rating: ${'⭐'.repeat(rating)} (${rating}/5)
+
+Message:
+${message || '(No text message)'}
+
+User Details:
+- ID: ${currentUserId || 'Anonymous'}
+- Sent at: ${new Date().toLocaleString('ru-RU')}
+           `.trim()
         })
       });
 
@@ -69,11 +83,12 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
           onClose();
         }, 2500);
       } else {
-        setError(language === 'ru' ? 'Ошибка отправки. Попробуйте позже.' : 'Failed to send. Try again later.');
+        console.error('Web3Forms Error:', data);
+        setError(language === 'ru' ? 'Ошибка сервиса. Попробуйте позже.' : 'Service Error. Try again later.');
       }
     } catch (error) {
       console.error('Feedback error:', error);
-      setError(language === 'ru' ? 'Нужен Redeploy в Vercel' : 'Redeploy needed in Vercel');
+      setError(language === 'ru' ? 'Сетевая ошибка. Проверьте интернет.' : 'Network error. Check your connection.');
     } finally {
       setIsSending(false);
     }
