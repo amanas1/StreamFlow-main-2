@@ -3,15 +3,15 @@ import React, { useState } from 'react';
 import { XMarkIcon, EnvelopeIcon } from './Icons';
 import { TRANSLATIONS } from '../constants';
 import { Language } from '../types';
-import { socketService } from '../services/socketService';
 
 interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
   language: Language;
+  currentUserId?: string;
 }
 
-const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language }) => {
+const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language, currentUserId }) => {
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -39,36 +39,42 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
 
   if (!isOpen) return null;
 
-  // React to feedback confirmation
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const cleanup = socketService.onFeedbackReceived((data) => {
-        if (data.success) {
-            setIsSending(false);
-            setSent(true);
-            setTimeout(() => {
-                setSent(true); // Redundant but safe
-                setTimeout(() => {
-                    setSent(false);
-                    setMessage('');
-                    setRating(0);
-                    onClose();
-                }, 2000);
-            }, 500);
-        }
-    });
-    return cleanup;
-  }, [isOpen, onClose]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() && rating === 0) return;
 
     setIsSending(true);
-    socketService.sendFeedback(rating, message);
     
-    // Safety timeout: if server doesn't respond in 5s, stop spinner
-    setTimeout(() => setIsSending(false), 5000);
+    try {
+      const response = await fetch('/api/send-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+           rating,
+           message,
+           userId: currentUserId || 'Anonymous'
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSent(true);
+        setTimeout(() => {
+          setSent(false);
+          setMessage('');
+          setRating(0);
+          onClose();
+        }, 2500);
+      } else {
+        alert('Failed to send feedback. Please try again.');
+      }
+    } catch (error) {
+      console.error('Feedback error:', error);
+      alert('Failed to send feedback. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
