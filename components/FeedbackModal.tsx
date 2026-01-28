@@ -39,11 +39,14 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
 
   if (!isOpen) return null;
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() && rating === 0) return;
 
     setIsSending(true);
+    setError(null);
     
     try {
       const response = await fetch('/api/send-feedback', {
@@ -67,11 +70,11 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
           onClose();
         }, 2500);
       } else {
-        alert('Failed to send feedback. Please try again.');
+        setError(language === 'ru' ? 'Ошибка отправки. Попробуйте позже.' : 'Failed to send. Try again later.');
       }
     } catch (error) {
       console.error('Feedback error:', error);
-      alert('Failed to send feedback. Please try again.');
+      setError(language === 'ru' ? 'Нужен Redeploy в Vercel' : 'Redeploy needed in Vercel');
     } finally {
       setIsSending(false);
     }
@@ -126,6 +129,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
                         placeholder={t.tellUs}
                         className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-primary/50 transition-all resize-none placeholder:text-slate-600 font-medium"
                     />
+                    {error && <p className="text-red-400 text-xs text-center animate-pulse">{error}</p>}
                 </div>
 
                 {/* Submit */}
