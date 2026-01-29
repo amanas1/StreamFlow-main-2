@@ -122,11 +122,40 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                   
                   <div className="space-y-12">
                       {/* Live Screenshot 1: Player */}
-                      <div className="bg-[#0e1016] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                           <div className="bg-black/50 p-4 border-b border-white/5 flex gap-2">
-                              <span className="text-[10px] font-mono text-slate-500 uppercase">Fig 1.1: Main Control Unit</span>
+                      <div className="bg-[#0e1016] border border-white/10 rounded-3xl overflow-hidden shadow-2xl group">
+                           <div className="bg-black/50 p-4 border-b border-white/5 flex items-center justify-between">
+                              <span className="text-[10px] font-mono text-slate-500 uppercase">Fig 1.1: Main Control Unit (Active State)</span>
+                              <div className="flex gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-red-500/20" />
+                                  <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
+                              </div>
                            </div>
-                           <img src="/manual_player.png" alt="Player Controls" className="w-full opacity-90" />
+                           {/* REAL SCREENSHOT: Player Bar */}
+                           <div className="relative p-6 bg-black">
+                               <img src="/manual_player_bar.png" alt="Player Controls" className="w-full rounded-lg shadow-lg border border-white/5 transform group-hover:scale-[1.01] transition-transform duration-500" />
+                               
+                               {/* Pointer / Description Overlay */}
+                               <div className="absolute top-1/2 left-4 md:left-12 -translate-y-1/2 hidden md:block">
+                                   <div className="flex items-center gap-2">
+                                       <div className="w-2 h-2 bg-orange-500 rounded-full animate-ping" />
+                                       <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] px-2 py-1 rounded font-bold">LIVE STREAM 320kbps</span>
+                                   </div>
+                               </div>
+                           </div>
+                           <div className="p-6 bg-[#0e1016] border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-400">
+                               <div>
+                                   <strong className="text-white block mb-1">Station Metadata</strong>
+                                   Битрейт и формат (MP3/AAC) отображаются в реальном времени рядом с названием трека.
+                               </div>
+                               <div>
+                                   <strong className="text-white block mb-1">Buffer Health</strong>
+                                   Белая полоса загрузки показывает состояние кеша. Если она полная — разрывов связи не будет.
+                               </div>
+                               <div>
+                                   <strong className="text-white block mb-1">Volume Normalization</strong>
+                                   Слайдер громкости (справа) использует логарифмическую шкалу для плавного контроля дБ.
+                               </div>
+                           </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -140,14 +169,14 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                </p>
                            </div>
                            <div className="space-y-4">
-                               <h3 className="text-xl font-bold text-white">🎚️ Качество Звука</h3>
-                               <p className="text-slate-400 leading-relaxed text-sm">
-                                   В меню настроек (иконка ползунков) есть важный переключатель <strong>"High Bitrate"</strong>.
-                                   <br/><br/>
-                                   ✅ <strong>Включено:</strong> Только станции 128kbps+ (Кристальный звук).
-                                   <br/>
-                                   ❌ <strong>Выключено:</strong> Все станции (Полезно при плохом интернете).
-                               </p>
+                               <h3 className="text-xl font-bold text-white">🎚️ Меню Управления</h3>
+                               <div className="flex items-start gap-4">
+                                   <img src="/manual_settings_icon.png" className="w-12 h-12 rounded-lg border border-white/10 p-2 bg-black/50" alt="Settings Icon" />
+                                   <p className="text-slate-400 leading-relaxed text-sm">
+                                       Эта иконка открывает <strong>DSP-процессор</strong>. 
+                                       Здесь скрыты настройки 8D-звука, эквалайзера и визуализации. Не бойтесь экспериментировать — кнопка Reset всегда вернет всё как было.
+                                   </p>
+                               </div>
                            </div>
                       </div>
                   </div>
@@ -166,38 +195,85 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                       </p>
                   </div>
 
-                  {/* SCREENSHOTS: Profile & Search */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Step 1: Profile */}
-                      <div className="space-y-4">
-                           <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                               <span className="bg-pink-500 text-white w-6 h-6 rounded flex items-center justify-center text-xs">1</span>
-                               Паспорт (Identity)
-                           </h3>
-                           <div className="relative group perspective-1000">
-                               <div className="absolute inset-0 bg-pink-500/20 blur-2xl group-hover:bg-pink-500/30 transition-colors" />
-                               <img src="/manual_profile.png" alt="Profile Creation" className="relative rounded-2xl border border-white/10 shadow-2xl transform transition-transform group-hover:scale-[1.02]" />
+                  {/* SCREENSHOTS: Search Modal & Dropdowns */}
+                  <div className="space-y-8">
+                      {/* SUB-SECTION: GLOBAL MATCH */}
+                      <div className="bg-[#0e1016] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                           <div className="grid grid-cols-1 lg:grid-cols-2">
+                               <div className="p-8 space-y-6 flex flex-col justify-center">
+                                    <h3 className="text-2xl font-bold text-white">🌍 Глобальный Поиск (Global Match)</h3>
+                                    <p className="text-slate-400 text-sm leading-relaxed">
+                                        Это сердце нашей социальной системы. Панель "Вокруг Света" позволяет настроить фильтры поиска собеседника с хирургической точностью.
+                                    </p>
+                                    <ul className="space-y-3 text-sm text-slate-300">
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                                            <strong>Geo-Filtering:</strong> Выберите конкретную страну (например, Brazil или Japan), чтобы практиковать язык.
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                                            <strong>Age Bracket:</strong> Система соединит вас только с людьми из выбранного диапазона.
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                                            <strong>Online Status:</strong> Зеленый индикатор в углу подтверждает, что сеть активна.
+                                        </li>
+                                    </ul>
+                               </div>
+                               <div className="bg-black/50 p-8 flex items-center justify-center border-l border-white/5">
+                                    {/* REAL SCREENSHOT: Search Modal */}
+                                    <div className="relative">
+                                        <img src="/manual_search_modal.png" alt="Global Search Modal" className="rounded-xl shadow-2xl border border-white/10" />
+                                        <div className="absolute -bottom-4 -right-4 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
+                                            UI ELEMENT: SEARCH MODAL
+                                        </div>
+                                    </div>
+                               </div>
                            </div>
-                           <p className="text-slate-400 text-xs leading-relaxed">
-                               При первом входе вам предложат создать профиль. Выберите никнейм и аватар. 
-                               Обратите внимание: никаких реальных фото. Мы поддерживаем философию <strong>Digital Avatar</strong>.
-                           </p>
                       </div>
 
-                      {/* Step 2: Search */}
-                      <div className="space-y-4">
-                           <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                               <span className="bg-blue-500 text-white w-6 h-6 rounded flex items-center justify-center text-xs">2</span>
-                               Поиск (Global Match)
-                           </h3>
-                           <div className="relative group perspective-1000">
-                               <div className="absolute inset-0 bg-blue-500/20 blur-2xl group-hover:bg-blue-500/30 transition-colors" />
-                               <img src="/manual_search.png" alt="Search UI" className="relative rounded-2xl border border-white/10 shadow-2xl transform transition-transform group-hover:scale-[1.02]" />
+                      {/* SUB-SECTION: DETAIL CONTROLS */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                           {/* Age Select */}
+                           <div className="bg-[#0e1016] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                                        <AdjustmentsIcon className="w-5 h-5" />
+                                    </div>
+                                    <h4 className="font-bold text-white">Точность Возраста</h4>
+                                </div>
+                                <div className="flex gap-4 items-start">
+                                    <img src="/manual_age_select.png" alt="Age Dropdown" className="w-1/3 rounded-lg border border-white/10 shadow-lg" />
+                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                        Мы не используем размытые диапазоны "18-25". Вы выбираете <strong>точный возраст</strong>. 
+                                        Это позволяет находить сверстников с общими интересами и культурным кодом.
+                                        <br/><br/>
+                                        <span className="text-blue-400">*Если возраст не важен, выберите "Неважно".</span>
+                                    </p>
+                                </div>
                            </div>
-                           <p className="text-slate-400 text-xs leading-relaxed">
-                               Фильтр "Вокруг Света" позволяет найти собеседника по полу, возрасту или стране.
-                               Нажмите кнопку "НАЙТИ", и система просканирует активные ноды в поисках идеального совпадения.
-                           </p>
+
+                           {/* Menu Navigation */}
+                           <div className="bg-[#0e1016] border border-white/10 rounded-2xl p-6 flex flex-col gap-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                                        <BookOpenIcon className="w-5 h-5" />
+                                    </div>
+                                    <h4 className="font-bold text-white">Навигация</h4>
+                                </div>
+                                <div className="flex gap-4 items-center">
+                                    <div className="bg-black p-4 rounded-xl border border-white/10">
+                                         <img src="/manual_menu_icon.png" alt="Hamburger Menu" className="w-8 h-8 opacity-80" />
+                                    </div>
+                                    <p className="text-xs text-slate-400 leading-relaxed">
+                                        Кнопка меню ("Гамбургер") — это ваш портал. Через неё осуществляется быстрый переход между:
+                                        <br/>
+                                        • Радио-тюнером<br/>
+                                        • Глобальным чатом<br/>
+                                        • Этой Энциклопедией
+                                    </p>
+                                </div>
+                           </div>
                       </div>
                   </div>
 
