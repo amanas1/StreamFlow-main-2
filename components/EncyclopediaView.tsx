@@ -196,17 +196,17 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                Ввиду коллективного общения, вы можете искать пару.
                            </p>
                            <ul className="space-y-3 mt-4">
-                               <li className="flex items-center gap-2 text-slate-400">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                   Нажмите на форму <strong>"Поиск участников"</strong>
+                               <li className="flex items-start gap-3 text-slate-400">
+                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 shrink-0" />
+                                   <span className="flex-1">Нажмите на форму <strong className="text-white whitespace-nowrap">"Поиск участников"</strong></span>
                                </li>
-                               <li className="flex items-center gap-2 text-slate-400">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                   Выберите критерий: <strong>По возрасту</strong> или <strong>По полу</strong>.
+                               <li className="flex items-start gap-3 text-slate-400">
+                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 shrink-0" />
+                                   <span className="flex-1">Выберите критерий: <strong className="text-white">По возрасту</strong> или <strong className="text-white">По полу</strong>.</span>
                                </li>
-                               <li className="flex items-center gap-2 text-slate-400">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                   Система подсветит подходящих пользователей зеленым маячком.
+                               <li className="flex items-start gap-3 text-slate-400">
+                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 shrink-0" />
+                                   <span className="flex-1">Система подсветит подходящих пользователей <span className="text-emerald-400 font-bold">зеленым маячком</span>.</span>
                                </li>
                            </ul>
                       </div>
