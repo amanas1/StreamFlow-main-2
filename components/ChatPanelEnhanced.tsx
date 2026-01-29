@@ -212,11 +212,71 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
   
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [voiceSettings, setVoiceSettings] = useState({
+      gender: 'female' as 'male' | 'female',
+      pitch: 1.0,
+      rate: 1.0
+  });
   const voiceModeRef = useRef(false);
-  
+  const voiceSettingsRef = useRef(voiceSettings);
+
   useEffect(() => {
     voiceModeRef.current = voiceModeEnabled;
   }, [voiceModeEnabled]);
+  
+  useEffect(() => {
+    voiceSettingsRef.current = voiceSettings;
+  }, [voiceSettings]);
+
+    // AI Voice Mode Helper (Component Scope)
+    const speakMessage = (text: string, _senderGender: string) => {
+        if (!voiceModeRef.current && !text.includes('test')) return; 
+        if (!('speechSynthesis' in window)) return;
+        
+        // Settings from ref (latest)
+        const { gender, pitch, rate } = voiceSettingsRef.current;
+
+        // Automatic Language Detection (Enhanced)
+        const isRussian = /[а-яёА-ЯЁ]/.test(text);
+        const langCode = isRussian ? 'ru-RU' : 'en-US';
+        
+        console.log(`[VOICE] Speaking: "${text.substring(0, 15)}..." | Lang: ${langCode} | Pref: ${gender}`);
+        
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = langCode;
+        
+        // Find Voices
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length === 0) return;
+
+        // Filter by Language
+        const langVoices = voices.filter(v => v.lang.startsWith(isRussian ? 'ru' : 'en'));
+        const voicePool = langVoices.length > 0 ? langVoices : voices;
+
+        const genderKeywords = {
+            female: ['female', 'woman', 'girl', 'elena', 'irina', 'milena', 'anna', 'samantha', 'victoria', 'zira', 'karen', 'moira', 'tessa'],
+            male: ['male', 'man', 'boy', 'pavel', 'alexander', 'yuri', 'maxim', 'daniel', 'fred', 'rishi', 'alex']
+        };
+
+        let selectedVoice = voicePool.find(v => {
+            const name = v.name.toLowerCase();
+            return genderKeywords[gender].some(k => name.includes(k));
+        });
+
+        if (!selectedVoice) selectedVoice = voicePool[0];
+
+        utterance.voice = selectedVoice || voices[0];
+        utterance.rate = rate; 
+        utterance.pitch = pitch;
+        utterance.volume = 1.0;
+        
+        setTimeout(() => {
+            window.speechSynthesis.speak(utterance);
+        }, 50);
+    };
 
   const [regNotificationsEnabled, setRegNotificationsEnabled] = useState(currentUser.chatSettings?.notificationsEnabled ?? true);
   const [regNotificationVolume, setRegNotificationVolume] = useState(currentUser.chatSettings?.notificationVolume ?? 0.8);
@@ -629,58 +689,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         setView('auth');
     }));
 
-    // AI Voice Mode Helper
-    const speakMessage = (text: string, gender: string) => {
-        if (!voiceModeRef.current || !('speechSynthesis' in window)) return;
-        
-        // Automatic Language Detection
-        const isRussian = /[а-яёА-ЯЁ]/.test(text);
-        const langCode = isRussian ? 'ru-RU' : 'en-US';
-        
-        console.log(`[VOICE] Prepared to speak: "${text.substring(0, 20)}..." | Lang: ${langCode} | Gender: ${gender}`);
-        
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = langCode;
-        
-        // Find best voice
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) {
-            console.warn("[VOICE] No voices found yet");
-            return;
-        }
+    // AI Voice Mode Helper (Refactored out)
 
-        // Scoring system for voices: приоритет detected language, затем пол
-        const filteredVoices = voices.filter(v => v.lang.startsWith(isRussian ? 'ru' : 'en'));
-        
-        // Fallback to any voice if selected language not found
-        const voicePool = filteredVoices.length > 0 ? filteredVoices : voices;
 
-        // Filter by gender keywords
-        const genderVoice = voicePool.find(v => {
-            const name = v.name.toLowerCase();
-            if (gender === 'female') {
-                return name.includes('elena') || name.includes('irina') || name.includes('anna') || name.includes('female') || name.includes('milena') || name.includes('samantha') || name.includes('moira');
-            } else if (gender === 'male') {
-                return name.includes('aleksandr') || name.includes('pavel') || name.includes('male') || name.includes('yuri') || name.includes('maxim') || name.includes('daniel') || name.includes('alex');
-            }
-            return false;
-        });
-
-        utterance.voice = genderVoice || voicePool[0];
-        utterance.rate = 1.0;
-        utterance.pitch = gender === 'female' ? 1.05 : 0.95;
-        utterance.volume = 1.0;
-        
-        console.log(`[VOICE] Speaking with voice: ${utterance.voice?.name} (${utterance.voice?.lang})`);
-        
-        // Critical: Small timeout helps voices load on mobile
-        setTimeout(() => {
-            window.speechSynthesis.speak(utterance);
-        }, 50);
-    };
 
     // Listen for report acknowledgment
     cleanups.push(socketService.addListener('report:acknowledged', () => {
@@ -1217,21 +1228,32 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <div className="flex items-center gap-1">
                         <button onClick={() => handleReportUser(partnerDetails.id)} className="p-2.5 text-slate-400 hover:text-orange-500 transition-colors hover:bg-white/5 rounded-full" title={language === 'ru' ? 'Пожаловаться' : 'Report'}><LifeBuoyIcon className="w-5 h-5" /></button>
                         <button onClick={() => handleBlockUser(partnerDetails.id)} className="p-2.5 text-slate-400 hover:text-red-500 transition-colors hover:bg-white/5 rounded-full" title={language === 'ru' ? 'Заблокировать' : 'Block'}><NoSymbolIcon className="w-5 h-5" /></button>
-                        <button 
-                            onClick={() => {
-                                const newState = !voiceModeEnabled;
-                                setVoiceModeEnabled(newState);
-                                // Mobile Unlock: speak brief empty string on gesture
-                                if (newState && 'speechSynthesis' in window) {
-                                    const u = new SpeechSynthesisUtterance("");
-                                    window.speechSynthesis.speak(u);
-                                }
-                            }} 
-                            className={`p-2.5 transition-all rounded-full ${voiceModeEnabled ? 'text-primary bg-primary/10 shadow-[0_0_20px_rgba(188,111,241,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title={language === 'ru' ? (voiceModeEnabled ? 'Выключить живую озвучку' : 'Включить живую озвучку') : (voiceModeEnabled ? 'Disable Live Voice' : 'Enable Live Voice')}
-                        >
-                            <SpeakIcon className={`w-5 h-5 ${voiceModeEnabled ? 'animate-pulse' : ''}`} />
-                        </button>
+                        <div className="flex bg-white/5 rounded-full p-0.5 border border-white/5">
+                            <button 
+                                onClick={() => {
+                                    const newState = !voiceModeEnabled;
+                                    setVoiceModeEnabled(newState);
+                                    if (!newState) setShowVoiceSettings(false); // Auto-close settings
+                                    if (newState && 'speechSynthesis' in window) {
+                                        const u = new SpeechSynthesisUtterance("");
+                                        window.speechSynthesis.speak(u);
+                                    }
+                                }} 
+                                className={`p-2.5 transition-all rounded-full ${voiceModeEnabled ? 'text-primary bg-primary/10 shadow-[0_0_20px_rgba(188,111,241,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                title={language === 'ru' ? (voiceModeEnabled ? 'Выключить живую озвучку' : 'Включить живую озвучку') : (voiceModeEnabled ? 'Disable Live Voice' : 'Enable Live Voice')}
+                            >
+                                <SpeakIcon className={`w-5 h-5 ${voiceModeEnabled ? 'animate-pulse' : ''}`} />
+                            </button>
+                            {voiceModeEnabled && (
+                                <button 
+                                    onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+                                    className={`p-2.5 transition-all rounded-full ${showVoiceSettings ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white'}`}
+                                    title="Voice Settings"
+                                >
+                                    <VolumeIcon className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
                         <button onClick={() => {
                           if (partnerDetails) {
                             setCallPartner(partnerDetails);
@@ -1313,6 +1335,75 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 </>
             )}
         </header>
+
+        {/* VOICE SETTINGS PANEL */}
+        {showVoiceSettings && voiceModeEnabled && (
+            <div className="bg-slate-900/90 backdrop-blur-xl border-b border-white/10 p-4 animate-in slide-in-from-top-2 relative z-50 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                        <SpeakIcon className="w-4 h-4" /> {language === 'ru' ? 'Настройки Голоса' : 'Voice Settings'}
+                    </h3>
+                    <button onClick={() => setShowVoiceSettings(false)} className="text-slate-400 hover:text-white"><XMarkIcon className="w-4 h-4" /></button>
+                </div>
+                
+                <div className="space-y-4">
+                    {/* Gender Selection */}
+                    <div>
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">{language === 'ru' ? 'Тон Голоса' : 'Voice Tone'}</label>
+                        <div className="flex bg-white/5 rounded-lg p-1 border border-white/5">
+                            <button 
+                                onClick={() => setVoiceSettings(p => ({ ...p, gender: 'male' }))}
+                                className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'male' ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                👨 {language === 'ru' ? 'Мужской' : 'Male'}
+                            </button>
+                            <button 
+                                onClick={() => setVoiceSettings(p => ({ ...p, gender: 'female' }))}
+                                className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'female' ? 'bg-pink-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                👩 {language === 'ru' ? 'Женский' : 'Female'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Sliders Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                             <div className="flex justify-between mb-1">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'Скорость' : 'Speed'}</label>
+                                <span className="text-[9px] font-mono text-primary">x{voiceSettings.rate.toFixed(1)}</span>
+                             </div>
+                             <input 
+                                type="range" min="0.5" max="2" step="0.1" 
+                                value={voiceSettings.rate} 
+                                onChange={e => setVoiceSettings(p => ({ ...p, rate: parseFloat(e.target.value) }))}
+                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary" 
+                             />
+                        </div>
+                        <div>
+                             <div className="flex justify-between mb-1">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'Высота' : 'Pitch'}</label>
+                                <span className="text-[9px] font-mono text-primary">{voiceSettings.pitch.toFixed(1)}</span>
+                             </div>
+                             <input 
+                                type="range" min="0.5" max="2" step="0.1" 
+                                value={voiceSettings.pitch} 
+                                onChange={e => setVoiceSettings(p => ({ ...p, pitch: parseFloat(e.target.value) }))}
+                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary" 
+                             />
+                        </div>
+                    </div>
+                    
+                    {/* Test Button */}
+                    <button 
+                        onClick={() => speakMessage(language === 'ru' ? 'Проверка голосового движка' : 'Voice engine test', 'any')}
+                        className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-xs font-bold text-slate-300 transition-colors"
+                    >
+                        {language === 'ru' ? '▶ Прослушать' : '▶ Preview Voice'}
+                    </button>
+                </div>
+            </div>
+        )}
 
         <div className="flex-1 overflow-hidden relative flex flex-col bg-transparent">
             {/* Notification Banner for Pending Knocks */}
