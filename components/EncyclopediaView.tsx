@@ -301,7 +301,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                           </div>
                           
                           <h3 className="text-4xl lg:text-5xl font-black text-white leading-tight">
-                              Почему это сложнее, чем <span className="underline decoration-green-500/50">WhatsApp</span>?<br/>
+                              Почему это сложнее, чем <span className="underline decoration-green-500/50">другие Мессенджеры</span>?<br/>
                               <span className="text-2xl lg:text-3xl text-slate-500 font-light mt-2 block">Технический манифест архитектуры Zero-Persistence</span>
                           </h3>
 
@@ -377,7 +377,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                           <strong>Tunnel (Туннель):</strong> Сообщение упаковывается в зашифрованный контейнер. Сервер видит только внешний слой: <code>{"{ to: 'Session_X', payload: 'ENCRYPTED_BLOB' }"}</code>.
                                       </li>
                                       <li>
-                                          <strong>Relay (Пересылка):</strong> Сервер пересылает BLOB получателю, даже не пытаясь его расшифровать (у сервера нет приватных ключей пользователей).
+                                          <strong>Relay (Пересылка):</strong> Сервер пересылает BLOB получателю. <strong>Расшифровка бесполезна</strong> — без клиентского ключа на выходе будет 0% полезной информации (белый шум).
                                       </li>
                                       <li>
                                           <strong>Self-Destruct (Уничтожение):</strong> После подтверждения доставки (ACK signal), сервер перезаписывает ячейку памяти мусором (garbage data), чтобы исключить восстановление даже методом криминалистического анализа оперативной памяти (Cold Boot Attack mitigation).
@@ -394,7 +394,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-green-500/10 rounded-full blur-3xl" />
                               <h4 className="relative z-10 text-3xl font-black text-white mb-6">Итог: Свобода стоит дорого</h4>
                               <p className="relative z-10 text-slate-400 text-lg leading-relaxed">
-                                  Нам было бы в 100 раз проще использовать базу данных MongoDB или Firebase. Мы могли бы дать вам "историю сообщений", "синхронизацию с телефоном" и "облачные бэкапы". Но тогда мы стали бы ещё одним WhatsApp.
+                                  Нам было бы в 100 раз проще использовать базу данных MongoDB или Firebase. Мы могли бы дать вам "историю сообщений", "синхронизацию с телефоном" и "облачные бэкапы". Но тогда мы стали бы ещё одним <strong>обычным Мессенджером</strong>.
                                   <br/><br/>
                                   Мы выбрали трудный путь. Мы пишем код, который борется с самой природой цифрового следа. Мы не знаем, кто вы. Мы не знаем, о чем вы говорите. И мы гордимся этим незнанием.
                                   <br/><br/>
