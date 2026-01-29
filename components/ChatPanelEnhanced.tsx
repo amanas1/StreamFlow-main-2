@@ -214,7 +214,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState({
-      gender: 'female' as 'male' | 'female',
+      gender: 'auto' as 'auto' | 'male' | 'female',
       pitch: 1.0,
       rate: 1.0
   });
@@ -230,18 +230,26 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   }, [voiceSettings]);
 
     // AI Voice Mode Helper (Component Scope)
-    const speakMessage = (text: string, _senderGender: string) => {
+    const speakMessage = (text: string, senderGender: string = 'other') => {
         if (!voiceModeRef.current && !text.includes('test')) return; 
         if (!('speechSynthesis' in window)) return;
         
         // Settings from ref (latest)
-        const { gender, pitch, rate } = voiceSettingsRef.current;
+        const { gender: preferredGender, pitch, rate } = voiceSettingsRef.current;
+
+        // Determine target gender: if 'auto', use sender's gender, otherwise use preference
+        let targetGender = preferredGender;
+        if (targetGender === 'auto') {
+            // Map 'other' to random or default (let's default to female for 'other' or randomize? User said "if woman, she speaks")
+            // If sender is explicit male, usage male.
+            targetGender = (senderGender === 'male') ? 'male' : 'female';
+        }
 
         // Automatic Language Detection (Enhanced)
         const isRussian = /[а-яёА-ЯЁ]/.test(text);
         const langCode = isRussian ? 'ru-RU' : 'en-US';
         
-        console.log(`[VOICE] Speaking: "${text.substring(0, 15)}..." | Lang: ${langCode} | Pref: ${gender}`);
+        console.log(`[VOICE] Speaking: "${text.substring(0, 15)}..." | Lang: ${langCode} | Target: ${targetGender} (Sender: ${senderGender})`);
         
         window.speechSynthesis.cancel();
         
@@ -256,22 +264,43 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         const langVoices = voices.filter(v => v.lang.startsWith(isRussian ? 'ru' : 'en'));
         const voicePool = langVoices.length > 0 ? langVoices : voices;
 
+        // Expanded Gender Keywords for better detection on Mac/Windows/Android
         const genderKeywords = {
-            female: ['female', 'woman', 'girl', 'elena', 'irina', 'milena', 'anna', 'samantha', 'victoria', 'zira', 'karen', 'moira', 'tessa'],
-            male: ['male', 'man', 'boy', 'pavel', 'alexander', 'yuri', 'maxim', 'daniel', 'fred', 'rishi', 'alex']
+            female: [
+                'female', 'woman', 'girl', 'lady', // Generic
+                'elena', 'irina', 'milena', 'anna', 'tatyana', 'victoria', // RU
+                'samantha', 'karen', 'moira', 'tessa', 'veena', 'zira', 'susan', 'catherine' // EN
+            ],
+            male: [
+                'male', 'man', 'boy', 'guy', // Generic
+                'pavel', 'alexander', 'yuri', 'maxim', 'ivan', 'dmitry', // RU
+                'daniel', 'fred', 'rishi', 'alex', 'mark', 'david', 'james', 'george', 'microsoft david' // EN
+            ]
         };
 
+        // Find matching voice
         let selectedVoice = voicePool.find(v => {
             const name = v.name.toLowerCase();
-            return genderKeywords[gender].some(k => name.includes(k));
+            // @ts-ignore
+            return genderKeywords[targetGender].some(k => name.includes(k));
         });
 
-        if (!selectedVoice) selectedVoice = voicePool[0];
+        // Smart Fallback: 
+        // 1. If we wanted male but found none in language -> try any male from ALL voices? No, language priority is higher.
+        // 2. If no matching gender in language, pick the FIRST voice of that language (OS default).
+        if (!selectedVoice) {
+            console.warn(`[VOICE] No ${targetGender} voice found for ${langCode}. Using default.`);
+            selectedVoice = voicePool[0];
+        }
 
         utterance.voice = selectedVoice || voices[0];
         utterance.rate = rate; 
         utterance.pitch = pitch;
         utterance.volume = 1.0;
+        
+        // Fallback for pitch if gender mismatch (e.g. forced male pitch on female voice)
+        // basic heuristic: if we wanted male but got female voice name, pitch down? 
+        // For now, respect user sliders.
         
         setTimeout(() => {
             window.speechSynthesis.speak(utterance);
@@ -1351,6 +1380,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <div>
                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">{language === 'ru' ? 'Тон Голоса' : 'Voice Tone'}</label>
                         <div className="flex bg-white/5 rounded-lg p-1 border border-white/5">
+                            <button 
+                                onClick={() => setVoiceSettings(p => ({ ...p, gender: 'auto' }))}
+                                className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'auto' ? 'bg-slate-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                🤖 {language === 'ru' ? 'Авто' : 'Auto'}
+                            </button>
                             <button 
                                 onClick={() => setVoiceSettings(p => ({ ...p, gender: 'male' }))}
                                 className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'male' ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
