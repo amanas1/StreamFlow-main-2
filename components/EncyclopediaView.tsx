@@ -99,8 +99,8 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                            </p>
                        </div>
                        <div className="flex justify-center">
-                           <div className="relative bg-black border border-white/10 rounded-2xl p-2 shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
-                               <img src="/manual_qr.png" alt="QR Code" className="w-64 rounded-xl opacity-90" />
+                           <div className="relative bg-black border border-white/10 rounded-2xl p-2 shadow-2xl">
+                               <img src="/manual_qr.webp" alt="QR Code" className="w-64 rounded-xl opacity-90" />
                                <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/10" />
                            </div>
                        </div>
@@ -132,7 +132,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                            </div>
                            {/* REAL SCREENSHOT: Player Bar */}
                            <div className="relative p-6 bg-black">
-                               <img src="/manual_player_bar.png" alt="Player Controls" className="w-full rounded-lg shadow-lg border border-white/5 transform group-hover:scale-[1.01] transition-transform duration-500" />
+                               <img src="/manual_player_bar.webp" alt="Player Controls" className="w-full rounded-lg shadow-lg border border-white/5 transform group-hover:scale-[1.01] transition-transform duration-500" />
                                
                                {/* Pointer / Description Overlay */}
                                <div className="absolute top-1/2 left-4 md:left-12 -translate-y-1/2 hidden md:block">
@@ -171,7 +171,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                            <div className="space-y-4">
                                <h3 className="text-xl font-bold text-white">🎚️ Меню Управления</h3>
                                <div className="flex items-start gap-4">
-                                   <img src="/manual_settings_icon.png" className="w-12 h-12 rounded-lg border border-white/10 p-2 bg-black/50" alt="Settings Icon" />
+                                   <img src="/manual_settings_icon.webp" className="w-12 h-12 rounded-lg border border-white/10 p-2 bg-black/50" alt="Settings Icon" />
                                    <p className="text-slate-400 leading-relaxed text-sm">
                                        Эта иконка открывает <strong>DSP-процессор</strong>. 
                                        Здесь скрыты настройки 8D-звука, эквалайзера и визуализации. Не бойтесь экспериментировать — кнопка Reset всегда вернет всё как было.
@@ -223,7 +223,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                <div className="bg-black/50 p-8 flex items-center justify-center border-l border-white/5">
                                     {/* REAL SCREENSHOT: Search Modal */}
                                     <div className="relative">
-                                        <img src="/manual_search_modal.png" alt="Global Search Modal" className="rounded-xl shadow-2xl border border-white/10" />
+                                        <img src="/manual_search_modal.webp" alt="Global Search Modal" className="rounded-xl shadow-2xl border border-white/10" />
                                         <div className="absolute -bottom-4 -right-4 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
                                             UI ELEMENT: SEARCH MODAL
                                         </div>
@@ -243,7 +243,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                     <h4 className="font-bold text-white">Точность Возраста</h4>
                                 </div>
                                 <div className="flex gap-4 items-start">
-                                    <img src="/manual_age_select.png" alt="Age Dropdown" className="w-1/3 rounded-lg border border-white/10 shadow-lg" />
+                                    <img src="/manual_age_select.webp" alt="Age Dropdown" className="w-1/3 rounded-lg border border-white/10 shadow-lg" />
                                     <p className="text-xs text-slate-400 leading-relaxed">
                                         Мы не используем размытые диапазоны "18-25". Вы выбираете <strong>точный возраст</strong>. 
                                         Это позволяет находить сверстников с общими интересами и культурным кодом.
@@ -263,7 +263,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                 </div>
                                 <div className="flex gap-4 items-center">
                                     <div className="bg-black p-4 rounded-xl border border-white/10">
-                                         <img src="/manual_menu_icon.png" alt="Hamburger Menu" className="w-8 h-8 opacity-80" />
+                                         <img src="/manual_menu_icon.webp" alt="Hamburger Menu" className="w-8 h-8 opacity-80" />
                                     </div>
                                     <p className="text-xs text-slate-400 leading-relaxed">
                                         Кнопка меню ("Гамбургер") — это ваш портал. Через неё осуществляется быстрый переход между:
@@ -355,7 +355,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                         
                         {/* EQ TIP SCREENSHOT */}
                         <div className="rounded-xl overflow-hidden border border-white/10 shadow-lg">
-                            <img src="/manual_eq_tip.png" alt="Equalizer Tip" className="w-full opacity-90" />
+                            <img src="/manual_eq_tip.webp" alt="Equalizer Tip" className="w-full opacity-90" />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
