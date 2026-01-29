@@ -22,11 +22,11 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
   if (!isRu) return <div className="p-8 text-white">Only Russian supported.</div>;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-950/60 relative">
-      {/* Dynamic Progress Bar */}
-      <div className="absolute top-0 left-0 h-1 bg-primary z-50 transition-all duration-150" style={{ width: `${scrollProgress}%` }} />
+    <div className="flex flex-col flex-1 min-h-0 bg-[#0f172a] relative">
+      {/* Scroll Progress Bar */}
+      <div className="absolute top-0 left-0 h-1 bg-primary z-50 pointer-events-none" style={{ width: `${scrollProgress}%` }} />
       
-      <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 shrink-0">
+      <div className="p-6 border-b border-white/10 flex items-center justify-between bg-slate-900 shrink-0 z-40">
           <div className="flex items-center gap-4">
             <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-all text-slate-400 hover:text-white">
                 <ArrowLeftIcon className="w-6 h-6" />
@@ -44,13 +44,13 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-8 space-y-16 scroll-smooth"
-        style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(188, 111, 241, 0.5) transparent' }}
+        className="flex-1 overflow-y-auto p-8 space-y-16 scroll-smooth overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
           {/* Section 1 */}
           <section className="space-y-6">
-              <div className="aspect-video rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
-                  <img src="/guide_cover_premium.png" alt="Cover" className="w-full h-full object-cover" />
+              <div className="aspect-video rounded-[2rem] overflow-hidden border border-white/10 bg-slate-900 shadow-xl">
+                  <img src="/guide_cover_premium.png" alt="Cover" className="w-full h-full object-cover will-change-transform" />
               </div>
               <h1 className="text-5xl font-black text-white leading-tight tracking-tighter">📘 Энциклопедия StreamFlow</h1>
               <p className="text-slate-400 text-xl leading-relaxed italic border-l-4 border-primary pl-6">Полное техническое и функциональное руководство. Издание 1.0</p>
