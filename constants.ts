@@ -102,6 +102,49 @@ export const COUNTRIES_DATA = [
   { name: 'Uzbekistan', lat: 41.37, lon: 64.58, cities: ['Tashkent', 'Samarkand', 'Bukhara', 'Andijan', 'Namangan'] },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
+// Country verification data for Trust Score system
+export const COUNTRY_VERIFICATION_DATA: Record<string, { 
+  timezones: string[]; 
+  locales: string[];
+  utcOffsetRange: [number, number]; // min and max UTC offset in hours
+}> = {
+  'Argentina': { timezones: ['America/Argentina'], locales: ['es-AR', 'es'], utcOffsetRange: [-3, -3] },
+  'Australia': { timezones: ['Australia/'], locales: ['en-AU'], utcOffsetRange: [8, 11] },
+  'Austria': { timezones: ['Europe/Vienna'], locales: ['de-AT', 'de'], utcOffsetRange: [1, 2] },
+  'Belgium': { timezones: ['Europe/Brussels'], locales: ['nl-BE', 'fr-BE', 'de-BE'], utcOffsetRange: [1, 2] },
+  'Brazil': { timezones: ['America/Sao_Paulo', 'America/Fortaleza', 'America/Manaus'], locales: ['pt-BR', 'pt'], utcOffsetRange: [-5, -2] },
+  'Canada': { timezones: ['America/Toronto', 'America/Vancouver', 'America/Montreal', 'America/Edmonton'], locales: ['en-CA', 'fr-CA'], utcOffsetRange: [-8, -3] },
+  'China': { timezones: ['Asia/Shanghai', 'Asia/Chongqing'], locales: ['zh-CN', 'zh'], utcOffsetRange: [8, 8] },
+  'Denmark': { timezones: ['Europe/Copenhagen'], locales: ['da-DK', 'da'], utcOffsetRange: [1, 2] },
+  'Egypt': { timezones: ['Africa/Cairo'], locales: ['ar-EG', 'ar'], utcOffsetRange: [2, 2] },
+  'Finland': { timezones: ['Europe/Helsinki'], locales: ['fi-FI', 'fi'], utcOffsetRange: [2, 3] },
+  'France': { timezones: ['Europe/Paris'], locales: ['fr-FR', 'fr'], utcOffsetRange: [1, 2] },
+  'Germany': { timezones: ['Europe/Berlin'], locales: ['de-DE', 'de'], utcOffsetRange: [1, 2] },
+  'Greece': { timezones: ['Europe/Athens'], locales: ['el-GR', 'el'], utcOffsetRange: [2, 3] },
+  'India': { timezones: ['Asia/Kolkata', 'Asia/Calcutta'], locales: ['hi-IN', 'en-IN', 'ta-IN', 'te-IN', 'bn-IN'], utcOffsetRange: [5.5, 5.5] },
+  'Italy': { timezones: ['Europe/Rome'], locales: ['it-IT', 'it'], utcOffsetRange: [1, 2] },
+  'Japan': { timezones: ['Asia/Tokyo'], locales: ['ja-JP', 'ja'], utcOffsetRange: [9, 9] },
+  'Kazakhstan': { timezones: ['Asia/Almaty', 'Asia/Aqtobe'], locales: ['kk-KZ', 'ru-KZ', 'kk', 'ru'], utcOffsetRange: [5, 6] },
+  'Kyrgyzstan': { timezones: ['Asia/Bishkek'], locales: ['ky-KG', 'ru-KG', 'ky', 'ru'], utcOffsetRange: [6, 6] },
+  'Mexico': { timezones: ['America/Mexico_City', 'America/Tijuana'], locales: ['es-MX', 'es'], utcOffsetRange: [-8, -5] },
+  'Netherlands': { timezones: ['Europe/Amsterdam'], locales: ['nl-NL', 'nl'], utcOffsetRange: [1, 2] },
+  'Norway': { timezones: ['Europe/Oslo'], locales: ['nb-NO', 'nn-NO', 'no'], utcOffsetRange: [1, 2] },
+  'Poland': { timezones: ['Europe/Warsaw'], locales: ['pl-PL', 'pl'], utcOffsetRange: [1, 2] },
+  'Portugal': { timezones: ['Europe/Lisbon'], locales: ['pt-PT', 'pt'], utcOffsetRange: [0, 1] },
+  'Russia': { timezones: ['Europe/Moscow', 'Asia/Yekaterinburg', 'Asia/Novosibirsk', 'Asia/Vladivostok'], locales: ['ru-RU', 'ru'], utcOffsetRange: [2, 12] },
+  'Saudi Arabia': { timezones: ['Asia/Riyadh'], locales: ['ar-SA', 'ar'], utcOffsetRange: [3, 3] },
+  'South Korea': { timezones: ['Asia/Seoul'], locales: ['ko-KR', 'ko'], utcOffsetRange: [9, 9] },
+  'Spain': { timezones: ['Europe/Madrid'], locales: ['es-ES', 'ca-ES', 'es'], utcOffsetRange: [1, 2] },
+  'Sweden': { timezones: ['Europe/Stockholm'], locales: ['sv-SE', 'sv'], utcOffsetRange: [1, 2] },
+  'Switzerland': { timezones: ['Europe/Zurich'], locales: ['de-CH', 'fr-CH', 'it-CH'], utcOffsetRange: [1, 2] },
+  'Turkey': { timezones: ['Europe/Istanbul'], locales: ['tr-TR', 'tr'], utcOffsetRange: [3, 3] },
+  'UAE': { timezones: ['Asia/Dubai'], locales: ['ar-AE', 'ar'], utcOffsetRange: [4, 4] },
+  'UK': { timezones: ['Europe/London'], locales: ['en-GB', 'en'], utcOffsetRange: [0, 1] },
+  'Ukraine': { timezones: ['Europe/Kiev', 'Europe/Kyiv'], locales: ['uk-UA', 'ru-UA', 'uk'], utcOffsetRange: [2, 3] },
+  'USA': { timezones: ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Phoenix'], locales: ['en-US'], utcOffsetRange: [-10, -4] },
+  'Uzbekistan': { timezones: ['Asia/Tashkent', 'Asia/Samarkand'], locales: ['uz-UZ', 'ru-UZ', 'uz', 'ru'], utcOffsetRange: [5, 5] },
+};
+
 export const DEMO_USERS: UserProfile[] = [
     { id: 'd1', name: 'Elena', avatar: 'https://i.pravatar.cc/150?u=11', age: 22, country: 'Kazakhstan', city: 'Almaty', status: 'online', safetyLevel: 'green', bio: '', gender: 'female', blockedUsers: [], hasAgreedToRules: true, filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true }, chatSettings: { notificationsEnabled: true, notificationVolume: 0.8, notificationSound: 'default' } },
     { id: 'd2', name: 'Marcus', avatar: 'https://i.pravatar.cc/150?u=12', age: 28, country: 'Germany', city: 'Berlin', status: 'online', safetyLevel: 'green', bio: '', gender: 'male', blockedUsers: [], hasAgreedToRules: true, filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true }, chatSettings: { notificationsEnabled: true, notificationVolume: 0.8, notificationSound: 'default' } },

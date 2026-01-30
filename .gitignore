@@ -34,3 +34,6 @@ server/server.log
 # Re-include server folder but keep node_modules excluded
 !server/
 # (Note: **/node_modules/ above handles the exclusion inside server/ now)
+.env.local
+.vercel
+.env*.local

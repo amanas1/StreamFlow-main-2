@@ -40,6 +40,10 @@ const messages = new Map();
 // Map: userId -> Set<knockRequestId>
 const knockRequests = new Map();
 
+// Map: deviceId_OR_IP -> { timestamp, userId } (Anti-Chaos/Spam)
+const registrationLog = new Map(Object.entries(storage.load('registrationLog', {})));
+
+
 // ============================================
 // TTL CLEANUP JOBS
 // ============================================
@@ -163,17 +167,94 @@ io.on('connection', (socket) => {
   let boundUserId = null;
 
   // USER JOINS
-  socket.on('user:register', (profile) => {
+  socket.on('user:register', (profile, callback) => {
     if (!profile || !profile.id) return;
     
     // Check if user is banned
     if (moderation.isUserBanned(profile.id)) {
         console.warn(`[REG] Rejected banned user: ${profile.id}`);
-        socket.emit('user:error', { 
+        const error = { 
             message: 'Your account is currently restricted.',
             reason: moderation.getBanReason(profile.id)
-        });
+        };
+        if (callback) callback({ error });
+        socket.emit('user:error', error);
         return;
+    }
+
+    // Anti-Chaos: 24h Registration Lock (by deviceId and IP)
+    const clientIp = socket.handshake.address;
+    const deviceId = profile.deviceId;
+    const now = Date.now();
+    
+    const checkLock = (key, type) => {
+        if (registrationLog.has(key)) {
+            const entry = registrationLog.get(key);
+            // Allow if same user is re-registering (session resume)
+            if (entry.userId === profile.id) return null;
+
+            if (now - entry.timestamp < USER_TTL) {
+                const timeLeft = Math.ceil((USER_TTL - (now - entry.timestamp)) / (60 * 60 * 1000));
+                return { 
+                    message: language === 'ru' 
+                        ? `С этого ${type} уже была регистрация. Попробуйте снова через ${timeLeft} ч.`
+                        : `This ${type} already registered today. Try again in ${timeLeft}h.` 
+                };
+            }
+        }
+        return null;
+    };
+
+    const deviceLock = deviceId ? checkLock(deviceId, 'устройства') : null;
+    const ipLock = checkLock(clientIp, 'IP');
+    const activeLock = deviceLock || ipLock;
+
+    if (activeLock) {
+        console.warn(`[REG] Blocked ${profile.id}: ${activeLock.message}`);
+        if (callback) callback({ error: activeLock });
+        socket.emit('user:error', activeLock);
+        return;
+    }
+
+    // Log the registration
+    const logEntry = { timestamp: now, userId: profile.id };
+    if (deviceId) registrationLog.set(deviceId, logEntry);
+    registrationLog.set(clientIp, logEntry);
+    
+    // Persist log
+    storage.save('registrationLog', Object.fromEntries(registrationLog));
+
+    // Location Mismatch Detection
+    if (profile.detectedCountry && profile.country && profile.detectedCountry !== profile.country) {
+        console.warn(`[REG] ⚠️ Location Mismatch: User ${profile.id} claims ${profile.country} but detected in ${profile.detectedCountry} (IP: ${clientIp})`);
+    }
+
+    // Trust Score Enforcement
+    if (profile.trustLevel) {
+        console.log(`[TRUST] User ${profile.id}: Score=${profile.trustScore}/100, Level=${profile.trustLevel}, Flags=${(profile.trustFlags || []).join(', ')}`);
+        
+        if (profile.trustLevel === 'HIGH_RISK') {
+            console.warn(`[TRUST] ⛔ BLOCKED HIGH_RISK user: ${profile.id}`);
+            const error = { 
+                message: language === 'ru' 
+                    ? 'Ваш профиль не прошел проверку местоположения. Пожалуйста, используйте реальные данные.'
+                    : 'Your profile failed location verification. Please use accurate information.',
+                code: 'LOCATION_VERIFICATION_FAILED'
+            };
+            if (callback) callback({ error });
+            socket.emit('user:error', error);
+            return;
+        }
+        
+        if (profile.trustLevel === 'SUSPICIOUS') {
+            console.warn(`[TRUST] ⚠️ SUSPICIOUS user allowed with restrictions: ${profile.id}`);
+            // Apply restrictions (saved to profile for client to respect)
+            profile.restrictions = {
+                maxMessagesPerHour: 10,
+                canSendMedia: false,
+                canSendLinks: false
+            };
+        }
     }
 
     boundUserId = profile.id;
@@ -186,8 +267,9 @@ io.on('connection', (socket) => {
       createdAt: Date.now()
     });
 
-    console.log(`[USER] Registered: ${boundUserId} (Socket: ${socket.id})`);
+    console.log(`[USER] Registered: ${boundUserId} (Socket: ${socket.id}, Country: ${profile.country}, Detected: ${profile.detectedCountry || 'N/A'})`);
     
+    // ... rest of join logic
     // Find all active sessions for this user to sync
     const userSessions = Array.from(activeSessions.entries())
         .filter(([_, session]) => session.participants.includes(boundUserId))
@@ -201,12 +283,15 @@ io.on('connection', (socket) => {
             };
         });
 
-    socket.emit('user:registered', {
+    const regData = {
       userId: boundUserId,
       expiresAt,
       ttl: USER_TTL,
-      activeSessions: userSessions // Send active sessions for recovery
-    });
+      activeSessions: userSessions
+    };
+
+    if (callback) callback(regData);
+    socket.emit('user:registered', regData);
     
     syncGlobalPresence();
     broadcastPresenceCount();
@@ -578,6 +663,22 @@ app.post('/api/moderation/ban', (req, res) => {
 // ============================================
 
 const PORT = process.env.PORT || 3001;
+
+// Cleanup registration log every hour
+setInterval(() => {
+    const now = Date.now();
+    let changed = false;
+    for (const [key, entry] of registrationLog.entries()) {
+        if (now - entry.timestamp > USER_TTL) {
+            registrationLog.delete(key);
+            changed = true;
+        }
+    }
+    if (changed) {
+        storage.save('registrationLog', Object.fromEntries(registrationLog));
+    }
+}, 60 * 60 * 1000);
+
 server.listen(PORT, () => {
   console.log(`🚀 StreamFlow Server running on port ${PORT}`);
   console.log(`   - Users: 24h TTL`);

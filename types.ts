@@ -110,6 +110,23 @@ export interface UserProfile {
     soundEnabled: boolean;
   };
   chatSettings: ChatSettings;
+  // Geolocation & Anti-Chaos tracking
+  detectedCountry?: string;
+  detectedCity?: string;
+  detectedIP?: string;
+  deviceId?: string;
+  registrationTimestamp?: number;
+  // Trust Score system
+  trustScore?: number;
+  trustLevel?: 'TRUSTED' | 'SUSPICIOUS' | 'HIGH_RISK';
+  trustFlags?: string[];
+  locationFingerprint?: {
+    browserTimezone: string;
+    browserLocale: string;
+    browserUtcOffset: number;
+    userAgent: string;
+    platform: string;
+  };
 }
 
 export interface ChatMessage {

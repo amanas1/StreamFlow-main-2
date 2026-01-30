@@ -13,7 +13,8 @@ import AudioVisualizer from './AudioVisualizer';
 import DancingAvatar from './DancingAvatar';
 import { socketService } from '../services/socketService';
 import { encryptionService } from '../services/encryptionService';
-import { TRANSLATIONS, COUNTRIES_DATA } from '../constants';
+import { geolocationService } from '../services/geolocationService';
+import { TRANSLATIONS, COUNTRIES_DATA, COUNTRY_VERIFICATION_DATA } from '../constants';
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -221,6 +222,11 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [violationMessage, setViolationMessage] = useState<string | null>(null);
   const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
   
+  //Geolocation state
+  const [detectedLocation, setDetectedLocation] = useState<{country: string, city: string, ip?: string} | null>(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [showLocationMismatch, setShowLocationMismatch] = useState(false);
+  
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState({
@@ -394,8 +400,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const availableCitiesReg = useMemo(() => COUNTRIES_DATA.find(c => c.name === regCountry)?.cities || [], [regCountry]);
   const availableCitiesSearch = useMemo(() => COUNTRIES_DATA.find(c => c.name === searchCountry)?.cities || [], [searchCountry]);
 
-  useEffect(() => { setRegCity(availableCitiesReg[0]); }, [availableCitiesReg]);
-  useEffect(() => { setRegCity(availableCitiesReg[0]); }, [availableCitiesReg]);
+  // Pre-fill cities when country changes
+  useEffect(() => { 
+    if (availableCitiesReg.length > 0) {
+      setRegCity(availableCitiesReg[0]); 
+    }
+  }, [availableCitiesReg]);
+
   useEffect(() => { scrollToBottom(); }, [messages, view]);
 
   useEffect(() => {
@@ -404,6 +415,72 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     });
     return cleanup;
   }, []);
+
+  // Auto-detect location when entering registration view
+  useEffect(() => {
+    // Check if we are in register view and haven't finished detection/have no location
+    const shouldStartDetection = view === 'register' && !detectedLocation && !isDetectingLocation;
+    
+    console.log('[GEO] useEffect check', { 
+      view, 
+      hasLocation: !!detectedLocation, 
+      isDetecting: isDetectingLocation,
+      shouldStart: shouldStartDetection 
+    });
+
+    if (shouldStartDetection) {
+      console.log('[GEO] 🚀 Starting detection cycle...');
+      setIsDetectingLocation(true);
+      
+      (async () => {
+        try {
+          console.log('[GEO] Step 1: Requesting browser geolocation...');
+          
+          // Try browser geolocation first
+          let location = await geolocationService.getBrowserLocation();
+          
+          // Fallback to IP geolocation if browser denied or failed
+          if (!location) {
+            console.log('[GEO] Step 2: Browser geo failed/denied. Trying IP fallback...');
+            location = await geolocationService.getIPLocation();
+          }
+          
+          if (location && (location.country !== 'Unknown' || location.city !== 'Unknown')) {
+            console.log('[GEO] ✅ Successfully detected location:', location);
+            setDetectedLocation(location);
+            
+            // Auto-fill country and city if detected
+            const countryData = COUNTRIES_DATA.find(c => 
+              c.name.toLowerCase() === location.country.toLowerCase()
+            );
+
+            if (countryData) {
+              console.log(`[GEO] Auto-filling country: ${countryData.name}`);
+              setRegCountry(countryData.name);
+              
+              // Try to match detected city, or use first city as default
+              const cityMatch = countryData.cities.find(c => 
+                c.toLowerCase() === location.city.toLowerCase()
+              );
+              setRegCity(cityMatch || countryData.cities[0]);
+            } else {
+              console.warn(`[GEO] ⚠️ Country "${location.country}" not in COUNTRIES_DATA`);
+            }
+          } else {
+            console.warn('[GEO] ❌ All detection methods failed or returned Unknown');
+            // We set a dummy "failed" location to stop the loop but allow user to proceed manually
+            setDetectedLocation({ country: 'Unknown', city: 'Unknown', ip: location?.ip || '0.0.0.0' });
+          }
+        } catch (err) {
+          console.error('[GEO] 💥 Unexpected error during detection:', err);
+          setDetectedLocation({ country: 'Unknown', city: 'Unknown' });
+        } finally {
+          console.log('[GEO] 🏁 Detection cycle finished');
+          setIsDetectingLocation(false);
+        }
+      })();
+    }
+  }, [view, detectedLocation, isDetectingLocation]);
   
   // Persist sessions to localStorage whenever they change
   useEffect(() => {
@@ -892,23 +969,108 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   const handleRegistrationComplete = () => {
+    // Collect location fingerprint for trust score
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const browserLocale = navigator.language;
+    const browserUtcOffset = -(new Date().getTimezoneOffset() / 60); // Convert to UTC offset hours
+    
+    // Calculate Trust Score
+    let trustScore = 100;
+    const trustFlags: string[] = [];
+    
+    // 1. Check IP geolocation match
+    if (detectedLocation && detectedLocation.country !== 'Unknown' && detectedLocation.country !== regCountry) {
+      trustScore -= 40;
+      trustFlags.push(`IP_MISMATCH:${detectedLocation.country}vs${regCountry}`);
+      console.log(`[TRUST] ❌ IP mismatch: detected ${detectedLocation.country}, selected ${regCountry} (-40)`);
+    }
+    
+    // 2. Check Timezone match
+    const countryVerification = COUNTRY_VERIFICATION_DATA[regCountry];
+    if (countryVerification) {
+      const tzMatches = countryVerification.timezones.some(tz => 
+        browserTimezone.startsWith(tz) || browserTimezone.includes(tz.replace('/', '/'))
+      );
+      
+      if (!tzMatches) {
+        trustScore -= 30;
+        trustFlags.push(`TZ_MISMATCH:${browserTimezone}`);
+        console.log(`[TRUST] ❌ Timezone mismatch: ${browserTimezone} for ${regCountry} (-30)`);
+      } else {
+        console.log(`[TRUST] ✅ Timezone matches: ${browserTimezone}`);
+      }
+      
+      // 3. Check UTC offset range
+      const [minOffset, maxOffset] = countryVerification.utcOffsetRange;
+      if (browserUtcOffset < minOffset || browserUtcOffset > maxOffset) {
+        trustScore -= 20;
+        trustFlags.push(`UTC_MISMATCH:${browserUtcOffset}`);
+        console.log(`[TRUST] ❌ UTC offset mismatch: ${browserUtcOffset} not in [${minOffset}, ${maxOffset}] (-20)`);
+      }
+      
+      // 4. Check Browser Locale
+      const localeMatches = countryVerification.locales.some(loc => 
+        browserLocale.toLowerCase().startsWith(loc.toLowerCase()) ||
+        browserLocale.toLowerCase().includes(loc.split('-')[0].toLowerCase())
+      );
+      
+      if (!localeMatches) {
+        trustScore -= 15;
+        trustFlags.push(`LOCALE_MISMATCH:${browserLocale}`);
+        console.log(`[TRUST] ⚠️ Locale mismatch: ${browserLocale} for ${regCountry} (-15)`);
+      } else {
+        console.log(`[TRUST] ✅ Locale matches: ${browserLocale}`);
+      }
+    }
+    
+    // Determine trust level
+    let trustLevel: 'TRUSTED' | 'SUSPICIOUS' | 'HIGH_RISK';
+    if (trustScore >= 80) trustLevel = 'TRUSTED';
+    else if (trustScore >= 50) trustLevel = 'SUSPICIOUS';
+    else trustLevel = 'HIGH_RISK';
+    
+    console.log(`[TRUST] 🏁 Final score: ${trustScore}/100 = ${trustLevel}`, trustFlags);
+    
     const updatedUser: UserProfile = { 
       ...currentUser, 
       name: regName, 
-      avatar: regAvatar,
+      avatar: regAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${regName || Date.now()}`,
       age: parseInt(regAge), 
       country: regCountry, 
       city: regCity, 
       gender: regGender, 
+      isAuthenticated: true,
       hasAgreedToRules: true,
+      // Geolocation data
+      detectedCountry: detectedLocation?.country,
+      detectedCity: detectedLocation?.city,
+      detectedIP: detectedLocation?.ip,
+      deviceId: geolocationService.getDeviceId(),
+      registrationTimestamp: Date.now(),
+      // Trust Score data
+      trustScore,
+      trustLevel,
+      trustFlags,
+      locationFingerprint: {
+        browserTimezone,
+        browserLocale,
+        browserUtcOffset,
+        userAgent: navigator.userAgent,
+        platform: navigator.platform
+      },
       chatSettings: {
         notificationsEnabled: regNotificationsEnabled,
         notificationVolume: regNotificationVolume,
         notificationSound: regNotificationSound as 'default' | 'soft' | 'alert'
       }
     };
+    
+    // Save registration timestamp in localStorage for 24h lock
+    geolocationService.markRegisteredToday();
+    
     onUpdateCurrentUser(updatedUser);
     localStorage.setItem('streamflow_user_profile', JSON.stringify(updatedUser));
+
     
     // Register on server
     socketService.registerUser(updatedUser, (data) => {
@@ -953,6 +1115,18 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   const handleKnock = (targetUser: UserProfile) => {
+    // Auth Check: Block if user is not authenticated
+    if (!currentUser.isAuthenticated || !currentUser.id) {
+      const message = language === 'ru' 
+        ? '⚠️ Сначала нужно создать профиль!\n\nВы будете перенаправлены на регистрацию.'
+        : '⚠️ Please create a profile first!\n\nYou will be redirected to registration.';
+      
+      alert(message);
+      setView('register'); // Redirect to registration
+      return;
+    }
+    
+    // Continue with normal knock flow
     setSentKnocks(prev => new Set(prev).add(targetUser.id));
     socketService.sendKnock(targetUser.id, () => {
       console.log(`✅ Knock sent to ${targetUser.name}`);
@@ -1616,6 +1790,71 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     </div>
                     
                     <div className="flex-1 flex flex-col space-y-6">
+                        {/* Geolocation Status Indicator */}
+                        {isDetectingLocation && (
+                            <div className="bg-primary border border-primary/40 rounded-xl p-3 flex items-center justify-between animate-pulse" style={{ backgroundColor: 'rgba(188, 111, 241, 0.2)' }}>
+                                <div className="flex items-center gap-3">
+                                    <GlobeIcon className="w-4 h-4 text-primary animate-spin" />
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                                        {language === 'ru' ? 'Определяем ваше местоположение...' : 'Detecting your location...'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {detectedLocation && !isDetectingLocation && (
+                            <div 
+                                className={`border rounded-xl p-3 flex items-center justify-between transition-all ${
+                                    detectedLocation.country === 'Unknown' 
+                                    ? 'bg-slate-800/40 border-white/10' 
+                                    : 'bg-green-600/20 border-green-500/40'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <GlobeIcon className={`w-4 h-4 ${detectedLocation.country === 'Unknown' ? 'text-slate-500' : 'text-green-500'}`} />
+                                    <div className="flex flex-col">
+                                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1 ${
+                                            detectedLocation.country === 'Unknown' ? 'text-slate-500' : 'text-green-500'
+                                        }`}>
+                                            {detectedLocation.country === 'Unknown' 
+                                                ? (language === 'ru' ? 'МЕСТОПОЛОЖЕНИЕ НЕ ОПРЕДЕЛЕНО' : 'LOCATION NOT DETECTED')
+                                                : (language === 'ru' ? 'ВАШЕ МЕСТОПОЛОЖЕНИЕ ПОДТВЕРЖДЕНО' : 'LOCATION VERIFIED')
+                                            }
+                                        </span>
+                                        <span className="text-[10px] font-bold text-white leading-none">
+                                            {detectedLocation.country === 'Unknown' 
+                                                ? (language === 'ru' ? 'Выберите город вручную' : 'Please select manually')
+                                                : `${detectedLocation.country}, ${detectedLocation.city}`
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                                {detectedLocation.ip && detectedLocation.ip !== 'Unknown' && (
+                                    <span className="text-[9px] font-mono text-slate-400">{detectedLocation.ip}</span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Country Mismatch Warning */}
+                        {detectedLocation && detectedLocation.country !== 'Unknown' && regCountry !== detectedLocation.country && (
+                            <div className="bg-orange-600/20 border border-orange-500/40 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="flex gap-3">
+                                    <NoSymbolIcon className="w-5 h-5 text-orange-500 shrink-0" />
+                                    <div className="flex-1">
+                                        <h4 className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">
+                                            {language === 'ru' ? 'НЕСООТВЕТСТВИЕ СТРАНЫ' : 'COUNTRY MISMATCH'}
+                                        </h4>
+                                        <p className="text-[11px] text-slate-200 font-medium leading-relaxed">
+                                            {language === 'ru' 
+                                                ? `Вы находитесь в ${detectedLocation.country}, но выбрали ${regCountry}. Пожалуйста, укажите точное местоположение.`
+                                                : `You are in ${detectedLocation.country}, but selected ${regCountry}. Please specify your exact location.`
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Top: Avatar Section */}
                         <div className="flex justify-center py-2">
                             <div className="relative group">
