@@ -645,6 +645,9 @@ export default function App(): React.JSX.Element {
   }, [currentStation, isPlaying, togglePlay, handleNextStation, handlePreviousStation]);
 
   useEffect(() => {
+    // Connect to socket on page load to track all visitors
+    socketService.connect();
+    
     const cleanup = socketService.onPresenceCount((stats) => {
         setOnlineStats(stats);
     });
@@ -832,11 +835,11 @@ export default function App(): React.JSX.Element {
           
           <div className="flex items-center shrink-0 gap-4">
             {onlineStats.totalOnline > 0 && (
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/5 rounded-full backdrop-blur-md">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        {language === 'ru' ? 'Слушают:' : 'Now listening:'} 
-                        <span className="text-white ml-1.5 font-mono">{onlineStats.totalOnline}</span>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/5 rounded-full backdrop-blur-md">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        <span className="hidden sm:inline">{language === 'ru' ? 'Онлайн:' : 'Online:'}</span> 
+                        <span className="text-white ml-1 font-mono">{onlineStats.totalOnline}</span>
                     </span>
                 </div>
             )}
