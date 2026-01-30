@@ -8,6 +8,7 @@ import AudioVisualizer from './components/AudioVisualizer';
 import DancingAvatar from './components/DancingAvatar';
 import CosmicBackground from './components/CosmicBackground';
 import RainEffect from './components/RainEffect';
+import NewsCarousel from './components/NewsCarousel';
 import FireEffect from './components/FireEffect';
 import { 
   PauseIcon, VolumeIcon, LoadingIcon, MusicNoteIcon, HeartIcon, MenuIcon, AdjustmentsIcon,
@@ -753,16 +754,11 @@ export default function App(): React.JSX.Element {
           </div>
       )}
 
-      {showDeveloperNews && (
-          <div className={`absolute top-0 left-0 right-0 z-[60] bg-gradient-to-r from-primary/90 to-secondary/90 text-white py-1.5 overflow-hidden shadow-lg backdrop-blur-md transition-transform duration-500 ${isIdleView ? '-translate-y-full' : 'translate-y-0'}`}>
-            <div 
-              className="animate-marquee whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-4"
-              onAnimationIteration={() => setNewsIndex(i => i + 1)}
-            >
-                {currentNews}
-            </div>
-          </div>
-      )}
+      <NewsCarousel 
+        messages={currentNewsList}
+        isVisible={showDeveloperNews && !isIdleView}
+        language={language}
+      />
 
       {(window.innerWidth < 768 && sidebarOpen) && ( <div className="fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm md:hidden animate-in fade-in duration-300" onClick={() => setSidebarOpen(false)} /> )}
 

@@ -402,10 +402,17 @@ io.on('connection', (socket) => {
       messages.set(sessionId, list.slice(-MAX_MESSAGES_PER_SESSION));
     }
     
+    console.log(`[MSG] 📤 Broadcasting message ${messageId} to session ${sessionId}`);
+    console.log(`[MSG] Session participants: [${session.participants.join(', ')}]`);
+    
     session.participants.forEach(userId => {
       const user = activeUsers.get(userId);
+      console.log(`[MSG] Checking participant ${userId}: socketId=${user?.socketId || 'NONE'}`);
       if (user?.socketId) {
+        console.log(`[MSG] ✅ Sending to ${userId} via socket ${user.socketId}`);
         io.to(user.socketId).emit('message:received', message);
+      } else {
+        console.log(`[MSG] ❌ User ${userId} has no active socket connection`);
       }
     });
   });

@@ -259,7 +259,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         const isRussian = /[а-яёА-ЯЁ]/.test(text);
         const langCode = isRussian ? 'ru-RU' : 'en-US';
         
-        console.log(`[VOICE] Speaking: "${text.substring(0, 15)}..." | Lang: ${langCode} | Target: ${targetGender} (Sender: ${senderGender})`);
+        console.log(`[VOICE] 🎙 Speaking: "${text.substring(0, 30)}..."`);
+        console.log(`[VOICE] Lang: ${langCode} | Preferred Gender: ${preferredGender} | Target Gender: ${targetGender} | Sender Gender: ${senderGender}`);
         
         window.speechSynthesis.cancel();
         
@@ -268,39 +269,91 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         
         // Find Voices
         const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) return;
+        if (voices.length === 0) {
+            console.warn('[VOICE] ⚠️ No voices available');
+            return;
+        }
+
+        console.log(`[VOICE] Total voices available: ${voices.length}`);
 
         // Filter by Language
         const langVoices = voices.filter(v => v.lang.startsWith(isRussian ? 'ru' : 'en'));
+        console.log(`[VOICE] Voices for ${langCode}: ${langVoices.length}`);
+        
         const voicePool = langVoices.length > 0 ? langVoices : voices;
 
         // Expanded Gender Keywords for better detection on Mac/Windows/Android
+        // IMPORTANT: Avoid generic keywords like "male"/"female" as they cause false matches
+        // (e.g., "male" matches "female", "female" is subset of itself)
         const genderKeywords = {
             female: [
-                'female', 'woman', 'girl', 'lady', // Generic
-                'elena', 'irina', 'milena', 'anna', 'tatyana', 'victoria', // RU
+                'woman', 'girl', 'lady', // Generic (safe)
+                'elena', 'irina', 'milena', 'anna', 'tatyana', 'victoria', // RU Latin
+                'елена', 'ирина', 'милена', 'анна', 'татьяна', 'виктория', // RU Cyrillic
                 'samantha', 'karen', 'moira', 'tessa', 'veena', 'zira', 'susan', 'catherine' // EN
             ],
             male: [
-                'male', 'man', 'boy', 'guy', // Generic
-                'pavel', 'alexander', 'yuri', 'maxim', 'ivan', 'dmitry', // RU
+                'man', 'boy', 'guy', // Generic (safe)
+                'pavel', 'alexander', 'yuri', 'maxim', 'ivan', 'dmitry', // RU Latin
+                'павел', 'александр', 'юрий', 'максим', 'иван', 'дмитрий', // RU Cyrillic
                 'daniel', 'fred', 'rishi', 'alex', 'mark', 'david', 'james', 'george', 'microsoft david' // EN
             ]
         };
 
-        // Find matching voice
-        let selectedVoice = voicePool.find(v => {
+        // Debug: log all available voice names for the target language
+        console.log(`[VOICE] Available ${langCode} voices:`, voicePool.map(v => v.name).join(', '));
+
+        // Find matching voices (plural - we want to pick the best one)
+        const matchingVoices = voicePool.filter(v => {
             const name = v.name.toLowerCase();
             // @ts-ignore
-            return genderKeywords[targetGender].some(k => name.includes(k));
+            const keywords = genderKeywords[targetGender] || [];
+            return keywords.some(k => name.includes(k));
         });
 
+        // Prioritize Enhanced/улучшенный voices
+        let selectedVoice: SpeechSynthesisVoice | undefined;
+        if (matchingVoices.length > 0) {
+            // Try to find Enhanced version first
+            selectedVoice = matchingVoices.find(v => 
+                v.name.toLowerCase().includes('enhanced') || 
+                v.name.toLowerCase().includes('улучшенный')
+            );
+            
+            // Fallback to any matching voice
+            if (!selectedVoice) {
+                selectedVoice = matchingVoices[0];
+            }
+            
+            console.log(`[VOICE] 🎯 Found ${matchingVoices.length} matching voice(s), selected: "${selectedVoice.name}"`);
+        }
+
+        console.log(`[VOICE] Gender-matched voice: ${selectedVoice ? selectedVoice.name : 'NONE'}`);
+
         // Smart Fallback: 
-        // 1. If we wanted male but found none in language -> try any male from ALL voices? No, language priority is higher.
-        // 2. If no matching gender in language, pick the FIRST voice of that language (OS default).
+        // If no matching gender voice found, try to pick one based on heuristics
         if (!selectedVoice) {
-            console.warn(`[VOICE] No ${targetGender} voice found for ${langCode}. Using default.`);
-            selectedVoice = voicePool[0];
+            console.warn(`[VOICE] ⚠️ No ${targetGender} voice found for ${langCode}. Trying fallback...`);
+            
+            // Fallback strategy for male voice (most common issue)
+            if (targetGender === 'male') {
+                // Try to find ANY voice that doesn't match female keywords
+                selectedVoice = voicePool.find(v => {
+                    const name = v.name.toLowerCase();
+                    const isFemale = genderKeywords.female.some(k => name.includes(k));
+                    return !isFemale; // Pick first non-female voice
+                });
+                
+                if (selectedVoice) {
+                    console.log(`[VOICE] 🔄 Fallback: Using non-female voice "${selectedVoice.name}"`);
+                }
+            }
+            
+            // Ultimate fallback: use first voice from language
+            if (!selectedVoice) {
+                selectedVoice = voicePool[0];
+                console.log(`[VOICE] 🔄 Ultimate fallback: Using default voice "${selectedVoice.name}"`);
+            }
         }
 
         utterance.voice = selectedVoice || voices[0];
@@ -308,9 +361,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         utterance.pitch = pitch;
         utterance.volume = 1.0;
         
-        // Fallback for pitch if gender mismatch (e.g. forced male pitch on female voice)
-        // basic heuristic: if we wanted male but got female voice name, pitch down? 
-        // For now, respect user sliders.
+        console.log(`[VOICE] ✅ Selected voice: "${utterance.voice?.name}" | Pitch: ${pitch} | Rate: ${rate}`);
         
         setTimeout(() => {
             window.speechSynthesis.speak(utterance);
@@ -590,8 +641,22 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     
     // Listen for new messages
     cleanups.push(socketService.onMessageReceived((message) => {
-      if (!activeSession || message.sessionId !== activeSession.sessionId) return;
-      if (currentUser.blockedUsers.includes(message.senderId)) return;
+      console.log(`[CLIENT] 📥 Message received:`, {
+        sessionId: message.sessionId,
+        senderId: message.senderId,
+        messageType: message.messageType,
+        currentSession: activeSession?.sessionId
+      });
+      
+      if (!activeSession || message.sessionId !== activeSession.sessionId) {
+        console.log(`[CLIENT] ⚠️ Message ignored: session mismatch or no active session`);
+        return;
+      }
+      
+      if (currentUser.blockedUsers.includes(message.senderId)) {
+        console.log(`[CLIENT] 🚫 Message ignored: sender is blocked`);
+        return;
+      }
       
       // Decrypt message
       const decrypted = {
@@ -962,7 +1027,11 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     setMessages(prev => [...prev, optimisticMsg]);
     scrollToBottom();
     
-    console.log(`[CLIENT] Sending message to session ${activeSession.sessionId}`);
+    console.log(`[CLIENT] 📤 Sending message to session ${activeSession.sessionId}`);
+    console.log(`[CLIENT] Current User ID: ${currentUser.id}`);
+    console.log(`[CLIENT] Partner ID: ${activeSession.partnerId}`);
+    console.log(`[CLIENT] Message type: text, length: ${textContent.length} chars`);
+    
     socketService.sendMessage(
         activeSession.sessionId,
         encrypted,
