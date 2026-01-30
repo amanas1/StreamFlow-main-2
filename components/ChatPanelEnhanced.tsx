@@ -226,6 +226,18 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [detectedLocation, setDetectedLocation] = useState<{country: string, city: string, ip?: string} | null>(null);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [showLocationMismatch, setShowLocationMismatch] = useState(false);
+  const [showLocationWarning, setShowLocationWarning] = useState(false); // First warning popup
+  const [locationWarningCount, setLocationWarningCount] = useState(() => {
+    const saved = localStorage.getItem('streamflow_location_warnings');
+    return saved ? parseInt(saved) : 0;
+  });
+  const [isLocationBlocked, setIsLocationBlocked] = useState(() => {
+    const blockedUntil = localStorage.getItem('streamflow_location_blocked_until');
+    if (blockedUntil && Date.now() < parseInt(blockedUntil)) {
+      return true;
+    }
+    return false;
+  });
   
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
@@ -969,6 +981,17 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   const handleRegistrationComplete = () => {
+    // Check if user is blocked for 24 hours
+    const blockedUntil = localStorage.getItem('streamflow_location_blocked_until');
+    if (blockedUntil && Date.now() < parseInt(blockedUntil)) {
+      const hoursLeft = Math.ceil((parseInt(blockedUntil) - Date.now()) / (60 * 60 * 1000));
+      const errorMsg = language === 'ru'
+        ? `Вы заблокированы за нарушение правил чата! Попробуйте через ${hoursLeft} ч.`
+        : `You are blocked for violating chat rules! Try again in ${hoursLeft}h.`;
+      setViolationMessage(errorMsg);
+      return;
+    }
+    
     // Collect location fingerprint for trust score
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const browserLocale = navigator.language;
@@ -978,11 +1001,47 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     let trustScore = 100;
     const trustFlags: string[] = [];
     
+    // Check for country mismatch (main check)
+    const hasCountryMismatch = detectedLocation && 
+      detectedLocation.country !== 'Unknown' && 
+      detectedLocation.country.toLowerCase() !== regCountry.toLowerCase();
+    
     // 1. Check IP geolocation match
-    if (detectedLocation && detectedLocation.country !== 'Unknown' && detectedLocation.country !== regCountry) {
+    if (hasCountryMismatch) {
       trustScore -= 40;
       trustFlags.push(`IP_MISMATCH:${detectedLocation.country}vs${regCountry}`);
       console.log(`[TRUST] ❌ IP mismatch: detected ${detectedLocation.country}, selected ${regCountry} (-40)`);
+      
+      // TWO-ATTEMPT WARNING SYSTEM
+      const currentWarnings = locationWarningCount;
+      
+      if (currentWarnings === 0) {
+        // First attempt with mismatch - show warning, don't block
+        console.log('[TRUST] ⚠️ First mismatch - showing warning');
+        setLocationWarningCount(1);
+        localStorage.setItem('streamflow_location_warnings', '1');
+        setShowLocationWarning(true);
+        return; // Stop registration, show warning first
+      } else {
+        // Second attempt with mismatch - BLOCK for 24 hours
+        console.log('[TRUST] 🚫 Second mismatch - blocking for 24 hours');
+        const blockUntil = Date.now() + (24 * 60 * 60 * 1000);
+        localStorage.setItem('streamflow_location_blocked_until', blockUntil.toString());
+        localStorage.setItem('streamflow_location_warnings', '0'); // Reset for next time
+        setIsLocationBlocked(true);
+        
+        const errorMsg = language === 'ru'
+          ? 'Вы заблокированы за нарушение правил чата! Доступ закрыт на 24 часа.'
+          : 'You are blocked for violating chat rules! Access denied for 24 hours.';
+        setViolationMessage(errorMsg);
+        return;
+      }
+    } else {
+      // Country matches - reset warning count
+      if (locationWarningCount > 0) {
+        setLocationWarningCount(0);
+        localStorage.setItem('streamflow_location_warnings', '0');
+      }
     }
     
     // 2. Check Timezone match
@@ -1768,6 +1827,82 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             {violationMessage && (
                 <div className="px-4 py-2 bg-orange-500/90 text-white text-[10px] font-bold text-center animate-in slide-in-from-top duration-300 relative z-40">
                     ⚠️ {violationMessage}
+                </div>
+            )}
+
+            {/* Location Warning Modal - First Attempt */}
+            {showLocationWarning && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
+                    <div className="bg-slate-900 border border-orange-500/50 rounded-2xl p-6 m-4 max-w-sm shadow-2xl shadow-orange-500/20 animate-in zoom-in duration-300">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+                                <NoSymbolIcon className="w-6 h-6 text-orange-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-orange-500 uppercase tracking-wide">
+                                    {language === 'ru' ? 'Внимание!' : 'Warning!'}
+                                </h3>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                                    {language === 'ru' ? 'Несовпадение местоположения' : 'Location Mismatch'}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-3 mb-6">
+                            <p className="text-sm text-slate-300 leading-relaxed">
+                                {language === 'ru' 
+                                    ? `Вы определены в стране: `
+                                    : `You are detected in: `}
+                                <span className="font-bold text-white">{detectedLocation?.country || 'Unknown'}</span>
+                            </p>
+                            <p className="text-sm text-slate-300 leading-relaxed">
+                                {language === 'ru' 
+                                    ? `Но вы выбрали: `
+                                    : `But you selected: `}
+                                <span className="font-bold text-orange-400">{regCountry}</span>
+                            </p>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                {language === 'ru' 
+                                    ? 'Пожалуйста, укажите реальную страну проживания. Если у вас включён VPN, отключите его и обновите страницу.'
+                                    : 'Please specify your actual country of residence. If you have VPN enabled, turn it off and refresh the page.'}
+                            </p>
+                        </div>
+                        
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-6">
+                            <p className="text-xs text-red-400 font-bold text-center">
+                                {language === 'ru' 
+                                    ? '⚠️ При повторной ошибке вы будете заблокированы на 24 часа!'
+                                    : '⚠️ If you try again with wrong info, you will be blocked for 24 hours!'}
+                            </p>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => {
+                                    setShowLocationWarning(false);
+                                    // Auto-select detected country
+                                    if (detectedLocation?.country && detectedLocation.country !== 'Unknown') {
+                                        const countryData = COUNTRIES_DATA.find(c => 
+                                            c.name.toLowerCase() === detectedLocation.country.toLowerCase()
+                                        );
+                                        if (countryData) {
+                                            setRegCountry(countryData.name);
+                                            setRegCity(countryData.cities[0]);
+                                        }
+                                    }
+                                }}
+                                className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm transition-colors"
+                            >
+                                {language === 'ru' ? 'Исправить данные' : 'Fix My Data'}
+                            </button>
+                            <button 
+                                onClick={() => setShowLocationWarning(false)}
+                                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition-colors"
+                            >
+                                {language === 'ru' ? 'Закрыть' : 'Close'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
