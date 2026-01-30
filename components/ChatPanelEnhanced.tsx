@@ -1868,37 +1868,140 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 </div>
             )}
 
-            {/* Block Overlay with Countdown Timer */}
+            {/* Block Overlay with Countdown Timer and Scrolling Message */}
             {isLocationBlocked && (
-                <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-in fade-in duration-500">
-                    <div className="text-center p-8">
-                        <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6 border-2 border-red-500/50">
-                            <NoSymbolIcon className="w-10 h-10 text-red-500" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black via-slate-900 to-black flex flex-col z-50 overflow-hidden">
+                    {/* Top Section - Timer */}
+                    <div className="shrink-0 text-center pt-8 pb-4 relative z-10">
+                        <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4 border-2 border-red-500/50 animate-pulse">
+                            <NoSymbolIcon className="w-8 h-8 text-red-500" />
                         </div>
-                        <h2 className="text-xl font-black text-red-500 uppercase tracking-widest mb-2">
+                        <h2 className="text-lg font-black text-red-500 uppercase tracking-widest mb-2">
                             {language === 'ru' ? 'ДОСТУП ЗАБЛОКИРОВАН' : 'ACCESS BLOCKED'}
                         </h2>
-                        <p className="text-sm text-slate-400 mb-6 max-w-xs mx-auto">
-                            {language === 'ru' 
-                                ? 'Вы заблокированы за нарушение правил чата. Указывайте реальные данные о местоположении.'
-                                : 'You are blocked for violating chat rules. Please use accurate location information.'}
-                        </p>
                         
                         {/* Countdown Timer */}
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 mb-4">
-                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">
-                                {language === 'ru' ? 'До разблокировки осталось' : 'Time until unblock'}
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl px-6 py-4 mx-auto inline-block">
+                            <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">
+                                {language === 'ru' ? 'До разблокировки' : 'Time remaining'}
                             </p>
-                            <div className="text-4xl font-black text-white font-mono tracking-wider">
+                            <div className="text-3xl font-black text-white font-mono tracking-wider">
                                 {blockTimeRemaining || '00:00:00'}
                             </div>
                         </div>
+                    </div>
+                    
+                    {/* Scrolling Credits Container */}
+                    <div className="flex-1 relative overflow-hidden">
+                        {/* Gradient Fade Top */}
+                        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black to-transparent z-10 pointer-events-none" />
+                        {/* Gradient Fade Bottom */}
+                        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black to-transparent z-10 pointer-events-none" />
                         
-                        <p className="text-xs text-slate-500">
-                            {language === 'ru' 
-                                ? 'Отключите VPN и попробуйте снова после разблокировки'
-                                : 'Disable VPN and try again after unblock'}
-                        </p>
+                        {/* Scrolling Text */}
+                        <div 
+                            className="px-6 py-8"
+                            style={{
+                                animation: 'scrollCredits 60s linear infinite',
+                            }}
+                        >
+                            <style>{`
+                                @keyframes scrollCredits {
+                                    0% { transform: translateY(100%); }
+                                    100% { transform: translateY(-100%); }
+                                }
+                            `}</style>
+                            
+                            <div className="max-w-sm mx-auto space-y-6 text-center">
+                                <p className="text-base text-slate-300 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Привет, уважаемый пользователь!' 
+                                        : 'Hello, dear user!'}
+                                </p>
+                                
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Мы понимаем, что, возможно, ты не хотел(а) нарушать правила. А может быть, намеренно использовал(а) VPN или другие сервисы для обхода ограничений.'
+                                        : 'We understand that perhaps you didn\'t mean to break the rules. Or maybe you intentionally used a VPN or other bypass services.'}
+                                </p>
+                                
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Этот сервис создан для реальных людей, которые хотят общаться искренне и уважительно. Мы не желаем хаоса и беспорядка в нашем сообществе.'
+                                        : 'This service is created for real people who want to communicate sincerely and respectfully. We don\'t want chaos and disorder in our community.'}
+                                </p>
+                                
+                                <div className="py-4">
+                                    <span className="text-2xl">✨</span>
+                                </div>
+                                
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Мы долго работали над созданием этого места и не хотим, чтобы здесь оставался негатив.'
+                                        : 'We worked hard to create this place and don\'t want negativity here.'}
+                                </p>
+                                
+                                <p className="text-sm text-primary font-medium leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Уважай себя и других пользователей!'
+                                        : 'Respect yourself and other users!'}
+                                </p>
+                                
+                                <div className="py-4">
+                                    <span className="text-2xl">🤝</span>
+                                </div>
+                                
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'После разблокировки будь внимателен при регистрации. Укажи реальное местоположение и помни о правилах общения.'
+                                        : 'After unblock, be careful during registration. Specify your real location and remember the communication rules.'}
+                                </p>
+                                
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Не оскорбляй и не унижай достоинство других. Не размещай фото непристойного характера. Веди себя культурно — и к тебе потянутся люди.'
+                                        : 'Don\'t insult or humiliate others. Don\'t post inappropriate photos. Behave with culture — and people will be drawn to you.'}
+                                </p>
+                                
+                                <div className="py-4">
+                                    <span className="text-2xl">💜</span>
+                                </div>
+                                
+                                <p className="text-sm text-slate-300 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Если хочешь найти друга, знакомого или кого-то особенного — добро пожаловать к нам!'
+                                        : 'If you want to find a friend, acquaintance, or someone special — welcome!'}
+                                </p>
+                                
+                                <p className="text-base text-white font-bold leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Мы откроем тебе доступ после окончания блокировки.'
+                                        : 'We will grant you access after the block ends.'}
+                                </p>
+                                
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    {language === 'ru' 
+                                        ? 'Не обижайся — это наше правило!'
+                                        : 'Don\'t take offense — it\'s our rule!'}
+                                </p>
+                                
+                                <div className="py-6">
+                                    <span className="text-3xl">🎵</span>
+                                </div>
+                                
+                                <p className="text-lg text-primary font-bold">
+                                    {language === 'ru' 
+                                        ? 'А пока — послушай наше радио!'
+                                        : 'Meanwhile — enjoy our radio!'}
+                                </p>
+                                
+                                <div className="py-8">
+                                    <p className="text-xs text-slate-600 uppercase tracking-widest">
+                                        StreamFlow Radio
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
