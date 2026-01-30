@@ -14,7 +14,7 @@ import DancingAvatar from './DancingAvatar';
 import { socketService } from '../services/socketService';
 import { encryptionService } from '../services/encryptionService';
 import { geolocationService } from '../services/geolocationService';
-import { TRANSLATIONS, COUNTRIES_DATA, COUNTRY_VERIFICATION_DATA } from '../constants';
+import { TRANSLATIONS, COUNTRIES_DATA, COUNTRY_VERIFICATION_DATA, BLOCKED_COUNTRIES } from '../constants';
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -498,23 +498,36 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             setDetectedLocation(location);
             
             // Auto-fill country and city if detected
-            const countryData = COUNTRIES_DATA.find(c => 
-              c.name.toLowerCase() === location.country.toLowerCase()
+            // First check if country is blocked
+            const isBlocked = BLOCKED_COUNTRIES.some(bc => 
+              bc.toLowerCase() === location.country.toLowerCase()
             );
-
-            if (countryData) {
-              console.log(`[GEO] Auto-filling country: ${countryData.name}`);
-              setRegCountry(countryData.name);
-              setCountryNotInList(false);
-              
-              // Try to match detected city, or use first city as default
-              const cityMatch = countryData.cities.find(c => 
-                c.toLowerCase() === location.city.toLowerCase()
-              );
-              setRegCity(cityMatch || countryData.cities[0]);
-            } else {
-              console.warn(`[GEO] ⚠️ Country "${location.country}" not in COUNTRIES_DATA - blocking access`);
+            
+            if (isBlocked) {
+              console.warn(`[GEO] 🚫 Country "${location.country}" is in BLOCKED_COUNTRIES list`);
               setCountryNotInList(true);
+            } else {
+              // Find country in COUNTRIES_DATA for auto-fill
+              const countryData = COUNTRIES_DATA.find(c => 
+                c.name.toLowerCase() === location.country.toLowerCase()
+              );
+
+              if (countryData) {
+                console.log(`[GEO] Auto-filling country: ${countryData.name}`);
+                setRegCountry(countryData.name);
+                setCountryNotInList(false);
+                
+                // Try to match detected city, or use first city as default
+                const cityMatch = countryData.cities.find(c => 
+                  c.toLowerCase() === location.city.toLowerCase()
+                );
+                setRegCity(cityMatch || countryData.cities[0]);
+              } else {
+                // Country not in our list but NOT blocked - allow access
+                console.log(`[GEO] Country "${location.country}" not in COUNTRIES_DATA but not blocked - allowing access`);
+                setCountryNotInList(false);
+                // Let user select manually
+              }
             }
           } else {
             console.warn('[GEO] ❌ All detection methods failed or returned Unknown');
