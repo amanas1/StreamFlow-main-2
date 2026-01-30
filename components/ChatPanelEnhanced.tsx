@@ -227,6 +227,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [showLocationMismatch, setShowLocationMismatch] = useState(false);
   const [showLocationWarning, setShowLocationWarning] = useState(false); // First warning popup
+  const [countryNotInList, setCountryNotInList] = useState(false); // Country not supported
   const [locationWarningCount, setLocationWarningCount] = useState(() => {
     const saved = localStorage.getItem('streamflow_location_warnings');
     return saved ? parseInt(saved) : 0;
@@ -238,6 +239,41 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     }
     return false;
   });
+  const [blockTimeRemaining, setBlockTimeRemaining] = useState<string>('');
+  
+  // Countdown timer for block
+  useEffect(() => {
+    if (!isLocationBlocked) {
+      setBlockTimeRemaining('');
+      return;
+    }
+    
+    const blockedUntil = localStorage.getItem('streamflow_location_blocked_until');
+    if (!blockedUntil) return;
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = parseInt(blockedUntil) - now;
+      
+      if (remaining <= 0) {
+        setIsLocationBlocked(false);
+        setBlockTimeRemaining('');
+        localStorage.removeItem('streamflow_location_blocked_until');
+        localStorage.setItem('streamflow_location_warnings', '0');
+        return;
+      }
+      
+      const hours = Math.floor(remaining / (60 * 60 * 1000));
+      const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+      const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+      
+      setBlockTimeRemaining(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    };
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [isLocationBlocked]);
   
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
@@ -469,6 +505,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             if (countryData) {
               console.log(`[GEO] Auto-filling country: ${countryData.name}`);
               setRegCountry(countryData.name);
+              setCountryNotInList(false);
               
               // Try to match detected city, or use first city as default
               const cityMatch = countryData.cities.find(c => 
@@ -476,7 +513,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
               );
               setRegCity(cityMatch || countryData.cities[0]);
             } else {
-              console.warn(`[GEO] ⚠️ Country "${location.country}" not in COUNTRIES_DATA`);
+              console.warn(`[GEO] ⚠️ Country "${location.country}" not in COUNTRIES_DATA - blocking access`);
+              setCountryNotInList(true);
             }
           } else {
             console.warn('[GEO] ❌ All detection methods failed or returned Unknown');
@@ -1827,6 +1865,65 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             {violationMessage && (
                 <div className="px-4 py-2 bg-orange-500/90 text-white text-[10px] font-bold text-center animate-in slide-in-from-top duration-300 relative z-40">
                     ⚠️ {violationMessage}
+                </div>
+            )}
+
+            {/* Block Overlay with Countdown Timer */}
+            {isLocationBlocked && (
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-in fade-in duration-500">
+                    <div className="text-center p-8">
+                        <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6 border-2 border-red-500/50">
+                            <NoSymbolIcon className="w-10 h-10 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-black text-red-500 uppercase tracking-widest mb-2">
+                            {language === 'ru' ? 'ДОСТУП ЗАБЛОКИРОВАН' : 'ACCESS BLOCKED'}
+                        </h2>
+                        <p className="text-sm text-slate-400 mb-6 max-w-xs mx-auto">
+                            {language === 'ru' 
+                                ? 'Вы заблокированы за нарушение правил чата. Указывайте реальные данные о местоположении.'
+                                : 'You are blocked for violating chat rules. Please use accurate location information.'}
+                        </p>
+                        
+                        {/* Countdown Timer */}
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 mb-4">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">
+                                {language === 'ru' ? 'До разблокировки осталось' : 'Time until unblock'}
+                            </p>
+                            <div className="text-4xl font-black text-white font-mono tracking-wider">
+                                {blockTimeRemaining || '00:00:00'}
+                            </div>
+                        </div>
+                        
+                        <p className="text-xs text-slate-500">
+                            {language === 'ru' 
+                                ? 'Отключите VPN и попробуйте снова после разблокировки'
+                                : 'Disable VPN and try again after unblock'}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Country Not In List Modal */}
+            {countryNotInList && !isLocationBlocked && (
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-in fade-in duration-500">
+                    <div className="text-center p-8">
+                        <div className="w-20 h-20 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-6 border-2 border-slate-600">
+                            <GlobeIcon className="w-10 h-10 text-slate-500" />
+                        </div>
+                        <h2 className="text-xl font-black text-slate-400 uppercase tracking-widest mb-2">
+                            {language === 'ru' ? 'ДОСТУП НЕДОСТУПЕН' : 'ACCESS UNAVAILABLE'}
+                        </h2>
+                        <p className="text-sm text-slate-500 mb-4 max-w-xs mx-auto">
+                            {language === 'ru' 
+                                ? `Извините, у вас нет доступа к чату из-за отсутствия вашей страны (${detectedLocation?.country || 'Unknown'}) в списке поддерживаемых.`
+                                : `Sorry, you don't have access to chat because your country (${detectedLocation?.country || 'Unknown'}) is not in our supported list.`}
+                        </p>
+                        <p className="text-xs text-slate-600">
+                            {language === 'ru' 
+                                ? 'Мы работаем над расширением географии сервиса'
+                                : 'We are working on expanding our service coverage'}
+                        </p>
+                    </div>
                 </div>
             )}
 
