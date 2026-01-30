@@ -31,8 +31,6 @@ interface ToolsPanelProps {
   onStartTutorial: () => void;
   onOpenManual: () => void;
   onOpenProfile: () => void;
-  showDeveloperNews: boolean;
-  setShowDeveloperNews: (show: boolean) => void;
   ambience: AmbienceState;
   setAmbience: (a: AmbienceState) => void;
   passport: PassportData;
@@ -79,7 +77,6 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   language, setLanguage,
   visualizerVariant, setVisualizerVariant, vizSettings, setVizSettings,
   onStartTutorial, onOpenManual, onOpenProfile,
-  showDeveloperNews, setShowDeveloperNews,
   ambience, setAmbience, passport, alarm, setAlarm, onThrowBottle, onCheckBottle,
   customCardColor, setCustomCardColor,
   fxSettings, setFxSettings,
@@ -160,10 +157,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                     
                     <div className="space-y-4 p-4 bg-white/5 rounded-2xl">
                         <div className="flex items-center justify-between">
-                            <div>
                                 <label className="text-sm font-bold text-white uppercase tracking-widest">{t.energySaver}</label>
-                                <p className="text-[10px] text-slate-400 mt-1 max-w-[200px]">{t.energySaverDesc}</p>
-                            </div>
                             <button onClick={() => setVizSettings({...vizSettings, energySaver: !vizSettings.energySaver})} className={`w-14 h-7 rounded-full relative transition-colors ${vizSettings.energySaver ? 'bg-green-500' : 'bg-slate-700'}`}>
                                 <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all shadow-md ${vizSettings.energySaver ? 'left-8' : 'left-1'}`}></div>
                             </button>
@@ -206,10 +200,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                             </button>
                         </div>
                          <div className="flex items-center justify-between">
-                            <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.fpsLimit}</label>
-                                <p className="text-[9px] text-slate-500">{t.fpsLimitDesc}</p>
-                            </div>
                             <button onClick={() => setVizSettings({...vizSettings, fpsLimit: !vizSettings.fpsLimit})} className={`w-12 h-6 rounded-full relative transition-colors ${vizSettings.fpsLimit ? 'bg-primary' : 'bg-slate-700'}`}>
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${vizSettings.fpsLimit ? 'left-7' : 'left-1'}`}></div>
                             </button>
@@ -314,7 +305,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                              <ChatBubbleIcon className="w-3.5 h-3.5" />
                              {t.editProfile}
                          </button>
-                         <button onClick={onStartTutorial} className="py-3 bg-white/5 rounded-xl text-xs font-bold text-slate-300 hover:bg-white/10 transition-all">{t.manualTooltip}</button>
+                          <button onClick={onStartTutorial} className="py-3 bg-white/5 rounded-xl text-xs font-bold text-slate-300 hover:bg-white/10 transition-all">Manual</button>
                      </div>
 
                      {/* GLOBAL RESET BUTTON */}
@@ -353,10 +344,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                      
                      <div className="pt-6 border-t border-white/5 space-y-4">
                          <div className="flex items-center justify-between">
-                             <div>
-                                 <h4 className="text-sm font-bold text-white">{t.spatialAudio}</h4>
-                                 <p className="text-[10px] text-slate-500">{t.spatialHint}</p>
-                             </div>
+                                  <h4 className="text-sm font-bold text-white">{t.spatialAudio}</h4>
                              <button onClick={() => updateAmbience('is8DEnabled', !ambience.is8DEnabled)} className={`w-12 h-6 rounded-full relative transition-colors ${ambience.is8DEnabled ? 'bg-primary' : 'bg-slate-700'}`}>
                                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${ambience.is8DEnabled ? 'left-7' : 'left-1'}`}></div>
                              </button>

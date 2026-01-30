@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, UserProfile, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings } from './types';
-import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, NEWS_MESSAGES } from './constants';
+import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST } from './constants';
 import { fetchStationsByTag, fetchStationsByUuids } from './services/radioService';
 import { curateStationList, isAiAvailable } from './services/geminiService';
 import { socketService } from './services/socketService';
@@ -145,7 +145,6 @@ export default function App(): React.JSX.Element {
   const [vizSettings, setVizSettings] = useState<VisualizerSettings>(DEFAULT_VIZ_SETTINGS);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isIdleView, setIsIdleView] = useState(false);
-  const [showDeveloperNews, setShowDeveloperNews] = useState(false);
   const [newsIndex, setNewsIndex] = useState(0);
 
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -684,7 +683,6 @@ export default function App(): React.JSX.Element {
     setFavorites(p => { const n = p.includes(id) ? p.filter(fid => fid !== id) : [...p, id]; localStorage.setItem('streamflow_favorites', JSON.stringify(n)); return n; });
   }, []);
   
-  const handleToggleDevNews = useCallback((val: boolean) => { setShowDeveloperNews(val); }, []);
 
 
 
@@ -716,8 +714,6 @@ export default function App(): React.JSX.Element {
   };
   
   const visibleStations = useMemo(() => stations.slice(0, visibleCount), [stations, visibleCount]);
-  const currentNewsList = NEWS_MESSAGES[language] || NEWS_MESSAGES.en;
-  const currentNews = currentNewsList[newsIndex % currentNewsList.length];
 
   return (
     <div className={`relative flex h-screen font-sans overflow-hidden bg-[var(--base-bg)] text-[var(--text-base)] transition-all duration-700`}>
@@ -745,25 +741,11 @@ export default function App(): React.JSX.Element {
         crossOrigin="anonymous" 
       />
       
-      {aiNotification && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-5 fade-in duration-300">
-              <div className="bg-slate-900/90 backdrop-blur-md border border-primary/50 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 bg-primary rounded-full animate-ping" />
-                  <span className="text-xs font-bold tracking-wide shadow-black drop-shadow-md">{aiNotification}</span>
-              </div>
-          </div>
-      )}
-
-      <NewsCarousel 
-        messages={currentNewsList}
-        isVisible={showDeveloperNews && !isIdleView}
-        language={language}
-      />
 
       {(window.innerWidth < 768 && sidebarOpen) && ( <div className="fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm md:hidden animate-in fade-in duration-300" onClick={() => setSidebarOpen(false)} /> )}
 
       <aside className={`fixed inset-y-0 left-0 z-[70] w-72 transform transition-all duration-500 glass-panel flex flex-col bg-[var(--panel-bg)] ${isIdleView ? '-translate-x-full opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className={`p-6 flex items-center justify-between ${showDeveloperNews ? 'mt-6' : ''}`}>
+        <div className="p-6 flex items-center justify-between">
            <div className="flex items-center gap-3"><h1 className="text-2xl font-black tracking-tighter">StreamFlow</h1><DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-9 h-9" visualMode={visualMode} /></div>
            <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-slate-400"><XMarkIcon className="w-6 h-6" /></button>
         </div>
@@ -792,7 +774,7 @@ export default function App(): React.JSX.Element {
         </div>
       </aside>
 
-      <main className={`flex-1 flex flex-col min-w-0 relative transition-all duration-500 ${sidebarOpen ? 'md:ml-72' : 'ml-0'} ${showDeveloperNews ? 'pt-8' : ''}`}>
+      <main className={`flex-1 flex flex-col min-w-0 relative transition-all duration-500 ${sidebarOpen ? 'md:ml-72' : 'ml-0'}`}>
         <header className={`h-20 flex items-center px-4 md:px-10 justify-between shrink-0 transition-all duration-500 z-10 ${isIdleView ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
           <div className="flex items-center gap-2 md:gap-4 flex-1">
             <button 
@@ -943,8 +925,6 @@ export default function App(): React.JSX.Element {
                 onStartTutorial={() => { setToolsOpen(false); setTutorialOpen(true); }} 
                 onOpenManual={() => { setToolsOpen(false); setManualOpen(true); }} 
                 onOpenProfile={() => { setToolsOpen(false); setChatOpen(true); }} 
-                showDeveloperNews={showDeveloperNews} 
-                setShowDeveloperNews={handleToggleDevNews} 
                 ambience={ambience} 
                 setAmbience={setAmbience} 
                 passport={passport} 

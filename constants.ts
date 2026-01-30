@@ -325,28 +325,7 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
     }
 ];
 
-export const NEWS_MESSAGES: Record<string, string[]> = {
-    en: [
-        "🎛 PRO Tip: Mix 'HiFi Bass' and 'Loudness' in the FX tab to achieve crystal clear studio quality.",
-        "🏟 Live Concert Feel: Add 20% 'Reverb' and a touch of 'City' noise to feel like you're in a concert hall.",
-        "☕️ Cozy Vibe: Play some Jazz, add 40% 'Vinyl' crackle and 10% 'Fire' for the perfect evening.",
-        "🎧 8D Magic: Put on headphones and enable 'Spatial Audio' — feel the music rotate around you.",
-        "🔋 Low Battery? Turn on 'Energy Saver' in Visual settings to save power.",
-        "🚀 Pump it up: Crank up the 'Compressor' for Electronic and Phonk tracks to get that punchy sound.",
-        "🌌 Full Immersion: Double-click the visualizer to enter fullscreen mode.",
-        "⚙️ Settings: Rotate phone (landscape) for more features."
-    ],
-    ru: [
-        "🎛 PRO Совет: Смешайте 'HiFi Bass' и 'Loudness' во вкладке FX, чтобы добиться кристально чистого студийного качества.",
-        "🏟 Эффект присутствия: Добавьте 20% 'Reverb' и немного шума 'City' — почувствуйте себя в центре концертного зала.",
-        "☕️ Ламповая атмосфера: Включите джаз, добавьте 40% 'Vinyl' и 10% 'Fire' для идеального уютного вечера.",
-        "🎧 8D Звук: Обязательно наденьте наушники и активируйте 'Spatial Audio' — музыка начнет вращаться вокруг вас.",
-        "🔋 Слабая батарея? Включите 'Энергосбережение' в настройках визуала, чтобы продлить жизнь телефона.",
-        "🚀 Драйв: Для электроники и фонка выкрутите 'Compressor' — это добавит плотности и кача вашим трекам.",
-        "🌌 Полное погружение: Дважды кликните по визуализатору, чтобы развернуть его на весь экран.",
-        "⚙️ Настройки: Поверни телефон (ландшафт) — больше функций."
-    ]
-};
+
 
 export const TRANSLATIONS: Record<string, any> = {
     en: {
