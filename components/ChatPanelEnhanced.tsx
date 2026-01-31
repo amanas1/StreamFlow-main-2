@@ -90,14 +90,14 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ options, value, onChange, label
   }, [value, options]);
   return (
     <div className="flex flex-col gap-1 w-full">
-      <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 tracking-widest">{label}</label>
-      <div className="relative h-24 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-inner">
-        <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-[#1e293b] to-transparent z-10 pointer-events-none opacity-50"></div>
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#1e293b] to-transparent z-10 pointer-events-none opacity-50"></div>
-        <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-8 bg-primary/20 rounded-lg border border-primary/30 pointer-events-none shadow-[0_0_15px_rgba(188,111,241,0.1)]"></div>
+      <label className="text-[9px] font-bold text-slate-600 uppercase ml-1 tracking-widest">{label}</label>
+      <div className="relative h-24 bg-slate-800/80 border border-slate-700/50 rounded-xl overflow-hidden shadow-inner">
+        <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-slate-900 to-transparent z-10 pointer-events-none opacity-80"></div>
+        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900 to-transparent z-10 pointer-events-none opacity-80"></div>
+        <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-8 bg-slate-700/50 rounded-lg border border-slate-600/30 pointer-events-none"></div>
         <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto snap-y snap-mandatory no-scrollbar py-8" style={{ scrollBehavior: 'smooth' }}>
           {options.map((opt, i) => (
-            <div key={i} className={`h-8 flex items-center justify-center snap-center transition-all duration-300 text-sm font-bold ${value === opt ? 'text-primary scale-110' : 'text-slate-500 opacity-40'}`}>
+            <div key={i} className={`h-8 flex items-center justify-center snap-center transition-all duration-300 text-sm font-bold ${value === opt ? 'text-primary scale-105' : 'text-slate-600 opacity-30'}`}>
               {opt}
             </div>
           ))}
@@ -2424,23 +2424,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             {/* Gender-based default avatar */}
                                             {regGender === 'female' ? (
                                                 <svg viewBox="0 0 100 100" className="w-28 h-28 opacity-80">
-                                                    {/* Female avatar */}
-                                                    <defs>
-                                                        <linearGradient id="hairFemale" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                            <stop offset="0%" stopColor="#92400e" />
-                                                            <stop offset="100%" stopColor="#78350f" />
-                                                        </linearGradient>
-                                                        <linearGradient id="skinFemale" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                            <stop offset="0%" stopColor="#fde68a" />
-                                                            <stop offset="100%" stopColor="#fbbf24" />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    {/* Hair */}
-                                                    <ellipse cx="50" cy="38" rx="35" ry="30" fill="url(#hairFemale)" />
-                                                    <ellipse cx="25" cy="55" rx="12" ry="20" fill="url(#hairFemale)" />
-                                                    <ellipse cx="75" cy="55" rx="12" ry="20" fill="url(#hairFemale)" />
+                                                    {/* Female avatar - brown hair, light blouse */}
+                                                    {/* Hair - long brown */}
+                                                    <ellipse cx="50" cy="38" rx="35" ry="30" fill="#92400e" />
+                                                    <ellipse cx="25" cy="55" rx="12" ry="20" fill="#78350f" />
+                                                    <ellipse cx="75" cy="55" rx="12" ry="20" fill="#78350f" />
                                                     {/* Face */}
-                                                    <circle cx="50" cy="45" r="25" fill="url(#skinFemale)" />
+                                                    <circle cx="50" cy="45" r="25" fill="#fbbf24" />
                                                     {/* Eyes */}
                                                     <ellipse cx="42" cy="42" rx="3" ry="4" fill="#1e293b" />
                                                     <ellipse cx="58" cy="42" rx="3" ry="4" fill="#1e293b" />
@@ -2449,35 +2439,25 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                     {/* Blush */}
                                                     <circle cx="35" cy="48" r="4" fill="#fca5a5" opacity="0.5" />
                                                     <circle cx="65" cy="48" r="4" fill="#fca5a5" opacity="0.5" />
-                                                    {/* Body/Shirt */}
+                                                    {/* Body/Shirt - light */}
                                                     <ellipse cx="50" cy="90" rx="30" ry="20" fill="#fef3c7" />
                                                 </svg>
                                             ) : (
                                                 <svg viewBox="0 0 100 100" className="w-28 h-28 opacity-80">
-                                                    {/* Male avatar */}
-                                                    <defs>
-                                                        <linearGradient id="hairMale" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                            <stop offset="0%" stopColor="#475569" />
-                                                            <stop offset="100%" stopColor="#1e293b" />
-                                                        </linearGradient>
-                                                        <linearGradient id="skinMale" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                            <stop offset="0%" stopColor="#fde68a" />
-                                                            <stop offset="100%" stopColor="#f59e0b" />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    {/* Hair - short */}
-                                                    <ellipse cx="50" cy="30" rx="28" ry="18" fill="url(#hairMale)" />
+                                                    {/* Male avatar - dark short hair, blue shirt */}
+                                                    {/* Hair - short dark */}
+                                                    <ellipse cx="50" cy="30" rx="28" ry="18" fill="#334155" />
                                                     {/* Face */}
-                                                    <circle cx="50" cy="45" r="25" fill="url(#skinMale)" />
-                                                    {/* Eyebrows */}
-                                                    <path d="M36,36 L46,38" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
-                                                    <path d="M54,38 L64,36" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+                                                    <circle cx="50" cy="45" r="25" fill="#f59e0b" />
+                                                    {/* Eyebrows - thick */}
+                                                    <path d="M36,36 L46,38" fill="none" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+                                                    <path d="M54,38 L64,36" fill="none" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
                                                     {/* Eyes */}
                                                     <ellipse cx="42" cy="44" rx="3" ry="3" fill="#1e293b" />
                                                     <ellipse cx="58" cy="44" rx="3" ry="3" fill="#1e293b" />
                                                     {/* Smile */}
                                                     <path d="M42,54 Q50,60 58,54" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" />
-                                                    {/* Body/Shirt */}
+                                                    {/* Body/Shirt - blue */}
                                                     <ellipse cx="50" cy="90" rx="30" ry="20" fill="#3b82f6" />
                                                 </svg>
                                             )}
