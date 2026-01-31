@@ -2408,8 +2408,67 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     {regAvatar ? (
                                         <img src={regAvatar} className="w-full h-full object-cover" />
                                     ) : (
-                                        <div style={{ transform: 'scale(1.8)' }} className="w-full h-full flex items-center justify-center opacity-40">
-                                            <DancingAvatar variant="complex" isPlaying={true} />
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            {/* Gender-based default avatar */}
+                                            {regGender === 'female' ? (
+                                                <svg viewBox="0 0 100 100" className="w-28 h-28 opacity-80">
+                                                    {/* Female avatar */}
+                                                    <defs>
+                                                        <linearGradient id="hairFemale" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                            <stop offset="0%" stopColor="#92400e" />
+                                                            <stop offset="100%" stopColor="#78350f" />
+                                                        </linearGradient>
+                                                        <linearGradient id="skinFemale" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                            <stop offset="0%" stopColor="#fde68a" />
+                                                            <stop offset="100%" stopColor="#fbbf24" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    {/* Hair */}
+                                                    <ellipse cx="50" cy="38" rx="35" ry="30" fill="url(#hairFemale)" />
+                                                    <ellipse cx="25" cy="55" rx="12" ry="20" fill="url(#hairFemale)" />
+                                                    <ellipse cx="75" cy="55" rx="12" ry="20" fill="url(#hairFemale)" />
+                                                    {/* Face */}
+                                                    <circle cx="50" cy="45" r="25" fill="url(#skinFemale)" />
+                                                    {/* Eyes */}
+                                                    <ellipse cx="42" cy="42" rx="3" ry="4" fill="#1e293b" />
+                                                    <ellipse cx="58" cy="42" rx="3" ry="4" fill="#1e293b" />
+                                                    {/* Smile */}
+                                                    <path d="M42,52 Q50,58 58,52" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" />
+                                                    {/* Blush */}
+                                                    <circle cx="35" cy="48" r="4" fill="#fca5a5" opacity="0.5" />
+                                                    <circle cx="65" cy="48" r="4" fill="#fca5a5" opacity="0.5" />
+                                                    {/* Body/Shirt */}
+                                                    <ellipse cx="50" cy="90" rx="30" ry="20" fill="#fef3c7" />
+                                                </svg>
+                                            ) : (
+                                                <svg viewBox="0 0 100 100" className="w-28 h-28 opacity-80">
+                                                    {/* Male avatar */}
+                                                    <defs>
+                                                        <linearGradient id="hairMale" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                            <stop offset="0%" stopColor="#475569" />
+                                                            <stop offset="100%" stopColor="#1e293b" />
+                                                        </linearGradient>
+                                                        <linearGradient id="skinMale" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                            <stop offset="0%" stopColor="#fde68a" />
+                                                            <stop offset="100%" stopColor="#f59e0b" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    {/* Hair - short */}
+                                                    <ellipse cx="50" cy="30" rx="28" ry="18" fill="url(#hairMale)" />
+                                                    {/* Face */}
+                                                    <circle cx="50" cy="45" r="25" fill="url(#skinMale)" />
+                                                    {/* Eyebrows */}
+                                                    <path d="M36,36 L46,38" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+                                                    <path d="M54,38 L64,36" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
+                                                    {/* Eyes */}
+                                                    <ellipse cx="42" cy="44" rx="3" ry="3" fill="#1e293b" />
+                                                    <ellipse cx="58" cy="44" rx="3" ry="3" fill="#1e293b" />
+                                                    {/* Smile */}
+                                                    <path d="M42,54 Q50,60 58,54" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" />
+                                                    {/* Body/Shirt */}
+                                                    <ellipse cx="50" cy="90" rx="30" ry="20" fill="#3b82f6" />
+                                                </svg>
+                                            )}
                                         </div>
                                     )}
                                 </div>
