@@ -228,6 +228,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [showLocationMismatch, setShowLocationMismatch] = useState(false);
   const [showLocationWarning, setShowLocationWarning] = useState(false); // First warning popup
   const [countryNotInList, setCountryNotInList] = useState(false); // Country not supported
+  const [geoPermissionDenied, setGeoPermissionDenied] = useState(false); // User denied geolocation permission
   const [locationWarningCount, setLocationWarningCount] = useState(() => {
     const saved = localStorage.getItem('streamflow_location_warnings');
     return saved ? parseInt(saved) : 0;
@@ -484,18 +485,34 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         try {
           console.log('[GEO] Step 1: Requesting browser geolocation...');
           
-          // Try browser geolocation first
+          // Check if geolocation permission was previously denied
+          if (navigator.permissions) {
+            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+            if (permissionStatus.state === 'denied') {
+              console.warn('[GEO] 🚫 Geolocation permission was previously denied. Blocking registration.');
+              setGeoPermissionDenied(true);
+              setDetectedLocation({ country: 'DENIED', city: 'DENIED' });
+              setIsDetectingLocation(false);
+              return;
+            }
+          }
+          
+          // Try browser geolocation first - THIS IS REQUIRED
           let location = await geolocationService.getBrowserLocation();
           
-          // Fallback to IP geolocation if browser denied or failed
+          // If browser geolocation failed due to permission denial, BLOCK registration
           if (!location) {
-            console.log('[GEO] Step 2: Browser geo failed/denied. Trying IP fallback...');
-            location = await geolocationService.getIPLocation();
+            console.warn('[GEO] 🚫 Browser geolocation denied or failed. Registration BLOCKED.');
+            setGeoPermissionDenied(true);
+            setDetectedLocation({ country: 'DENIED', city: 'DENIED' });
+            setIsDetectingLocation(false);
+            return;
           }
           
           if (location && (location.country !== 'Unknown' || location.city !== 'Unknown')) {
             console.log('[GEO] ✅ Successfully detected location:', location);
             setDetectedLocation(location);
+            setGeoPermissionDenied(false);
             
             // Auto-fill country and city if detected
             // First check if country is blocked
@@ -531,11 +548,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             }
           } else {
             console.warn('[GEO] ❌ All detection methods failed or returned Unknown');
-            // We set a dummy "failed" location to stop the loop but allow user to proceed manually
-            setDetectedLocation({ country: 'Unknown', city: 'Unknown', ip: location?.ip || '0.0.0.0' });
+            // Block registration if we can't verify location
+            setGeoPermissionDenied(true);
+            setDetectedLocation({ country: 'Unknown', city: 'Unknown' });
           }
         } catch (err) {
           console.error('[GEO] 💥 Unexpected error during detection:', err);
+          setGeoPermissionDenied(true);
           setDetectedLocation({ country: 'Unknown', city: 'Unknown' });
         } finally {
           console.log('[GEO] 🏁 Detection cycle finished');
@@ -2115,6 +2134,37 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Geolocation Permission Denied Modal */}
+            {geoPermissionDenied && !countryNotInList && !isLocationBlocked && (
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-in fade-in duration-500">
+                    <div className="text-center p-8">
+                        <div className="w-20 h-20 rounded-full bg-red-900/30 flex items-center justify-center mx-auto mb-6 border-2 border-red-600/50">
+                            <NoSymbolIcon className="w-10 h-10 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-black text-red-400 uppercase tracking-widest mb-2">
+                            {language === 'ru' ? 'ДОСТУП ЗАПРЕЩЁН' : 'ACCESS DENIED'}
+                        </h2>
+                        <p className="text-sm text-slate-400 mb-4 max-w-xs mx-auto">
+                            {language === 'ru' 
+                                ? 'Вы отклонили запрос на доступ к вашему местоположению. Для регистрации в чате необходимо разрешить определение геолокации.'
+                                : 'You denied the location access request. You must allow geolocation to register in the chat.'}
+                        </p>
+                        <p className="text-xs text-slate-500 mb-6 max-w-xs mx-auto">
+                            {language === 'ru' 
+                                ? 'Чтобы продолжить, разрешите доступ к местоположению в настройках браузера и обновите страницу.'
+                                : 'To continue, enable location access in your browser settings and refresh the page.'}
+                        </p>
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold uppercase text-xs tracking-wider rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-red-500/30"
+                        >
+                            {language === 'ru' ? 'Обновить страницу' : 'Refresh Page'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
 
             {/* Location Warning Modal - First Attempt */}
             {showLocationWarning && (
