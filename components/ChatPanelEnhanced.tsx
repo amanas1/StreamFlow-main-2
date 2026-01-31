@@ -94,7 +94,7 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ options, value, onChange, label
       <div className="relative h-24 bg-slate-800/80 border border-slate-700/50 rounded-xl overflow-hidden shadow-inner">
         <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-slate-900 to-transparent z-10 pointer-events-none opacity-80"></div>
         <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900 to-transparent z-10 pointer-events-none opacity-80"></div>
-        <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-8 bg-slate-700/50 rounded-lg border border-slate-600/30 pointer-events-none"></div>
+        <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-10 bg-slate-700/60 rounded-xl border-2 border-slate-500/50 pointer-events-none shadow-lg"></div>
         <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto snap-y snap-mandatory no-scrollbar py-8" style={{ scrollBehavior: 'smooth' }}>
           {options.map((opt, i) => (
             <div key={i} className={`h-8 flex items-center justify-center snap-center transition-all duration-300 text-sm font-bold ${value === opt ? 'text-primary scale-105' : 'text-slate-600 opacity-30'}`}>
