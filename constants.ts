@@ -231,6 +231,7 @@ export const COUNTRY_NAME_ALIASES: Record<string, string> = {
   'чехия': 'Czech Republic',
   'česko': 'Czech Republic',
   'czech': 'Czech Republic',
+  'czechia': 'Czech Republic',
   'cz': 'Czech Republic',
   
   // Austria
@@ -450,7 +451,6 @@ export const COUNTRIES_DATA = [
   { name: 'Croatia', lat: 45.10, lon: 15.20, cities: ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar'] },
   { name: 'Cyprus', lat: 35.12, lon: 33.42, cities: ['Nicosia', 'Limassol', 'Larnaca', 'Famagusta', 'Paphos'] },
   { name: 'Czech Republic', lat: 49.81, lon: 15.47, cities: ['Prague', 'Brno', 'Ostrava', 'Plzeň', 'Liberec'] },
-  { name: 'Czechia', lat: 49.81, lon: 15.47, cities: ['Prague', 'Brno', 'Ostrava', 'Plzeň', 'Liberec'] },
   { name: 'Denmark', lat: 56.26, lon: 9.50, cities: ['Copenhagen', 'Aarhus', 'Odense', 'Aalborg', 'Esbjerg'] },
   { name: 'Estonia', lat: 58.59, lon: 25.01, cities: ['Tallinn', 'Tartu', 'Narva', 'Pärnu', 'Kohtla-Järve'] },
   { name: 'Finland', lat: 61.92, lon: 25.74, cities: ['Helsinki', 'Espoo', 'Tampere', 'Vantaa', 'Oulu'] },
@@ -485,7 +485,6 @@ export const COUNTRIES_DATA = [
   { name: 'Turkey', lat: 38.96, lon: 35.24, cities: ['Istanbul', 'Ankara', 'Izmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep'] },
   { name: 'Ukraine', lat: 48.37, lon: 31.16, cities: ['Kyiv', 'Kharkiv', 'Odesa', 'Dnipro', 'Lviv', 'Zaporizhzhia', 'Kryvyi Rih'] },
   { name: 'UK', lat: 55.37, lon: -3.43, cities: ['London', 'Birmingham', 'Glasgow', 'Liverpool', 'Manchester', 'Leeds', 'Bristol', 'Edinburgh'] },
-  { name: 'United Kingdom', lat: 55.37, lon: -3.43, cities: ['London', 'Birmingham', 'Glasgow', 'Liverpool', 'Manchester', 'Leeds', 'Bristol', 'Edinburgh'] },
   
   // CIS / Central Asia (approved)
   { name: 'Kazakhstan', lat: 48.01, lon: 66.92, cities: ['Almaty', 'Astana', 'Shymkent', 'Karaganda', 'Aktobe', 'Taraz', 'Pavlodar', 'Ust-Kamenogorsk', 'Semey', 'Atyrau'] },
@@ -509,7 +508,6 @@ export const COUNTRIES_DATA = [
   { name: 'Taiwan', lat: 23.69, lon: 120.96, cities: ['Taipei', 'Kaohsiung', 'Taichung', 'Tainan', 'Hsinchu'] },
   { name: 'Thailand', lat: 15.87, lon: 100.99, cities: ['Bangkok', 'Chiang Mai', 'Pattaya', 'Phuket', 'Hat Yai', 'Nakhon Ratchasima'] },
   { name: 'UAE', lat: 23.42, lon: 53.84, cities: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Al Ain', 'Ajman', 'Ras Al Khaimah'] },
-  { name: 'United Arab Emirates', lat: 23.42, lon: 53.84, cities: ['Dubai', 'Abu Dhabi', 'Sharjah', 'Al Ain', 'Ajman', 'Ras Al Khaimah'] },
   { name: 'Vietnam', lat: 14.05, lon: 108.27, cities: ['Hanoi', 'Ho Chi Minh City', 'Da Nang', 'Hai Phong', 'Can Tho', 'Nha Trang'] },
   
   // Americas (approved)
