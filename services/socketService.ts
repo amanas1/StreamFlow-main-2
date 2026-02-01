@@ -30,6 +30,11 @@ class SocketService {
   private maxReconnectAttempts = 5;
   private currentProfile: UserProfile | null = null;
   
+  // Expose URL for debugging
+  public get serverUrl() {
+    return SERVER_URL;
+  }
+  
   // Connection management
   get isConnected() {
     return this.socket?.connected || false;
@@ -46,7 +51,7 @@ class SocketService {
     console.log(`🔌 Connecting to Socket.IO server: ${SERVER_URL}`);
     
     this.socket = io(SERVER_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'], // Force WebSocket to avoid polling issues
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
