@@ -3,6 +3,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const moderation = require('./moderation');
+const { Resend } = require('resend');
+const crypto = require('crypto');
+require('dotenv').config({ path: '../.env.local' });
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const app = express();
 app.use(cors());
@@ -40,6 +45,12 @@ const messages = new Map();
 
 // Map: userId -> Set<knockRequestId>
 const knockRequests = new Map();
+
+// Authentication Storage
+// Map: email -> { otpHash, expiresAt, attempts, lastSent }
+const authCodes = new Map();
+// Map: token -> { email, expiresAt }
+const magicTokens = new Map();
 
 
 
@@ -515,18 +526,150 @@ io.on('connection', (socket) => {
 
   // DISCONNECT
   socket.on('disconnect', () => {
-    if (boundUserId) {
-      console.log(`[DISCONNECT] User ${boundUserId} disconnected`);
-      const userData = activeUsers.get(boundUserId);
-      if (userData) {
-          userData.socketId = null;
-          activeUsers.set(boundUserId, userData);
+    console.log(`[SOCKET] User disconnected: ${socket.id}`);
+    
+    // Find user by socketId
+    let discUserId = null;
+    for (const [uid, udata] of activeUsers.entries()) {
+      if (udata.socketId === socket.id) {
+        discUserId = uid;
+        break;
       }
-      syncGlobalPresence();
-      broadcastPresenceCount();
-    } else {
-      broadcastPresenceCount();
     }
+    
+    if (discUserId) {
+      const userData = activeUsers.get(discUserId);
+      if (userData) {
+        userData.socketId = null;
+        // Don't delete yet, wait for TTL expiry
+      }
+    }
+    broadcastPresenceCount();
+  });
+
+  // ============================================
+  // AUTHENTICATION HANDLERS
+  // ============================================
+
+  socket.on('auth:request_code', async ({ email }) => {
+    if (!email || !email.includes('@')) {
+      return socket.emit('auth:error', { message: 'Invalid email' });
+    }
+
+    const now = Date.now();
+    const existing = authCodes.get(email);
+    
+    // Rate limit: 60 seconds
+    if (existing && now - existing.lastSent < 60000) {
+      return socket.emit('auth:error', { 
+        message: 'Please wait before requesting a new code',
+        retryIn: Math.ceil((60000 - (now - existing.lastSent)) / 1000)
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    
+    // Generate Magic Link Token
+    const magicToken = crypto.randomBytes(32).toString('hex');
+
+    // Store with 10 minute TTL
+    authCodes.set(email, {
+      otpHash,
+      expiresAt: now + 10 * 60 * 1000,
+      attempts: 0,
+      lastSent: now
+    });
+
+    magicTokens.set(magicToken, {
+      email,
+      expiresAt: now + 10 * 60 * 1000
+    });
+
+    console.log(`[AUTH] OTP for ${email}: ${otp}`);
+    console.log(`[AUTH] Magic Link for ${email}: ?token=${magicToken}`);
+
+    if (resend) {
+      try {
+        const { data, error } = await resend.emails.send({
+          from: 'StreamFlow <login@mg.streamflow.space>', // This should be updated to a verified domain
+          to: [email],
+          subject: 'Ваш код для входа',
+          text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку для автоматического входа: ${process.env.VITE_APP_URL || 'http://localhost:5173'}?token=${magicToken}\n\nЕсли это были не вы — просто проигнорируйте письмо.`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; color: #333;">
+              <h2 style="color: #bc6ff1;">StreamFlow</h2>
+              <p>Ваш код для входа:</p>
+              <div style="background: #f4f4f4; padding: 20px; font-size: 32px; font-weight: bold; text-align: center; border-radius: 12px; letter-spacing: 5px;">
+                ${otp}
+              </div>
+              <p style="margin-top: 20px;">Или нажмите кнопку ниже, чтобы войти автоматически:</p>
+              <a href="${process.env.VITE_APP_URL || 'http://localhost:5173'}?token=${magicToken}" 
+                 style="display: block; background: #bc6ff1; color: white; padding: 15px; text-decoration: none; border-radius: 12px; font-weight: bold; text-align: center;">
+                Войти автоматически
+              </a>
+              <p style="font-size: 10px; color: #999; margin-top: 30px;">
+                Если это были не вы — просто проигнорируйте письмо.
+              </p>
+            </div>
+          `
+        });
+
+        if (error) {
+          console.error('[AUTH] Resend error:', error);
+          socket.emit('auth:error', { message: 'Failed to send email' });
+        } else {
+          console.log('[AUTH] Email sent:', data.id);
+          socket.emit('auth:code_sent', { email });
+        }
+      } catch (err) {
+        console.error('[AUTH] Server error during email send:', err);
+        socket.emit('auth:error', { message: 'Internal server error' });
+      }
+    } else {
+      console.log('[AUTH] MOCK MODE: Email not sent (RESEND_API_KEY missing)');
+      socket.emit('auth:code_sent', { email, mock: true });
+    }
+  });
+
+  socket.on('auth:verify_code', ({ email, otp }) => {
+    const data = authCodes.get(email);
+    if (!data) return socket.emit('auth:error', { message: 'Code expired or not found' });
+
+    if (Date.now() > data.expiresAt) {
+      authCodes.delete(email);
+      return socket.emit('auth:error', { message: 'Code expired' });
+    }
+
+    if (data.attempts >= 5) {
+      return socket.emit('auth:error', { message: 'Too many attempts. Request a new code.' });
+    }
+
+    const inputHash = crypto.createHash('sha256').update(otp).digest('hex');
+    if (inputHash === data.otpHash) {
+      authCodes.delete(email);
+      const userId = `u_${crypto.createHash('md5').update(email).digest('hex')}`;
+      socket.emit('auth:success', { userId, email });
+    } else {
+      data.attempts++;
+      socket.emit('auth:error', { message: 'Invalid code', attemptsRemaining: 5 - data.attempts });
+    }
+  });
+
+  socket.on('auth:verify_token', ({ token }) => {
+    const data = magicTokens.get(token);
+    if (!data) return socket.emit('auth:error', { message: 'Invalid or expired token' });
+
+    if (Date.now() > data.expiresAt) {
+      magicTokens.delete(token);
+      return socket.emit('auth:error', { message: 'Token expired' });
+    }
+
+    const email = data.email;
+    magicTokens.delete(token);
+    const userId = `u_${crypto.createHash('md5').update(email).digest('hex')}`;
+    socket.emit('auth:success', { userId, email });
   });
 
   // FEEDBACK VIA SOCKET

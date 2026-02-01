@@ -86,6 +86,44 @@ class SocketService {
     this.socket.emit('user:register', profile);
     this.socket.once('user:registered', callback);
   }
+
+  // Authentication
+  requestAuthCode(email: string, callback: (data: { email: string; mock?: boolean; retryIn?: number; message?: string }) => void) {
+    if (!this.socket) return;
+    this.socket.emit('auth:request_code', { email });
+    this.socket.once('auth:code_sent', (data) => callback(data));
+    this.socket.once('auth:error', (data) => callback(data));
+  }
+
+  verifyAuthCode(email: string, otp: string, callback: (data: { success: boolean; userId?: string; email?: string; message?: string; attemptsRemaining?: number }) => void) {
+    if (!this.socket) return;
+    this.socket.emit('auth:verify_code', { email, otp });
+    const successHandler = (data: { userId: string; email: string }) => {
+      this.socket?.off('auth:error', errorHandler);
+      callback({ success: true, ...data });
+    };
+    const errorHandler = (data: { message: string; attemptsRemaining?: number }) => {
+      this.socket?.off('auth:success', successHandler);
+      callback({ success: false, ...data });
+    };
+    this.socket.once('auth:success', successHandler);
+    this.socket.once('auth:error', errorHandler);
+  }
+
+  verifyMagicToken(token: string, callback: (data: { success: boolean; userId?: string; email?: string; message?: string }) => void) {
+    if (!this.socket) return;
+    this.socket.emit('auth:verify_token', { token });
+    const successHandler = (data: { userId: string; email: string }) => {
+      this.socket?.off('auth:error', errorHandler);
+      callback({ success: true, ...data });
+    };
+    const errorHandler = (data: { message: string }) => {
+      this.socket?.off('auth:success', successHandler);
+      callback({ success: false, ...data });
+    };
+    this.socket.once('auth:success', successHandler);
+    this.socket.once('auth:error', errorHandler);
+  }
   
   private emit(event: string, data: any) {
     if (this.socket && this.socket.connected) {

@@ -155,6 +155,7 @@ const MessageTTLIndicator = ({ msg }: { msg: any }) => {
         update();
         return () => clearInterval(interval);
     }, [msg.timestamp, ttl]);
+
     
     if (remaining > 15) return null; // Only show in last 15 seconds
     
@@ -210,11 +211,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 }) => {
   const [onlineUsers, setOnlineUsers] = useState<UserProfile[]>([]);
   const [hasRegisteredWithServer, setHasRegisteredWithServer] = useState(false);
-  const [authEmail, setAuthEmail] = useState('');
-  const [authOtp, setAuthOtp] = useState('');
-  const [otpStep, setOtpStep] = useState<'email' | 'otp'>('email');
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [otpError, setOtpError] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [activeSessions, setActiveSessions] = useState<Map<string, any>>(() => {
     // Load sessions from localStorage on init
@@ -265,12 +261,85 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [violationMessage, setViolationMessage] = useState<string | null>(null);
   const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
   
+  // Auth State
+  const [authEmail, setAuthEmail] = useState('');
+  const [authOtp, setAuthOtp] = useState('');
+  const [otpStep, setOtpStep] = useState<'email' | 'otp'>('email');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [authCooldown, setAuthCooldown] = useState(0);
+
   //Geolocation state
   const [view, setView] = useState<'auth' | 'register' | 'search' | 'inbox' | 'chat'>(() => {
     if (currentUser.id && currentUser.name && currentUser.age) return 'search';
     if (currentUser.isAuthenticated) return 'register';
     return 'auth';
   });
+
+  // Auth Handlers
+  const handleGetCode = () => {
+    if (!authEmail.includes('@')) return;
+    setIsVerifyingOtp(true);
+    setOtpError(null);
+    socketService.requestAuthCode(authEmail, (data: any) => {
+      setIsVerifyingOtp(false);
+      if (data.email) {
+        setOtpStep('otp');
+        setAuthCooldown(60);
+        if (data.mock) {
+          console.log('%c[AUTH] MOCK MODE: Check server console for OTP', 'color: #bc6ff1; font-weight: bold;');
+        }
+      } else if (data.message) {
+        setOtpError(data.message);
+        if (data.retryIn) setAuthCooldown(data.retryIn);
+      }
+    });
+  };
+
+  const handleVerifyOtp = () => {
+    if (authOtp.length < 6) return;
+    setIsVerifyingOtp(true);
+    setOtpError(null);
+    socketService.verifyAuthCode(authEmail, authOtp, (data) => {
+      setIsVerifyingOtp(false);
+      if (data.success && data.userId) {
+        const updatedUser = { ...currentUser, id: data.userId, email: data.email, isAuthenticated: true };
+        onUpdateCurrentUser(updatedUser);
+        setView(updatedUser.name && updatedUser.age ? 'search' : 'register');
+      } else {
+        setOtpError(data.message || 'Invalid code');
+      }
+    });
+  };
+
+  // Cooldown timer
+  useEffect(() => {
+    if (authCooldown > 0) {
+      const timer = setInterval(() => setAuthCooldown(c => c - 1), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [authCooldown]);
+
+  // Magic Link Detection
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token && view === 'auth') {
+      setIsVerifyingOtp(true);
+      socketService.verifyMagicToken(token, (data) => {
+        setIsVerifyingOtp(false);
+        if (data.success && data.userId) {
+          const updatedUser = { ...currentUser, id: data.userId, email: data.email, isAuthenticated: true };
+          onUpdateCurrentUser(updatedUser);
+          setView(updatedUser.name && updatedUser.age ? 'search' : 'register');
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          setOtpError(data.message || 'Magic link expired or invalid');
+        }
+      });
+    }
+  }, [view]);
   
   const [detectedLocation, setDetectedLocation] = useState<{country: string, city: string, ip?: string} | null>(() => {
     // Priority 1: currentUser data
@@ -955,45 +1024,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     }
   }, [currentUser.id, currentUser.name, currentUser.age, currentUser.isAuthenticated, view]);
 
-  const handleGetCode = () => {
-    if (!authEmail || !authEmail.includes('@')) {
-      setOtpError(language === 'ru' ? 'Введите корректный email' : 'Enter a valid email');
-      return;
-    }
-    setOtpError('');
-    setIsVerifyingOtp(true);
-    
-    // Simulate API call to send OTP
-    setTimeout(() => {
-      setIsVerifyingOtp(false);
-      setOtpStep('otp');
-      console.log(`[AUTH] OTP sent to ${authEmail}. Mock code: 1234`);
-    }, 1500);
-  };
-
-  const handleVerifyOtp = () => {
-    if (authOtp !== '1234') {
-      setOtpError(language === 'ru' ? 'Неверный код' : 'Invalid code');
-      return;
-    }
-    
-    setIsVerifyingOtp(true);
-    setOtpError('');
-
-    setTimeout(() => {
-      const mockUser = {
-        id: `user_${Date.now()}`,
-        email: authEmail,
-        name: 'User',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${authEmail}`,
-        isAuthenticated: true,
-        registrationTimestamp: Date.now(),
-        filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true }
-      };
-      onUpdateCurrentUser(mockUser as UserProfile);
-      setIsVerifyingOtp(false);
-    }, 1000);
-  };
 
   const startIntroRecording = async () => {
     try {
@@ -1813,33 +1843,35 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 {otpError && <p className="text-[10px] text-red-500 font-bold uppercase">{otpError}</p>}
                                 <button 
                                     onClick={handleGetCode}
-                                    disabled={isVerifyingOtp || !authEmail.includes('@')}
+                                    disabled={isVerifyingOtp || !authEmail.includes('@') || authCooldown > 0}
                                     className="flex items-center gap-3 px-6 py-4 bg-white text-black rounded-2xl font-bold text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95 w-full justify-center disabled:opacity-50"
                                 >
-                                    {isVerifyingOtp ? (language === 'ru' ? 'ОТПРАВКА...' : 'SENDING...') : (language === 'ru' ? 'ПОЛУЧИТЬ КОД' : 'GET CODE')}
+                                    {isVerifyingOtp ? (language === 'ru' ? 'ОТПРАВКА...' : 'SENDING...') : 
+                                     authCooldown > 0 ? (language === 'ru' ? `ПОВТОР ЧЕРЕЗ ${authCooldown}с` : `RETRY IN ${authCooldown}s`) :
+                                     (language === 'ru' ? 'ПОЛУЧИТЬ КОД' : 'GET CODE')}
                                 </button>
                             </>
                         ) : (
                             <>
                                 <input 
                                     type="text"
-                                    maxLength={4}
+                                    maxLength={6}
                                     value={authOtp}
                                     onChange={(e) => setAuthOtp(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="0 0 0 0"
-                                    className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-2xl font-black text-center text-white tracking-[1em] focus:border-primary/50 transition-all outline-none"
+                                    placeholder="000000"
+                                    className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-2xl font-black text-center text-white tracking-[0.5em] focus:border-primary/50 transition-all outline-none"
                                 />
                                 {otpError && <p className="text-[10px] text-red-500 font-bold uppercase">{otpError}</p>}
                                 <div className="flex flex-col gap-3">
                                     <button 
                                         onClick={handleVerifyOtp}
-                                        disabled={isVerifyingOtp || authOtp.length < 4}
+                                        disabled={isVerifyingOtp || authOtp.length < 6}
                                         className="flex items-center gap-3 px-6 py-4 bg-primary text-white rounded-2xl font-bold text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95 w-full justify-center disabled:opacity-50"
                                     >
                                         {isVerifyingOtp ? (language === 'ru' ? 'ПРОВЕРКА...' : 'VERIFYING...') : (language === 'ru' ? 'ВОЙТИ' : 'LOGIN')}
                                     </button>
                                     <button 
-                                        onClick={() => setOtpStep('email')}
+                                        onClick={() => { setOtpStep('email'); setAuthOtp(''); }}
                                         className="text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-white transition-colors"
                                     >
                                         {language === 'ru' ? 'Изменить Email' : 'Change Email'}
