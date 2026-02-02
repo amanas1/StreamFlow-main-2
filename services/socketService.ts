@@ -287,6 +287,12 @@ class SocketService {
     return () => this.socket?.off('feedback:received', callback);
   }
 
+  onAuthError(callback: (error: any) => void) {
+      if (!this.socket) return () => {};
+      this.socket.on('auth:error', callback);
+      return () => this.socket?.off('auth:error', callback);
+  }
+
   // Reporting
   sendReport(targetUserId: string, reason: string, messageId?: string) {
     if (!this.socket) return;
