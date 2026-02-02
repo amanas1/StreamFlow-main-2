@@ -560,66 +560,64 @@ io.on('connection', (socket) => {
   // ============================================
 
   socket.on('auth:request_code', async ({ email }) => {
-    if (!email || !email.includes('@')) {
-      return socket.emit('auth:error', { message: 'Invalid email' });
-    }
-
-    // 1. Strict Normalization
-    const normalizedEmail = email.trim().toLowerCase();
-    
-    const now = Date.now();
-    const existing = authCodes.get(normalizedEmail);
-    
-    // Rate limit: 60 seconds
-    if (existing && now - existing.lastSent < 60000) {
-      return socket.emit('auth:error', { 
-        message: 'Please wait before requesting a new code',
-        retryIn: Math.ceil((60000 - (now - existing.lastSent)) / 1000)
-      });
-    }
-
-    // 2. Generate 6-digit OTP as STRING
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    
-    // Generate Magic Link Token
-    const magicToken = crypto.randomBytes(32).toString('hex');
-
-    console.log(`[AUTH DEBUG] Request for: '${normalizedEmail}'`);
-    console.log(`[AUTH DEBUG] Generated OTP: ${otp} (Type: ${typeof otp})`);
-    console.log(`[AUTH DEBUG] OTP Hash: ${otpHash}`);
-
-    // Store with 10 minute TTL
-    authCodes.set(normalizedEmail, {
-      otpHash,
-      expiresAt: now + 10 * 60 * 1000,
-      attempts: 0,
-      lastSent: now
-    });
-    
-    // 3. Persist immediately
-    saveAuthCodes();
-
-    magicTokens.set(magicToken, {
-      email: normalizedEmail,
-      expiresAt: now + 10 * 60 * 1000
-    });
-
-    console.log(`[AUTH] OTP for ${normalizedEmail}: ${otp}`);
-    const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
-    console.log(`[AUTH] Magic Link for ${normalizedEmail}: ${appUrl}?token=${magicToken}`);
-
-    if (!resend) {
-      console.error('[AUTH ERROR] Resend API Key missing in production');
-      return socket.emit('auth:error', { message: 'Server configuration error: Email service unavailable' });
-    }
-
     try {
-      const { data, error } = await resend.emails.send({
+      if (!email || !email.includes('@')) {
+        return socket.emit('auth:error', { message: 'Invalid email' });
+      }
+
+      // 1. Strict Normalization
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      const now = Date.now();
+      const existing = authCodes.get(normalizedEmail);
+      
+      // Rate limit: 60 seconds
+      if (existing && now - existing.lastSent < 60000) {
+        return socket.emit('auth:error', { 
+          message: 'Please wait before requesting a new code',
+          retryIn: Math.ceil((60000 - (now - existing.lastSent)) / 1000)
+        });
+      }
+
+      // 2. Generate 6-digit OTP as STRING
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      
+      // Generate Magic Link Token
+      const magicToken = crypto.randomBytes(32).toString('hex');
+
+      console.log(`[AUTH DEBUG] Request for: '${normalizedEmail}'`);
+      console.log(`[AUTH DEBUG] Generated OTP for ${normalizedEmail}`); // Log generated but not the code itself for security
+
+      // Store with 10 minute TTL
+      authCodes.set(normalizedEmail, {
+        otpHash,
+        expiresAt: now + 10 * 60 * 1000,
+        attempts: 0,
+        lastSent: now
+      });
+      
+      // 3. Persist immediately
+      saveAuthCodes();
+
+      magicTokens.set(magicToken, {
+        email: normalizedEmail,
+        expiresAt: now + 10 * 60 * 1000
+      });
+
+      const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
+
+      if (!resend) {
+        console.error('[AUTH ERROR] Resend API Key missing in production');
+        return socket.emit('auth:error', { message: 'Server configuration error: Email service unavailable' });
+      }
+
+      // Send Email with Timeout
+      const sendEmailPromise = resend.emails.send({
         from: 'StreamFlow <no-reply@mail.mana.kz>', // Verified domain
         to: [normalizedEmail],
         subject: 'Ваш код для входа',
-        text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку: ${process.env.VITE_APP_URL || 'http://localhost:5173'}?token=${magicToken}\n\nЕсли это были не вы — проигнорируйте письмо.`,
+        text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку: ${appUrl}?token=${magicToken}\n\nЕсли это были не вы — проигнорируйте письмо.`,
         html: `
           <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; color: #333;">
             <h2 style="color: #bc6ff1;">StreamFlow</h2>
@@ -639,15 +637,29 @@ io.on('connection', (socket) => {
         `
       });
 
-      if (error) {
-        console.error('[AUTH] Resend error:', error);
-        socket.emit('auth:error', { message: 'Failed to send email. Please try again.' });
-      } else {
-        console.log('[AUTH] Email sent:', data.id);
-        socket.emit('auth:code_sent', { email: normalizedEmail });
+      // Timeout Check (15 seconds)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email sending timed out')), 15000)
+      );
+
+      try {
+        const result = await Promise.race([sendEmailPromise, timeoutPromise]);
+        const { data, error } = result;
+
+        if (error) {
+          console.error('[AUTH] Resend error:', error);
+          socket.emit('auth:error', { message: 'Failed to send email. Check verification status.' });
+        } else {
+          console.log('[AUTH] Email sent:', data.id);
+          socket.emit('auth:code_sent', { email: normalizedEmail });
+        }
+      } catch (err) {
+        console.error('[AUTH] Email send failed/timeout:', err);
+        socket.emit('auth:error', { message: 'Email sending timed out. Please try again.' });
       }
-    } catch (err) {
-      console.error('[AUTH] Server error during email send:', err);
+
+    } catch (generalError) {
+      console.error('[AUTH CRITICAL] Handler crashed:', generalError);
       socket.emit('auth:error', { message: 'Internal server error' });
     }
   });
