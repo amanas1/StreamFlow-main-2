@@ -2042,6 +2042,27 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             </div>
                         </div>
 
+                        {/* Early Member Badge */}
+                        {currentUser.role === 'early_user' && (
+                            <div className="flex justify-center mb-4 -mt-2">
+                                <div className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 text-amber-400 text-[10px] font-black tracking-widest animate-pulse shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                                    EARLY MEMBER 🌟
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Status Warning */}
+                        {currentUser.accountStatus === 'warning' && (
+                            <div className="mb-4 mx-auto max-w-[200px] text-center px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <p className="text-[10px] text-red-400 font-bold mb-1">⚠️ {language === 'ru' ? 'Предупреждение' : 'Warning'}</p>
+                                <p className="text-[9px] text-red-300 opacity-80 leading-tight">
+                                    {language === 'ru' 
+                                       ? 'Замечена подозрительная активность.' 
+                                       : 'Suspicious activity detected.'}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Middle: Name & Gender & Intent */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
