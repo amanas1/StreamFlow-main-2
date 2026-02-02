@@ -648,7 +648,8 @@ io.on('connection', (socket) => {
       }
     } else {
       console.log('[AUTH] MOCK MODE: Email not sent (RESEND_API_KEY missing)');
-      socket.emit('auth:code_sent', { email: normalizedEmail, mock: true });
+      // Send OTP to client in MOCK MODE for easier testing
+      socket.emit('auth:code_sent', { email: normalizedEmail, mock: true, otp });
     }
   });
 

@@ -268,6 +268,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [authCooldown, setAuthCooldown] = useState(0);
+  const [mockOtp, setMockOtp] = useState<string | null>(null);
 
   //Geolocation state
   const [view, setView] = useState<'auth' | 'register' | 'search' | 'inbox' | 'chat'>(() => {
@@ -281,13 +282,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     if (!authEmail.includes('@')) return;
     setIsVerifyingOtp(true);
     setOtpError(null);
+    setMockOtp(null); // Clear previous
     socketService.requestAuthCode(authEmail, (data: any) => {
       setIsVerifyingOtp(false);
       if (data.email) {
         setOtpStep('otp');
         setAuthCooldown(60);
-        if (data.mock) {
+        if (data.mock && data.otp) {
           console.log('%c[AUTH] MOCK MODE: Check server console for OTP', 'color: #bc6ff1; font-weight: bold;');
+          setMockOtp(data.otp); // Store OTP for debug display
         }
       } else if (data.message) {
         setOtpError(data.message);
@@ -1824,7 +1827,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             {language === 'ru' ? 'Вход в чат' : 'Chat Login'}
                             <div style={{ fontSize: '10px', color: '#666', marginTop: '10px', background: 'rgba(0,0,0,0.5)', padding: '5px' }}>
                                 DEBUG: {socketService.serverUrl} <br/>
-                                Status: {socketService.isConnected ? 'Connected' : 'Disconnected'}
+                                Status: {socketService.isConnected ? 'Connected' : 'Disconnected'} <br/>
+                                {mockOtp && <span style={{ color: '#00ff00', fontWeight: 'bold' }}>CODE: {mockOtp}</span>}
                             </div>
                         </h2>
                         <p className="text-xs text-slate-400 leading-relaxed max-w-[250px] mx-auto">
