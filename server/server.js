@@ -794,15 +794,20 @@ const rateLimiter = new RateLimitService();
 
       if (!userRecord) {
           // CREATE NEW
+          const isEarlyAdopter = persistentUsers.size < 100;
+          
           userRecord = {
               id: crypto.randomUUID(),
               email: normalizedEmail,
               created_at: Date.now(),
               last_login_at: Date.now(),
-              status: 'active'
+              status: 'active',
+              role: isEarlyAdopter ? 'early_user' : 'regular',
+              early_access: isEarlyAdopter,
+              free_until: isEarlyAdopter ? Date.now() + (1000 * 60 * 60 * 24 * 30 * 6) : null // 6 months approx
           };
           persistentUsers.set(userRecord.id, userRecord);
-          console.log(`[AUTH] Created NEW User: ${userRecord.id}`);
+          console.log(`[AUTH] Created NEW User: ${userRecord.id} (Early: ${isEarlyAdopter})`);
       } else {
           // UPDATE EXISTING
           userRecord.last_login_at = Date.now();
@@ -847,14 +852,21 @@ const rateLimiter = new RateLimitService();
     }
 
     if (!userRecord) {
+        // CREATE NEW
+        const isEarlyAdopter = persistentUsers.size < 100;
+        
         userRecord = {
             id: crypto.randomUUID(),
             email: email,
             created_at: Date.now(),
             last_login_at: Date.now(),
-            status: 'active'
+            status: 'active',
+            role: isEarlyAdopter ? 'early_user' : 'regular',
+            early_access: isEarlyAdopter,
+            free_until: isEarlyAdopter ? Date.now() + (1000 * 60 * 60 * 24 * 30 * 6) : null
         };
         persistentUsers.set(userRecord.id, userRecord);
+         console.log(`[AUTH] Created NEW User via Token: ${userRecord.id} (Early: ${isEarlyAdopter})`);
     } else {
         userRecord.last_login_at = Date.now();
         if (userRecord.status === 'blocked') {
