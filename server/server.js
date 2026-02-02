@@ -5,7 +5,9 @@ const cors = require('cors');
 const moderation = require('./moderation');
 const { Resend } = require('resend');
 const crypto = require('crypto');
-require('dotenv').config({ path: '../.env.local' });
+const path = require('path');
+
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -759,11 +761,19 @@ const rateLimiter = new RateLimitService();
       const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
 
       if (!resend) {
-        console.error('[AUTH ERROR] Resend API Key missing in production');
-        return socket.emit('auth:error', { message: 'Server configuration error: Email service unavailable' });
+        console.warn('[AUTH] Resend API Key missing. Switching to MOCK MODE.');
+        console.log(`[MOCK AUTH] OTP for ${normalizedEmail}: ${otp}`);
+        console.log(`[MOCK AUTH] Magic Link: ${appUrl}?token=${magicToken}`);
+        
+        return socket.emit('auth:code_sent', { 
+            email: normalizedEmail, 
+            mock: true,
+            otp: otp // Send OTP back for debug/demo
+        });
       }
 
       // Send Email with Timeout
+      console.log(`[AUTH DEBUG] Generated OTP for ${normalizedEmail}: ${otp}`); // Log for debugging
       const sendEmailPromise = resend.emails.send({
         from: 'StreamFlow <no-reply@mail.mana.kz>', // Verified domain
         to: [normalizedEmail],
@@ -925,7 +935,7 @@ const rateLimiter = new RateLimitService();
             email: email,
             created_at: Date.now(),
             last_login_at: Date.now(),
-            status: 'active',
+            accountStatus: 'active',
             role: isEarlyAdopter ? 'early_user' : 'regular',
             early_access: isEarlyAdopter,
             free_until: isEarlyAdopter ? Date.now() + (1000 * 60 * 60 * 24 * 30 * 6) : null
@@ -934,7 +944,7 @@ const rateLimiter = new RateLimitService();
          console.log(`[AUTH] Created NEW User via Token: ${userRecord.id} (Early: ${isEarlyAdopter})`);
     } else {
         userRecord.last_login_at = Date.now();
-        if (userRecord.status === 'blocked') {
+        if (userRecord.accountStatus === 'blocked') {
             return socket.emit('auth:error', { message: 'Account blocked.' });
         }
         persistentUsers.set(userRecord.id, userRecord);

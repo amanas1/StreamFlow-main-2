@@ -1077,12 +1077,20 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   useEffect(() => {
     if (view !== 'auth') return;
 
-    if (currentUser.name && currentUser.age) {
+    // FIX: Strictly check isAuthenticated to avoid logout loop
+    if (currentUser.isAuthenticated && currentUser.name && currentUser.age) {
       setView('search');
     } else if (currentUser.isAuthenticated) {
       setView('register');
     }
   }, [currentUser.id, currentUser.name, currentUser.age, currentUser.isAuthenticated, view]);
+
+  // FIX: Auto-redirect to auth view when user logs out
+  useEffect(() => {
+    if (!currentUser.isAuthenticated && view !== 'auth') {
+      setView('auth');
+    }
+  }, [currentUser.isAuthenticated, view]);
 
 
   const startIntroRecording = async () => {
@@ -1134,8 +1142,20 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       : 'Are you sure you want to delete your profile and all data? This action is irreversible.';
     
     if (window.confirm(confirmMsg)) {
+      // 1. Clear Local Storage
       localStorage.removeItem('streamflow_user_profile');
-      window.location.reload();
+      
+      // 2. Clear Server State (Optional: Emit event)
+      if (currentUser.id) {
+         // socketService.emit('user:delete', { userId: currentUser.id }); // Future impl
+      }
+
+      // 3. Update State to Trigger Redirect Effect
+      const resetUser = { ...currentUser, isAuthenticated: false, id: '', name: '' };
+      onUpdateCurrentUser(resetUser);
+      setActiveSession(null);
+      
+      // No reload needed - effect handles redirect
     }
   };
 
@@ -2199,9 +2219,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             // Clear current user auth state
                                             const resetUser = { ...currentUser, isAuthenticated: false };
                                             onUpdateCurrentUser(resetUser);
-                                            // Force view to auth
-                                            setView('auth');
-                                            // Optional: Clear active session if needed, but keeping local cache is fine
+                                            // View will auto-update via useEffect when isAuthenticated becomes false
+                                            // Optional: Clear active session if needed
                                             setActiveSession(null);
                                         }
                                     }}
