@@ -2096,32 +2096,34 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
                         {/* Apple Requirement: Account Deletion (Rule 5.1.1 v) */}
                         {currentUser.id && (
-                            <button
-                                onClick={() => {
-                                    if (window.confirm(language === 'ru' ? 'Выйти из аккаунта?' : 'Log out?')) {
-                                        // Clear current user auth state
-                                        const resetUser = { ...currentUser, isAuthenticated: false };
-                                        onUpdateCurrentUser(resetUser);
-                                        // Force view to auth
-                                        setView('auth');
-                                        // Optional: Clear active session if needed, but keeping local cache is fine
-                                        setActiveSession(null);
-                                    }
-                                }}
-                                className="w-full mt-4 py-3 border border-slate-600/50 text-slate-400 hover:bg-slate-800 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
-                            >
-                                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                                {language === 'ru' ? 'ВЫЙТИ (LOGOUT)' : 'LOG OUT'}
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm(language === 'ru' ? 'Выйти из аккаунта?' : 'Log out?')) {
+                                            // Clear current user auth state
+                                            const resetUser = { ...currentUser, isAuthenticated: false };
+                                            onUpdateCurrentUser(resetUser);
+                                            // Force view to auth
+                                            setView('auth');
+                                            // Optional: Clear active session if needed, but keeping local cache is fine
+                                            setActiveSession(null);
+                                        }
+                                    }}
+                                    className="w-full mt-4 py-3 border border-slate-600/50 text-slate-400 hover:bg-slate-800 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
+                                >
+                                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                                    {language === 'ru' ? 'ВЫЙТИ (LOGOUT)' : 'LOG OUT'}
+                                </button>
 
-                            {/* Delete Account Button */}
-                            <button
-                                onClick={handleDeleteAccount}
-                                className="w-full mt-2 py-3 bg-red-600/10 border border-red-500/30 text-red-500 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-red-600/20 transition-all flex items-center justify-center gap-2"
-                            >
-                                <UsersIcon className="w-3 h-3" />
-                                {language === 'ru' ? 'УДАЛИТЬ АККАУНТ И ДАННЫЕ' : 'DELETE ACCOUNT & DATA'}
-                            </button>
+                                {/* Delete Account Button */}
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="w-full mt-2 py-3 bg-red-600/10 border border-red-500/30 text-red-500 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-red-600/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <UsersIcon className="w-3 h-3" />
+                                    {language === 'ru' ? 'УДАЛИТЬ АККАУНТ И ДАННЫЕ' : 'DELETE ACCOUNT & DATA'}
+                                </button>
+                            </>
                         )}
 
                         {/* Chat Settings Section */}
