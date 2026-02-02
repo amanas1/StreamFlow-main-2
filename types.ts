@@ -106,7 +106,7 @@ export interface UserProfile {
   role?: 'early_user' | 'regular';
   early_access?: boolean;
   free_until?: number | null;
-  status?: 'active' | 'warning' | 'blocked';
+  accountStatus?: 'active' | 'warning' | 'blocked';
   email?: string;
   credits?: number;
   isAnonymous?: boolean; 

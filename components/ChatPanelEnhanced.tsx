@@ -1150,6 +1150,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       return;
     }
 
+    /* 
+     * User Management: Preserve account status and role during updates 
+     */
     const updatedUser: UserProfile = { 
       ...currentUser, 
       name: regName || (language === 'ru' ? 'Гость' : 'Guest'), 
@@ -1169,7 +1172,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         notificationSound: regNotificationSound as 'default' | 'soft' | 'alert'
       },
       safetyLevel: 'green',
-      blockedUsers: currentUser.blockedUsers || []
+      blockedUsers: currentUser.blockedUsers || [],
+      // Ensure these are preserved (though ...currentUser handles it, explicit is better for clarity)
+      role: currentUser.role,
+      early_access: currentUser.early_access,
+      free_until: currentUser.free_until,
+      accountStatus: currentUser.accountStatus
     };
     
     onUpdateCurrentUser(updatedUser);

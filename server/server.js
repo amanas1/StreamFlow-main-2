@@ -41,7 +41,7 @@ const storage = require('./storage');
  * @returns {boolean}
  */
 function canUseFeature(user, featureName) {
-    if (!user || user.status !== 'active') return false;
+    if (!user || user.accountStatus === 'blocked') return false; // Renamed property check
     
     // Define PRO features here
     const PRO_FEATURES = ['audio_calls', 'video_calls', 'ai_tools', 'unlimited_history'];
@@ -866,7 +866,7 @@ const rateLimiter = new RateLimitService();
               email: normalizedEmail,
               created_at: Date.now(),
               last_login_at: Date.now(),
-              status: 'active',
+              accountStatus: 'active', // Renamed to avoid config with online status
               role: isEarlyAdopter ? 'early_user' : 'regular',
               early_access: isEarlyAdopter,
               free_until: isEarlyAdopter ? Date.now() + (1000 * 60 * 60 * 24 * 30 * 6) : null // 6 months approx
@@ -876,10 +876,10 @@ const rateLimiter = new RateLimitService();
       } else {
           // UPDATE EXISTING
           userRecord.last_login_at = Date.now();
-          if (userRecord.status === 'blocked') {
+          if (userRecord.accountStatus === 'blocked') {
               return socket.emit('auth:error', { message: 'Account blocked.' });
           }
-           // Re-set to ensure map updates if it was a deep copy (though it's ref)
+           // Re-set to ensure map updates if it was uncoupled logic
           persistentUsers.set(userRecord.id, userRecord); 
       }
       savePersistentUsers();
