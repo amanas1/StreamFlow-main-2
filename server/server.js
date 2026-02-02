@@ -609,47 +609,46 @@ io.on('connection', (socket) => {
     const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
     console.log(`[AUTH] Magic Link for ${normalizedEmail}: ${appUrl}?token=${magicToken}`);
 
-    if (resend) {
-      try {
-        const { data, error } = await resend.emails.send({
-          from: 'StreamFlow <onboarding@resend.dev>', // Use default until domain is verified
-          to: [normalizedEmail],
-          subject: 'Ваш код для входа',
-          text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку для автоматического входа: ${process.env.VITE_APP_URL || 'http://localhost:5173'}?token=${magicToken}\n\nЕсли это были не вы — просто проигнорируйте письмо.`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; color: #333;">
-              <h2 style="color: #bc6ff1;">StreamFlow</h2>
-              <p>Ваш код для входа:</p>
-              <div style="background: #f4f4f4; padding: 20px; font-size: 32px; font-weight: bold; text-align: center; border-radius: 12px; letter-spacing: 5px;">
-                ${otp}
-              </div>
-              <p style="margin-top: 20px;">Или нажмите кнопку ниже, чтобы войти автоматически:</p>
-              <a href="${appUrl}?token=${magicToken}" 
-                 style="display: block; background: #bc6ff1; color: white; padding: 15px; text-decoration: none; border-radius: 12px; font-weight: bold; text-align: center;">
-                Войти автоматически
-              </a>
-              <p style="font-size: 10px; color: #999; margin-top: 30px;">
-                Если это были не вы — просто проигнорируйте письмо.
-              </p>
-            </div>
-          `
-        });
+    if (!resend) {
+      console.error('[AUTH ERROR] Resend API Key missing in production');
+      return socket.emit('auth:error', { message: 'Server configuration error: Email service unavailable' });
+    }
 
-        if (error) {
-          console.error('[AUTH] Resend error:', error);
-          socket.emit('auth:error', { message: 'Failed to send email' });
-        } else {
-          console.log('[AUTH] Email sent:', data.id);
-          socket.emit('auth:code_sent', { email: normalizedEmail });
-        }
-      } catch (err) {
-        console.error('[AUTH] Server error during email send:', err);
-        socket.emit('auth:error', { message: 'Internal server error' });
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'StreamFlow <no-reply@mail.mana.kz>', // Verified domain
+        to: [normalizedEmail],
+        subject: 'Ваш код для входа',
+        text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку: ${process.env.VITE_APP_URL || 'http://localhost:5173'}?token=${magicToken}\n\nЕсли это были не вы — проигнорируйте письмо.`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; color: #333;">
+            <h2 style="color: #bc6ff1;">StreamFlow</h2>
+            <p>Ваш код для входа:</p>
+            <div style="background: #f4f4f4; padding: 20px; font-size: 32px; font-weight: bold; text-align: center; border-radius: 12px; letter-spacing: 5px;">
+              ${otp}
+            </div>
+            <p style="margin-top: 20px;">Или нажмите кнопку ниже:</p>
+            <a href="${appUrl}?token=${magicToken}" 
+               style="display: block; background: #bc6ff1; color: white; padding: 15px; text-decoration: none; border-radius: 12px; font-weight: bold; text-align: center;">
+              Войти автоматически
+            </a>
+            <p style="font-size: 10px; color: #999; margin-top: 30px;">
+              Если это были не вы — просто проигнорируйте письмо.
+            </p>
+          </div>
+        `
+      });
+
+      if (error) {
+        console.error('[AUTH] Resend error:', error);
+        socket.emit('auth:error', { message: 'Failed to send email. Please try again.' });
+      } else {
+        console.log('[AUTH] Email sent:', data.id);
+        socket.emit('auth:code_sent', { email: normalizedEmail });
       }
-    } else {
-      console.log('[AUTH] MOCK MODE: Email not sent (RESEND_API_KEY missing)');
-      // Send OTP to client in MOCK MODE for easier testing
-      socket.emit('auth:code_sent', { email: normalizedEmail, mock: true, otp });
+    } catch (err) {
+      console.error('[AUTH] Server error during email send:', err);
+      socket.emit('auth:error', { message: 'Internal server error' });
     }
   });
 

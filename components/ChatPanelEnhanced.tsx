@@ -1825,11 +1825,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <div>
                         <h2 className="text-xl font-black text-white uppercase tracking-wider mb-2">
                             {language === 'ru' ? 'Вход в чат' : 'Chat Login'}
-                            <div style={{ fontSize: '10px', color: '#666', marginTop: '10px', background: 'rgba(0,0,0,0.5)', padding: '5px' }}>
+                            {/* <div style={{ fontSize: '10px', color: '#666', marginTop: '10px', background: 'rgba(0,0,0,0.5)', padding: '5px' }}>
                                 DEBUG: {socketService.serverUrl} <br/>
-                                Status: {socketService.isConnected ? 'Connected' : 'Disconnected'} <br/>
-                                {mockOtp && <span style={{ color: '#00ff00', fontWeight: 'bold' }}>CODE: {mockOtp}</span>}
-                            </div>
+                                Status: {socketService.isConnected ? 'Connected' : 'Disconnected'}
+                            </div> */}
                         </h2>
                         <p className="text-xs text-slate-400 leading-relaxed max-w-[250px] mx-auto">
                             {otpStep === 'email' 
