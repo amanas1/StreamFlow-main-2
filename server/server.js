@@ -556,38 +556,112 @@ io.on('connection', (socket) => {
   });
 
   // ============================================
-  // AUTHENTICATION HANDLERS
-  // ============================================
+// RATE LIMITING SERVICE
+// ============================================
+
+class RateLimitService {
+  constructor() {
+    this.ipLimits = new Map(); // IP -> { count, windowStart }
+    this.emailLimits = new Map(); // Email -> lastRequestTime
+  }
+
+  getIp(socket) {
+    // Handle proxy headers if behind Nginx/Vercel
+    const forwarded = socket.handshake.headers['x-forwarded-for'];
+    if (forwarded) {
+      return forwarded.split(',')[0].trim();
+    }
+    return socket.handshake.address;
+  }
+
+  checkIpLimit(ip) {
+    const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+    const MAX_REQUESTS = 5;
+    
+    const now = Date.now();
+    const limit = this.ipLimits.get(ip) || { count: 0, windowStart: now };
+
+    if (now - limit.windowStart > WINDOW_MS) {
+      // Reset window
+      limit.count = 1;
+      limit.windowStart = now;
+    } else {
+      limit.count++;
+    }
+
+    this.ipLimits.set(ip, limit);
+
+    if (limit.count > MAX_REQUESTS) {
+      const resetIn = Math.ceil((limit.windowStart + WINDOW_MS - now) / 1000);
+      return { limited: true, retryIn: resetIn };
+    }
+    return { limited: false };
+  }
+
+  checkEmailLimit(email) {
+    const WINDOW_MS = 60 * 1000; // 60 seconds
+    const now = Date.now();
+    const lastRequest = this.emailLimits.get(email);
+
+    if (lastRequest && now - lastRequest < WINDOW_MS) {
+      const retryIn = Math.ceil((lastRequest + WINDOW_MS - now) / 1000);
+      return { limited: true, retryIn };
+    }
+
+    this.emailLimits.set(email, now);
+    return { limited: false };
+  }
+}
+
+const rateLimiter = new RateLimitService();
+
+// ============================================
+// AUTHENTICATION HANDLERS
+// ============================================
 
   socket.on('auth:request_code', async ({ email }) => {
     try {
-      if (!email || !email.includes('@')) {
+      // 1. Strict Normalization
+      const normalizedEmail = email ? email.normalize().trim().toLowerCase() : '';
+      
+      if (!normalizedEmail || !normalizedEmail.includes('@')) {
         return socket.emit('auth:error', { message: 'Invalid email' });
       }
 
-      // 1. Strict Normalization
-      const normalizedEmail = email.trim().toLowerCase();
+      // 2. RATE LIMITS (Backend Enforcement)
+      const ip = rateLimiter.getIp(socket);
       
-      const now = Date.now();
-      const existing = authCodes.get(normalizedEmail);
-      
-      // Rate limit: 60 seconds
-      if (existing && now - existing.lastSent < 60000) {
+      // IP Limit (5 req / 15 min)
+      const ipCheck = rateLimiter.checkIpLimit(ip);
+      if (ipCheck.limited) {
+        console.warn(`[AUTH] IP Limit exceeded for ${ip}`);
         return socket.emit('auth:error', { 
-          message: 'Please wait before requesting a new code',
-          retryIn: Math.ceil((60000 - (now - existing.lastSent)) / 1000)
+            message: 'Too many requests from this IP. Start again later.', 
+            retryIn: ipCheck.retryIn,
+            code: 429 
         });
       }
 
-      // 2. Generate 6-digit OTP as STRING
+      // Email Limit (1 req / 60 sec)
+      const emailCheck = rateLimiter.checkEmailLimit(normalizedEmail);
+      if (emailCheck.limited) {
+         console.warn(`[AUTH] Email Limit exceeded for ${normalizedEmail}`);
+         return socket.emit('auth:error', { 
+             message: 'Please wait before requesting a new code.', 
+             retryIn: emailCheck.retryIn,
+             code: 429
+         });
+      }
+
+      // 3. Generate 6-digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      const now = Date.now();
       
       // Generate Magic Link Token
       const magicToken = crypto.randomBytes(32).toString('hex');
 
-      console.log(`[AUTH DEBUG] Request for: '${normalizedEmail}'`);
-      console.log(`[AUTH DEBUG] Generated OTP for ${normalizedEmail}`); // Log generated but not the code itself for security
+      console.log(`[AUTH DEBUG] Request for: '${normalizedEmail}' (IP: ${ip})`);
 
       // Store with 10 minute TTL
       authCodes.set(normalizedEmail, {
@@ -597,7 +671,7 @@ io.on('connection', (socket) => {
         lastSent: now
       });
       
-      // 3. Persist immediately
+      // 4. Persist immediately
       saveAuthCodes();
 
       magicTokens.set(magicToken, {
