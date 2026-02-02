@@ -6,7 +6,7 @@ import {
     PlayIcon, PauseIcon, CameraIcon, SearchIcon,
     NextIcon, PreviousIcon, VolumeIcon, ChevronDownIcon, ChevronUpIcon,
     HeartIcon, PhoneIcon, VideoCameraIcon, ArrowLeftIcon, UserIcon, ChatBubbleIcon,
-    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon
+    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon, ArrowRightOnRectangleIcon
 } from './Icons';
 import { ChatMessage, UserProfile, Language, RadioStation, ChatSession, VisualMode } from '../types';
 import AudioVisualizer from './AudioVisualizer';
@@ -2096,7 +2096,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
                         {/* Apple Requirement: Account Deletion (Rule 5.1.1 v) */}
                         {currentUser.id && (
-                            <button 
                             <button
                                 onClick={() => {
                                     if (window.confirm(language === 'ru' ? 'Выйти из аккаунта?' : 'Log out?')) {
