@@ -102,6 +102,11 @@ export interface UserProfile {
   bio: string;
   hasAgreedToRules: boolean;
   isAuthenticated?: boolean; 
+  // User Management
+  role?: 'early_user' | 'regular';
+  early_access?: boolean;
+  free_until?: number | null;
+  status?: 'active' | 'warning' | 'blocked';
   email?: string;
   credits?: number;
   isAnonymous?: boolean; 

@@ -29,9 +29,34 @@ const USER_TTL = 60 * 24 * 60 * 60 * 1000; // 60 days
 const MEDIA_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days (Persistent)
 const TEXT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days (Persistent History)
 const VOICE_INTRO_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_EARLY_USERS = 100;
 const MAX_MESSAGES_PER_SESSION = 50;
 
 const storage = require('./storage');
+
+/**
+ * Universal Feature Access Check
+ * @param {Object} user - User object
+ * @param {string} featureName - Feature identifier
+ * @returns {boolean}
+ */
+function canUseFeature(user, featureName) {
+    if (!user || user.status !== 'active') return false;
+    
+    // Define PRO features here
+    const PRO_FEATURES = ['audio_calls', 'video_calls', 'ai_tools', 'unlimited_history'];
+    
+    if (PRO_FEATURES.includes(featureName)) {
+        // Check Early Access or Subscription
+        if (user.early_access && user.free_until && Date.now() < user.free_until) {
+            return true;
+        }
+        // Future: Check stripe_subscription_status
+        return false;
+    }
+    
+    return true; // Default allow for basic features
+}
 
 // Map: userId -> { profile, socketId, expiresAt }
 const activeUsers = new Map();
@@ -834,7 +859,7 @@ const rateLimiter = new RateLimitService();
 
       if (!userRecord) {
           // CREATE NEW
-          const isEarlyAdopter = persistentUsers.size < 100;
+          const isEarlyAdopter = persistentUsers.size < MAX_EARLY_USERS;
           
           userRecord = {
               id: crypto.randomUUID(),
