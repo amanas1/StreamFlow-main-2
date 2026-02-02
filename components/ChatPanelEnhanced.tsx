@@ -979,6 +979,19 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         setView('auth');
     }));
 
+    // Listen for Auth Rate Limits / Errors Global
+    cleanups.push(socketService.onAuthError((data) => {
+        if (data.retryIn) {
+            setAuthCooldown(data.retryIn);
+        }
+        if (data.attemptsRemaining !== undefined) {
+             setOtpError(`${data.message} (${data.attemptsRemaining} attempts left)`);
+        } else {
+             setOtpError(data.message);
+        }
+        setIsVerifyingOtp(false);
+    }));
+
     // AI Voice Mode Helper (Refactored out)
 
 
