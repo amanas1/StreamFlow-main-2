@@ -255,6 +255,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 }) => {
   const [onlineUsers, setOnlineUsers] = useState<UserProfile[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showDeleteHint, setShowDeleteHint] = useState(false);
+  const deleteHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update current time every second for live countdowns
   useEffect(() => {
@@ -1236,18 +1238,19 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   const handleDeleteAccount = () => {
+    // Show premium hint instead of browser alert
+    if (deleteHintTimeoutRef.current) clearTimeout(deleteHintTimeoutRef.current);
+    setShowDeleteHint(true);
+    deleteHintTimeoutRef.current = setTimeout(() => setShowDeleteHint(false), 4000);
+
+    // If already requested, don't do server call
     if (currentUser.deletionRequestedAt && deletionDaysRemaining) {
-        const { days, hours, mins, secs } = deletionDaysRemaining;
-        alert(language === 'ru' 
-            ? `Удаление уже запланировано. Осталось: ${days}д ${hours}ч ${mins}м ${secs}с`
-            : `Deletion already planned. Remaining: ${days}d ${hours}h ${mins}m ${secs}s`
-        );
         return;
     }
 
     const confirmMsg = language === 'ru' 
-      ? 'Удаление аккаунта после истечения 30 дней. Согласны?' 
-      : 'Account deletion will be processed after 30 days. Proceed?';
+      ? 'Удаление аккаунта только после 30 дней. Согласны?' 
+      : 'Account deletion only after 30 days. Proceed?';
     
     if (window.confirm(confirmMsg)) {
       socketService.requestDeletion((data) => {
@@ -1258,7 +1261,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
               };
               onUpdateCurrentUser(updatedUser);
               localStorage.setItem('streamflow_user_profile', JSON.stringify(updatedUser));
-              alert(language === 'ru' ? 'Заявка на удаление принята. Профиль будет удален через 30 дней.' : 'Deletion request accepted. Profile will be removed in 30 days.');
           }
       });
     }
@@ -2394,19 +2396,33 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 )}
 
                                 {/* Delete Account Button */}
-                                <button
-                                    onClick={handleDeleteAccount}
-                                    className={`w-full mt-4 py-3 border rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 ${
-                                        currentUser.deletionRequestedAt 
-                                        ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 hover:bg-amber-600/20' 
-                                        : 'bg-red-600/10 border-red-500/30 text-red-500 hover:bg-red-600/20'
-                                    }`}
-                                >
-                                    <UsersIcon className="w-3 h-3" />
-                                    {currentUser.deletionRequestedAt 
-                                        ? (language === 'ru' ? 'ПРОВЕРИТЬ ВРЕМЯ УДАЛЕНИЯ' : 'CHECK DELETION TIME')
-                                        : (language === 'ru' ? 'УДАЛИТЬ АККАУНТ И ДАННЫЕ' : 'DELETE ACCOUNT & DATA')}
-                                </button>
+                                <div className="relative">
+                                    {showDeleteHint && (
+                                        <div className="absolute bottom-full left-0 right-0 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                            <div className="bg-gradient-to-r from-red-600 to-amber-600 text-white p-3 rounded-2xl shadow-2xl border border-white/20 text-center relative overflow-hidden">
+                                                <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
+                                                <p className="text-[11px] font-black uppercase tracking-wider relative z-10">
+                                                    {language === 'ru' ? 'Удаление аккаунта только после 30 дней' : 'Account deletion only after 30 days'}
+                                                </p>
+                                                {/* Tooltip arrow */}
+                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-600 rotate-45 border-r border-b border-white/20"></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={handleDeleteAccount}
+                                        className={`w-full mt-4 py-3 border rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 ${
+                                            currentUser.deletionRequestedAt 
+                                            ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 hover:bg-amber-600/20' 
+                                            : 'bg-red-600/10 border-red-500/30 text-red-500 hover:bg-red-600/20'
+                                        }`}
+                                    >
+                                        <UsersIcon className="w-3 h-3" />
+                                        {currentUser.deletionRequestedAt 
+                                            ? (language === 'ru' ? 'ПРОВЕРИТЬ ВРЕМЯ УДАЛЕНИЯ' : 'CHECK DELETION TIME')
+                                            : (language === 'ru' ? 'УДАЛИТЬ АККАУНТ И ДАННЫЕ' : 'DELETE ACCOUNT & DATA')}
+                                    </button>
+                                </div>
                             </>
                         )}
 
