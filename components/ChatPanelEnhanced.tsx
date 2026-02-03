@@ -3,10 +3,10 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
     XMarkIcon, PaperAirplaneIcon, UsersIcon, 
     MicrophoneIcon, FaceSmileIcon, PaperClipIcon, 
-    PlayIcon, PauseIcon, CameraIcon, SearchIcon,
+    PlayIcon, PauseIcon, CameraIcon, SearchIcon, ClockIcon,
     NextIcon, PreviousIcon, VolumeIcon, ChevronDownIcon, ChevronUpIcon,
     HeartIcon, PhoneIcon, VideoCameraIcon, ArrowLeftIcon, UserIcon, ChatBubbleIcon,
-    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon, ArrowRightOnRectangleIcon
+    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon, ArrowRightOnRectangleIcon, AdjustmentsIcon
 } from './Icons';
 import { ChatMessage, UserProfile, Language, RadioStation, ChatSession, VisualMode } from '../types';
 import AudioVisualizer from './AudioVisualizer';
@@ -14,7 +14,7 @@ import DancingAvatar from './DancingAvatar';
 import { socketService } from '../services/socketService';
 import { encryptionService } from '../services/encryptionService';
 import { geolocationService } from '../services/geolocationService';
-import { TRANSLATIONS, COUNTRIES_DATA } from '../constants';
+import { TRANSLATIONS, COUNTRIES_DATA, PRESET_AVATARS } from '../constants';
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -98,6 +98,7 @@ const stylizeAvatar = (file: File): Promise<string> => {
 const processChatImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+
         reader.readAsDataURL(file);
         reader.onload = (event) => {
             const img = new Image();
@@ -374,133 +375,17 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [violationMessage, setViolationMessage] = useState<string | null>(null);
   const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
   
-  // Auth State
-  const [authEmail, setAuthEmail] = useState('');
-  const [authOtp, setAuthOtp] = useState('');
-  const [otpStep, setOtpStep] = useState<'email' | 'otp'>('email');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isFileUploading, setIsFileUploading] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [authCooldown, setAuthCooldown] = useState(0);
-  const [mockOtp, setMockOtp] = useState<string | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
-  //Geolocation state
-  const [view, setView] = useState<'auth' | 'register' | 'search' | 'inbox' | 'chat'>(() => {
+  // View state: Default to search if profile complete, else register
+  const [view, setView] = useState<'register' | 'search' | 'inbox' | 'chat'>(() => {
     if (currentUser.id && currentUser.name && currentUser.age) return 'search';
-    if (currentUser.isAuthenticated) return 'register';
-    return 'auth';
+    return 'register';
   });
 
-  // Auth Handlers
-  const handleGetCode = () => {
-    if (!authEmail.includes('@')) return;
-    setIsVerifyingOtp(true);
-    setOtpError(null);
-    setMockOtp(null); // Clear previous
-    if (!socketService.isConnected) {
-      setOtpError(language === 'ru' ? 'Нет связи с сервером. Проверьте интернет.' : 'No server connection. Check your internet.');
-      setIsVerifyingOtp(false);
-      return;
-    }
-
-    socketService.requestAuthCode(authEmail, (data: any) => {
-      setIsVerifyingOtp(false);
-      if (data.email) {
-        setOtpStep('otp');
-        setAuthCooldown(60);
-        if (data.mock && data.otp) {
-          console.log('%c[AUTH] MOCK MODE: Check server console for OTP', 'color: #bc6ff1; font-weight: bold;');
-          setMockOtp(data.otp);
-        }
-      } else if (data.message) {
-        setOtpError(data.message);
-        if (data.retryIn) setAuthCooldown(data.retryIn);
-      }
-    });
-  };
-
-  const handleVerifyOtp = () => {
-    if (authOtp.length < 6) return;
-    setIsVerifyingOtp(true);
-    setOtpError(null);
-    if (!socketService.isConnected) {
-      setOtpError(language === 'ru' ? 'Нет связи с сервером. Проверьте интернет.' : 'No server connection. Check your internet.');
-      setIsVerifyingOtp(false);
-      return;
-    }
-
-    socketService.verifyAuthCode(authEmail, authOtp, (data) => {
-      setIsVerifyingOtp(false);
-      if (data.success && data.userId) {
-        setAuthOtp(''); // Clear OTP on success
-        
-        // Use profile from server if available, otherwise fallback to local
-        const serverProfile = (data as any).profile || {};
-        const updatedUser = { 
-            ...currentUser, 
-            ...serverProfile, 
-            id: data.userId, 
-            email: data.email, 
-            isAuthenticated: true 
-        };
-        
-        console.log("[AUTH] Success. Profile restored from server:", serverProfile.name || 'New User');
-        onUpdateCurrentUser(updatedUser);
-        
-        // If profile is complete, go to search, else go to register
-        if (updatedUser.name && updatedUser.age) {
-          setView('search');
-        } else {
-          setView('register');
-        }
-      } else {
-        setOtpError(data.message || (language === 'ru' ? 'Неверный код' : 'Invalid code'));
-      }
-    });
-  };
-
-  // Cooldown timer
-  useEffect(() => {
-    if (authCooldown > 0) {
-      const timer = setInterval(() => setAuthCooldown(c => c - 1), 1000);
-      return () => clearInterval(timer);
-    }
-  }, [authCooldown]);
-
-  // Magic Link Detection
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    if (token && view === 'auth') {
-      setIsVerifyingOtp(true);
-      socketService.verifyMagicToken(token, (data) => {
-        setIsVerifyingOtp(false);
-        if (data.success && data.userId) {
-          const serverProfile = (data as any).profile || {};
-          const updatedUser = { 
-              ...currentUser, 
-              ...serverProfile, 
-              id: data.userId, 
-              email: data.email, 
-              isAuthenticated: true 
-          };
-          
-          console.log("[AUTH] Magic success. Profile restored:", serverProfile.name || 'New User');
-          onUpdateCurrentUser(updatedUser);
-          
-          if (updatedUser.name && updatedUser.age) {
-            setView('search');
-          } else {
-            setView('register');
-          }
-          // Clean up URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-          setOtpError(data.message || 'Magic link expired or invalid');
-        }
-      });
-    }
-  }, [view]);
   
   const [detectedLocation, setDetectedLocation] = useState<{country: string, city: string, ip?: string} | null>(() => {
     // Priority 1: currentUser data
@@ -688,6 +573,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const t = TRANSLATIONS[language] || TRANSLATIONS['en'];
   const availableCitiesSearch = useMemo(() => [], []);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => { scrollToBottom(); }, [messages, view]);
 
   useEffect(() => {
@@ -696,6 +585,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     });
     return cleanup;
   }, []);
+
+  const detectedCountry = detectedLocation?.country || (language === 'ru' ? 'Неизвестно' : 'Unknown');
 
   // Background Location Detection (Silent)
   useEffect(() => {
@@ -800,8 +691,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     // Listen for profile expiration
     cleanups.push(socketService.onProfileExpired(() => {
       alert(language === 'ru' ? '❌ Ваш профиль истек. Пожалуйста, создайте новый.' : '❌ Your profile has expired. Please create a new one.');
-      setView('auth');
-      onUpdateCurrentUser({ ...currentUser, isAuthenticated: false } as UserProfile);
+      // No manual redirect to auth, App.tsx handles re-auth/re-init
     }));
     
     // Listen for online users
@@ -1132,20 +1022,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
     // Listen for registration errors (Bans)
     cleanups.push(socketService.addListener('user:error', (data) => {
+        if (data.code === 'DELETION_LOCKED') return; // Silent ignore, handled by UI hint
         alert(`${data.message}\n${data.reason || ''}`);
-        setView('auth');
+        // No redirect to auth, just stay in register view
+        setView('register');
     }));
 
-    // Listen for Auth Rate Limits / Errors Global
+    // Listen for Auth Errors Global (Rate Limits)
     cleanups.push(socketService.onAuthError((data) => {
-        if (data.retryIn) {
-            setAuthCooldown(data.retryIn);
-        }
-        if (data.attemptsRemaining !== undefined) {
-             setOtpError(`${data.message} (${data.attemptsRemaining} attempts left)`);
-        } else {
-             setOtpError(data.message);
-        }
+        setOtpError(data.message);
         setIsVerifyingOtp(false);
     }));
 
@@ -1187,24 +1072,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       });
     }
   }, [currentUser.id, currentUser.name, currentUser.age, hasRegisteredWithServer]);
-
-  useEffect(() => {
-    if (view !== 'auth') return;
-
-    // FIX: Strictly check isAuthenticated to avoid logout loop
-    if (currentUser.isAuthenticated && currentUser.name && currentUser.age) {
-      setView('search');
-    } else if (currentUser.isAuthenticated) {
-      setView('register');
-    }
-  }, [currentUser.id, currentUser.name, currentUser.age, currentUser.isAuthenticated, view]);
-
-  // FIX: Auto-redirect to auth view when user logs out
-  useEffect(() => {
-    if (!currentUser.isAuthenticated && view !== 'auth') {
-      setView('auth');
-    }
-  }, [currentUser.isAuthenticated, view]);
 
 
   const startIntroRecording = async () => {
@@ -1318,6 +1185,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       hasAgreedToRules: true,
       lastSeen: Date.now(),
       registrationTimestamp: currentUser.registrationTimestamp || Date.now(),
+      
+      // Location Data
+      country: detectedLocation?.country || currentUser.country || (language === 'ru' ? 'Неизвестно' : 'Unknown'),
+      detectedCountry: detectedLocation?.country || currentUser.detectedCountry,
+      detectedCity: detectedLocation?.city || currentUser.detectedCity,
+      detectedIP: detectedLocation?.ip || currentUser.detectedIP,
+
       chatSettings: {
         notificationsEnabled: regNotificationsEnabled,
         notificationVolume: regNotificationVolume,
@@ -1796,7 +1670,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
   // --- End WebRTC ---
 
-  const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
+
   const getPartnerFromSession = (session: any) => onlineUsers.find(u => u.id === session.partnerId) || session.partnerProfile;
 
   if (!isOpen) return null;
@@ -1857,7 +1731,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             ) : (
                 <>
                     <div className="flex items-center gap-2">
-                        {view !== 'auth' && (
+                        {true && (
                             <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
                                 <button 
                                     onClick={() => setView('register')} 
@@ -2026,133 +1900,104 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
 
 
-            {view === 'auth' && (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 animate-in fade-in zoom-in duration-500">
-                    <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shadow-[0_0_40px_rgba(188,111,241,0.1)] mb-2">
-                        <UsersIcon className="w-12 h-12 text-primary opacity-80" />
-                    </div>
-                    
-                    <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-wider mb-2">
-                            {language === 'ru' ? 'Вход в чат' : 'Chat Login'}
-                            {/* <div style={{ fontSize: '10px', color: '#666', marginTop: '10px', background: 'rgba(0,0,0,0.5)', padding: '5px' }}>
-                                DEBUG: {socketService.serverUrl} <br/>
-                                Status: {socketService.isConnected ? 'Connected' : 'Disconnected'}
-                            </div> */}
-                        </h2>
-                        <p className="text-xs text-slate-400 leading-relaxed max-w-[250px] mx-auto">
-                            {otpStep === 'email' 
-                                ? (language === 'ru' ? 'Введите email для получения кода доступа' : 'Enter email to receive access code')
-                                : (language === 'ru' ? `Код отправлен на ${authEmail}` : `Code sent to ${authEmail}`)
-                            }
-                        </p>
-                    </div>
+            
 
-                    <div className="w-full space-y-4">
-                        {otpStep === 'email' ? (
-                            <>
-                                <input 
-                                    type="email"
-                                    value={authEmail}
-                                    onChange={(e) => setAuthEmail(e.target.value)}
-                                    placeholder="your@email.com"
-                                    className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-primary/50 transition-all outline-none"
-                                />
-                                {otpError && <p className="text-[10px] text-red-500 font-bold uppercase">{otpError}</p>}
-                                <button 
-                                    onClick={handleGetCode}
-                                    disabled={isVerifyingOtp || !authEmail.includes('@') || authCooldown > 0}
-                                    className="flex items-center gap-3 px-6 py-4 bg-white text-black rounded-2xl font-bold text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95 w-full justify-center disabled:opacity-50"
-                                >
-                                    {isVerifyingOtp ? (language === 'ru' ? 'ОТПРАВКА...' : 'SENDING...') : 
-                                     authCooldown > 0 ? (language === 'ru' ? `ПОВТОР ЧЕРЕЗ ${authCooldown}с` : `RETRY IN ${authCooldown}s`) :
-                                     (language === 'ru' ? 'ПОЛУЧИТЬ КОД' : 'GET CODE')}
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <input 
-                                    type="text"
-                                    maxLength={6}
-                                    value={authOtp}
-                                    onChange={(e) => setAuthOtp(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="000000"
-                                    className="w-full bg-slate-900/50 border border-white/10 rounded-2xl px-5 py-4 text-2xl font-black text-center text-white tracking-[0.5em] focus:border-primary/50 transition-all outline-none"
-                                />
-                                {otpError && <p className="text-[10px] text-red-500 font-bold uppercase">{otpError}</p>}
-                                <div className="flex flex-col gap-3">
-                                    <button 
-                                        onClick={handleVerifyOtp}
-                                        disabled={isVerifyingOtp || authOtp.length < 6}
-                                        className="flex items-center gap-3 px-6 py-4 bg-primary text-white rounded-2xl font-bold text-sm shadow-xl hover:scale-[1.02] transition-transform active:scale-95 w-full justify-center disabled:opacity-50"
-                                    >
-                                        {isVerifyingOtp ? (language === 'ru' ? 'ПРОВЕРКА...' : 'VERIFYING...') : (language === 'ru' ? 'ВОЙТИ' : 'LOGIN')}
-                                    </button>
-                                    <button 
-                                        onClick={() => { setOtpStep('email'); setAuthOtp(''); }}
-                                        className="text-[10px] text-slate-500 font-bold uppercase tracking-widest hover:text-white transition-colors"
-                                    >
-                                        {language === 'ru' ? 'Изменить Email' : 'Change Email'}
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={handleGetCode}
-                                        disabled={authCooldown > 0 || isVerifyingOtp}
-                                        className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${authCooldown > 0 ? 'text-slate-600' : 'text-primary hover:text-primary/80'}`}
-                                    >
-                                        {authCooldown > 0 
-                                            ? (language === 'ru' ? `Отправить снова (${authCooldown}с)` : `Resend in ${authCooldown}s`)
-                                            : (language === 'ru' ? 'Отправить код еще раз' : 'Resend Code')
-                                        }
-                                    </button>
+            {/* Avatar Selection Modal */}
+            {showAvatarModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg p-6 relative shadow-2xl overflow-hidden">
+                        <button 
+                            onClick={() => setShowAvatarModal(false)}
+                            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+                        >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+                        
+                        <div className="text-center mb-6">
+                            <h3 className="text-xl font-bold text-white mb-1">
+                                {language === 'ru' ? 'Выберите аватар' : 'Choose Avatar'}
+                            </h3>
+                            <p className="text-xs text-slate-400">
+                                {language === 'ru' ? 'Загрузите свое фото или выберите готовый вариант' : 'Upload your photo or select a preset'}
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Option 1: Upload Photo */}
+                            <div className="flex flex-col items-center justify-center p-4 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-primary/30 transition-colors group">
+                                <div className="w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:scale-105 transition-transform">
+                                    <CameraIcon className="w-8 h-8 text-white" />
                                 </div>
-                            </>
-                        )}
+                                <h4 className="font-bold text-white text-sm mb-1">{language === 'ru' ? 'Загрузить фото' : 'Upload Photo'}</h4>
+                                <p className="text-[10px] text-slate-400 text-center mb-4 leading-tight">
+                                    {language === 'ru' ? 'Будет применен мультяшный стиль' : 'Cartoon style will be applied'}
+                                </p>
+                                <button 
+                                    onClick={() => {
+                                        alert(language === 'ru' 
+                                            ? 'Ваше фото будет с фильтром "Стилизация" для приватности!' 
+                                            : 'Your photo will be stylized for privacy!');
+                                        fileInputRef.current?.click();
+                                    }}
+                                    className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition-colors"
+                                >
+                                    {language === 'ru' ? 'Выбрать файл' : 'Select File'}
+                                </button>
+                            </div>
+
+                            {/* Option 2: Presets */}
+                            <div className="flex flex-col">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
+                                    {language === 'ru' ? 'Готовые варианты' : 'Presets'}
+                                </h4>
+                                <div className="grid grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {PRESET_AVATARS.map((avatar, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => {
+                                                setRegAvatar(avatar);
+                                                setShowAvatarModal(false);
+                                            }}
+                                            className="aspect-square rounded-2xl overflow-hidden border-2 border-white/10 hover:border-primary hover:scale-105 transition-all relative group shadow-lg"
+                                        >
+                                            <img src={avatar} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
-            
+
             {view === 'register' && (
                 <div className="flex-1 flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-300">
-                    <div className="flex justify-center mb-6 shrink-0">
+                    <div className="flex justify-center mb-4 shrink-0">
                         <div className="text-center">
-                            <h3 className="text-2xl font-black text-white leading-tight uppercase tracking-widest">{language === 'ru' ? 'Ваш профиль' : 'Your Profile'}</h3>
+                            <h3 className="text-2xl font-black text-white leading-tight uppercase tracking-widest mb-2">{language === 'ru' ? 'Ваш профиль' : 'Your Profile'}</h3>
+                            <p className="text-[10px] text-slate-400 max-w-[240px] leading-relaxed mx-auto">
+                                {language === 'ru' 
+                                    ? 'Эта информация помогает подбирать собеседников. Сообщения и данные удаляются автоматически.' 
+                                    : 'This info helps find better matches. Messages and data are automatically deleted.'}
+                            </p>
                         </div>
                     </div>
                     
                     <div className="flex-1 flex flex-col space-y-6">
-                        {/* Profile Lock Warning */}
-                        {isProfileLocked && (
-                            <div className="p-3 rounded-2xl bg-primary/20 border border-primary/30 flex items-start gap-3 animate-pulse">
-                                <span className="text-xl">🔒</span>
-                                <div className="flex-1">
-                                    <p className="text-[10px] text-white font-black uppercase tracking-wider mb-0.5">
-                                        {language === 'ru' ? 'Профиль закреплен' : 'Profile Locked'}
-                                    </p>
-                                    <p className="text-[9px] text-slate-300 leading-tight">
-                                        {language === 'ru' 
-                                          ? `Основные данные нельзя менять в течение 30 дней после регистрации. Осталось: ${lockDaysRemaining} дн.`
-                                          : `Core details cannot be changed for 30 days after registration. Remaining: ${lockDaysRemaining} days.`}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Top: Avatar Section */}
-                        <div className="flex justify-center py-2">
+                        {/* Avatar Section */}
+                        <div className="flex justify-center py-2 relative">
                             <div className="relative group">
                                 <div 
-                                    onClick={() => !isProfileLocked && fileInputRef.current?.click()}
-                                    className={`w-40 h-40 rounded-[2.5rem] bg-slate-800/40 border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden transition-all relative shadow-2xl ${isProfileLocked ? 'opacity-90 cursor-default border-primary/20' : 'group-hover:border-primary/50 cursor-pointer'}`}
+                                    onClick={() => !isProfileLocked && setShowAvatarModal(true)}
+                                    className={`w-32 h-32 rounded-[2rem] bg-slate-800/40 border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden transition-all relative shadow-2xl ${isProfileLocked ? 'opacity-90 cursor-default border-primary/20' : 'group-hover:border-primary/50 cursor-pointer'}`}
                                 >
                                     {regAvatar ? (
                                         <img src={regAvatar} className="w-full h-full object-cover" />
                                     ) : (
                                         <div key={regGender} className="w-full h-full flex items-center justify-center animate-in fade-in zoom-in-95 duration-300">
-                                            {/* Final Verified Gender-based default avatar */}
                                             {regGender === 'female' ? (
-                                                <svg viewBox="0 0 100 100" className="w-28 h-28 opacity-90 drop-shadow-lg">
-                                                    {/* Female avatar - slightly refined for premium look */}
+                                                <svg viewBox="0 0 100 100" className="w-24 h-24 opacity-90 drop-shadow-lg">
                                                     <ellipse cx="50" cy="38" rx="35" ry="32" fill="#92400e" />
                                                     <ellipse cx="22" cy="58" rx="14" ry="22" fill="#78350f" />
                                                     <ellipse cx="78" cy="58" rx="14" ry="22" fill="#78350f" />
@@ -2160,13 +2005,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                     <ellipse cx="41" cy="42" rx="3.5" ry="4.5" fill="#1e293b" />
                                                     <ellipse cx="59" cy="42" rx="3.5" ry="4.5" fill="#1e293b" />
                                                     <path d="M41,53 Q50,60 59,53" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" />
-                                                    <circle cx="34" cy="49" r="4.5" fill="#fca5a5" opacity="0.6" />
-                                                    <circle cx="66" cy="49" r="4.5" fill="#fca5a5" opacity="0.6" />
                                                     <ellipse cx="50" cy="94" rx="32" ry="22" fill="#fef3c7" />
                                                 </svg>
                                             ) : (
-                                                <svg viewBox="0 0 100 100" className="w-28 h-28 opacity-90 drop-shadow-lg">
-                                                    {/* Male avatar - refined details */}
+                                                <svg viewBox="0 0 100 100" className="w-24 h-24 opacity-90 drop-shadow-lg">
                                                     <ellipse cx="50" cy="32" rx="30" ry="20" fill="#334155" />
                                                     <circle cx="50" cy="46" r="26" fill="#f59e0b" />
                                                     <path d="M35,35 L47,38" fill="none" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round" />
@@ -2182,286 +2024,172 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 </div>
                                 {!isProfileLocked && (
                                     <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="absolute bottom-2 right-2 w-10 h-10 bg-primary shadow-xl rounded-full flex items-center justify-center border-2 border-[#1e293b] text-white hover:scale-110 transition-transform"
+                                        onClick={() => setShowAvatarModal(true)}
+                                        className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary shadow-xl rounded-full flex items-center justify-center border-4 border-[#0f172a] text-white hover:scale-110 transition-transform"
                                     >
                                         <CameraIcon className="w-5 h-5" />
                                     </button>
                                 )}
-                                <input type="file" ref={fileInputRef} onChange={handleAvatarSetup} className="hidden" accept="image/*" />
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    onChange={(e) => {
+                                        handleAvatarSetup(e);
+                                        setShowAvatarModal(false); // Close modal after selection
+                                    }} 
+                                    className="hidden" 
+                                    accept="image/*" 
+                                />
                             </div>
                         </div>
 
-                        {/* Early Member Badge */}
-                        {currentUser.role === 'early_user' && (
-                            <div className="flex justify-center mb-4 -mt-2">
-                                <div className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 text-amber-400 text-[10px] font-black tracking-widest animate-pulse shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-                                    EARLY MEMBER 🌟
-                                </div>
+                        {/* Location (Soft Info) */}
+                        <div className="flex justify-center">
+                            <div className="bg-white/5 rounded-full px-4 py-1.5 flex items-center gap-2 border border-white/5">
+                                <span className="text-sm">📍</span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                    {language === 'ru' ? 'Авто-определение: ' : 'Auto-detected: '} 
+                                    <span className="text-slate-200 font-bold">{detectedCountry || 'Unknown'}</span>
+                                </span>
                             </div>
-                        )}
+                        </div>
 
-                        {/* Status Warning */}
-                        {currentUser.accountStatus === 'warning' && (
-                            <div className="mb-4 mx-auto max-w-[200px] text-center px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
-                                <p className="text-[10px] text-red-400 font-bold mb-1">⚠️ {language === 'ru' ? 'Предупреждение' : 'Warning'}</p>
-                                <p className="text-[9px] text-red-300 opacity-80 leading-tight">
-                                    {language === 'ru' 
-                                       ? 'Замечена подозрительная активность.' 
-                                       : 'Suspicious activity detected.'}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Middle: Name & Gender & Intent */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ВАША ЦЕЛЬ' : 'YOUR INTENT'}</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {INTENT_STATUSES.map(status => (
-                                        <button 
-                                            key={status}
-                                            onClick={() => setRegIntentStatus(status)}
-                                            className={`py-2 px-3 rounded-xl text-[10px] font-bold border transition-all ${regIntentStatus === status ? 'bg-primary border-primary text-white' : 'bg-white/5 border-white/10 text-slate-400'}`}
-                                        >
-                                            {status}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                        {/* Basic Info */}
+                        <div className="space-y-4 bg-white/[0.02] p-4 rounded-3xl border border-white/5">
                             <div>
-                                <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ВАШЕ ИМЯ' : 'NAME'}</label>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ВАШЕ ИМЯ (ПСЕВДОНИМ)' : 'YOUR NAME (ALIAS)'}</label>
                                 <input 
                                     value={regName} 
                                     disabled={isProfileLocked}
                                     onChange={(e) => setRegName(e.target.value)} 
-                                    className={`w-full border rounded-xl px-4 py-3.5 outline-none font-bold text-sm transition-all ${isProfileLocked ? 'bg-white/5 border-white/5 text-slate-500 cursor-not-allowed' : 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:bg-white/[0.08]'}`}
+                                    className={`w-full border rounded-2xl px-4 py-3 outline-none font-bold text-sm transition-all ${isProfileLocked ? 'bg-white/5 border-white/5 text-slate-500 cursor-not-allowed' : 'bg-black/20 border-white/10 text-white focus:border-primary/50 focus:bg-white/[0.08]'}`}
                                     placeholder="GuestUser"
                                 />
                             </div>
-                            <div>
-                                <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ПОЛ' : 'GENDER'}</label>
-                                <div className={`flex bg-white/5 rounded-xl p-1 border h-[46px] ${isProfileLocked ? 'border-white/5 opacity-80' : 'border-white/5'}`}>
-                                    {(['male', 'female'] as const).map(g => (
-                                        <button 
-                                            key={g} 
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ПОЛ' : 'GENDER'}</label>
+                                    <div className={`flex bg-black/20 rounded-xl p-1 border h-[42px] ${isProfileLocked ? 'border-white/5 opacity-80' : 'border-white/5'}`}>
+                                        {(['male', 'female'] as const).map(g => (
+                                            <button 
+                                                key={g} 
+                                                disabled={isProfileLocked}
+                                                onClick={() => {
+                                                    setRegGender(g);
+                                                    if (regAvatar && regAvatar.startsWith('data:image/svg+xml')) setRegAvatar(null);
+                                                }} 
+                                                className={`flex-1 rounded-lg text-[10px] font-black transition-all uppercase tracking-tighter ${regGender === g ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-white'}`}
+                                            >
+                                                {language === 'ru' ? (g === 'male' ? 'М' : 'Ж') : g.toUpperCase().substring(0, 1)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ВОЗРАСТ' : 'AGE'}</label>
+                                    <div className="bg-black/20 rounded-xl border border-white/5 h-[42px] relative overflow-hidden flex items-center justify-center">
+                                        <select 
+                                            value={regAge} 
+                                            onChange={(e) => setRegAge(e.target.value)} 
                                             disabled={isProfileLocked}
-                                            onClick={() => {
-                                                setRegGender(g);
-                                                // Reset proxy avatar if it was using a default, to trigger SVG refresh logic
-                                                if (regAvatar && regAvatar.startsWith('data:image/svg+xml')) setRegAvatar(null);
-                                            }} 
-                                            className={`flex-1 rounded-lg text-[10px] font-black transition-all uppercase tracking-tighter ${regGender === g ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white'} ${isProfileLocked && regGender !== g ? 'opacity-30' : ''}`}
+                                            className="w-full h-full bg-transparent text-center font-black text-white outline-none appearance-none absolute inset-0 z-10"
                                         >
-                                            {language === 'ru' ? (g === 'male' ? 'МУЖСКОЙ' : 'ЖЕНСКИЙ') : g.toUpperCase()}
-                                        </button>
-                                    ))}
+                                            {AGES.map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
+                                        </select>
+                                        <span className="pointer-events-none text-sm font-black text-white z-0">{regAge}</span>
+                                        <span className="pointer-events-none absolute right-2 text-[10px] text-red-400 font-bold border border-red-500/30 px-1 rounded">18+</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Voice Intro Section */}
-                        <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-[10px] font-black text-primary uppercase tracking-widest">
+                        {/* Voice Intro (Condensed) */}
+                        <div className="p-4 bg-gradient-to-br from-indigo-900/10 to-purple-900/10 border border-white/5 rounded-3xl flex items-center gap-4">
+                            <button 
+                                onClick={isRecordingIntro ? stopIntroRecording : startIntroRecording}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${isRecordingIntro ? 'bg-red-500 animate-pulse' : 'bg-gradient-to-br from-pink-500 to-violet-600 shadow-[0_0_20px_rgba(236,72,153,0.4)] animate-[pulse_3s_ease-in-out_infinite] hover:scale-110'}`}
+                            >
+                                {isRecordingIntro ? <XMarkIcon className="w-5 h-5 text-white" /> : <MicrophoneIcon className="w-6 h-6 text-white" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-wider mb-0.5">
                                     {language === 'ru' ? 'ГОЛОСОВОЕ ПРИВЕТСТВИЕ' : 'VOICE INTRO'}
                                 </h4>
-                                {regVoiceIntro && !isRecordingIntro && (
-                                    <div className="flex items-center gap-1 text-[8px] text-green-500 font-bold uppercase">
-                                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                                        {language === 'ru' ? 'ЗАПИСАНО' : 'RECORDED'}
-                                    </div>
-                                )}
+                                <p className="text-[9px] text-slate-400 truncate">
+                                    {isRecordingIntro 
+                                        ? `Recording... 0:0${introRecordingTime} / 0:07` 
+                                        : (regVoiceIntro ? (language === 'ru' ? '✅ Приветствие записано' : '✅ Intro recorded') : (language === 'ru' ? 'Главный «крючок» для общения' : 'Your main hook for chats'))}
+                                </p>
                             </div>
-                            
-                            {isRecordingIntro ? (
-                                <div className="flex flex-col items-center gap-3 py-2">
-                                    <div className="animate-pulse bg-red-500 px-3 py-1 rounded-full text-[10px] font-bold text-white uppercase tracking-wider">
-                                        REC 0:0{introRecordingTime} / 0:07
-                                    </div>
-                                    <p className="text-xs text-white font-medium italic animate-in fade-in slide-in-from-bottom-2">"{activePrompt}"</p>
-                                    <button onClick={stopIntroRecording} className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all">
-                                        <XMarkIcon className="w-6 h-6 text-white" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-4">
-                                    <button 
-                                        onClick={startIntroRecording}
-                                        className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all"
-                                    >
-                                        <MicrophoneIcon className="w-6 h-6 text-white" />
-                                    </button>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] text-slate-300 leading-tight">
-                                            {language === 'ru' 
-                                                ? 'Запишите 5-7 секунд о себе. Это ваш главный «крючок» для общения.' 
-                                                : 'Record 5-7 seconds about yourself. This is your main hook for conversation.'}
-                                        </p>
-                                        {regVoiceIntro && (
-                                            <button 
-                                                onClick={() => {
-                                                    const audio = new Audio(regVoiceIntro);
-                                                    audio.play();
-                                                }}
-                                                className="mt-2 text-[9px] font-bold text-primary uppercase flex items-center gap-1 hover:underline"
-                                            >
-                                                <PlayIcon className="w-2.5 h-2.5" /> {language === 'ru' ? 'Прослушать' : 'Listen Back'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                            {regVoiceIntro && !isRecordingIntro && (
+                                <button onClick={() => new Audio(regVoiceIntro).play()} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+                                    <PlayIcon className="w-4 h-4 text-white" />
+                                </button>
                             )}
                         </div>
-                        
-                        <div className="grid grid-cols-1 gap-3 pt-2">
-                            <DrumPicker label={language === 'ru' ? 'ВОЗРАСТ' : 'AGE'} options={AGES} value={regAge} onChange={setRegAge} disabled={isProfileLocked} />
-                        </div>
 
-                        <div className="pt-4 flex flex-col items-center gap-2">
-                             <p className="text-[10px] text-slate-500 text-center leading-relaxed">
-                                {language === 'ru' 
-                                    ? 'Нажимая «СОХРАНИТЬ», вы подтверждаете, что вам исполнилось 18 лет и вы согласны с ' 
-                                    : 'By clicking "SAVE", you confirm you are 18+ and agree to '}
-                                <a href="/terms.html" target="_blank" className="text-primary hover:underline">{language === 'ru' ? 'Условиями использования' : 'Terms of Use'}</a>
-                                {language === 'ru' ? ' и ' : ' and '}
-                                <a href="/privacy.html" target="_blank" className="text-primary hover:underline">{language === 'ru' ? 'Политикой конфиденциальности' : 'Privacy Policy'}</a>.
-                             </p>
-                        </div>
-
-                        <button 
-                            onClick={handleRegistrationComplete} 
-                            className="w-full py-4 mt-2 bg-gradient-to-r from-primary to-secondary text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(188,111,241,0.25)] hover:shadow-primary/40 hover:scale-[1.01] active:scale-95 transition-all text-xs"
-                        >
-                            {language === 'ru' ? 'СОХРАНИТЬ' : 'SAVE'}
-                        </button>
-
-                         {/* Free Access Info */}
-                         {currentUser.early_access && currentUser.free_until && (
-                            <div className="mt-3 text-center">
-                                <span className="text-[9px] text-emerald-400/60 font-mono border-b border-dashed border-emerald-500/30 pb-0.5">
-                                    {language === 'ru' ? 'PRO доступ до: ' : 'PRO access until: '} 
-                                    <span className="text-emerald-400 font-bold">{new Date(currentUser.free_until).toLocaleDateString()}</span>
+                        {/* Settings Collapsible */}
+                        <details className="group bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
+                            <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors list-none">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <AdjustmentsIcon className="w-4 h-4" /> {language === 'ru' ? 'НАСТРОЙКИ' : 'SETTINGS'}
                                 </span>
-                            </div>
-                         )}
-
-                        {/* Apple Requirement: Account Deletion (Rule 5.1.1 v) */}
-                        {currentUser.id && (
-                            <>
-                                <button
-                                    onClick={() => {
-                                        if (window.confirm(language === 'ru' ? 'Выйти из аккаунта?' : 'Log out?')) {
-                                            // Clear current user auth state
-                                            const resetUser = { ...currentUser, isAuthenticated: false };
-                                            onUpdateCurrentUser(resetUser);
-                                            // View will auto-update via useEffect when isAuthenticated becomes false
-                                            // Optional: Clear active session if needed
-                                            setActiveSession(null);
-                                        }
-                                    }}
-                                    className="w-full mt-4 py-3 border border-slate-600/50 text-slate-400 hover:bg-slate-800 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
-                                >
-                                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                                    {language === 'ru' ? 'ВЫЙТИ (LOGOUT)' : 'LOG OUT'}
-                                </button>
-
-                                {/* Deletion Status Banner */}
-                                {currentUser.deletionRequestedAt && deletionDaysRemaining && (
-                                    <div className="mt-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
-                                            <span className="text-xl">⏳</span>
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">
-                                                {language === 'ru' ? 'Удаление аккаунта' : 'Deletion Pending'}
-                                            </p>
-                                            <p className="text-[11px] text-slate-300 leading-tight">
-                                                {language === 'ru' 
-                                                  ? `Профиль будет удален через: ${deletionDaysRemaining.days}д ${deletionDaysRemaining.hours}ч ${deletionDaysRemaining.mins}м ${deletionDaysRemaining.secs}с`
-                                                  : `Profile will be deleted in: ${deletionDaysRemaining.days}d ${deletionDaysRemaining.hours}h ${deletionDaysRemaining.mins}m ${deletionDaysRemaining.secs}s`}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Delete Account Button */}
-                                <div className="relative">
-                                    {showDeleteHint && (
-                                        <div className="absolute bottom-full left-0 right-0 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                            <div className="bg-gradient-to-r from-red-600 to-amber-600 text-white p-3 rounded-2xl shadow-2xl border border-white/20 text-center relative overflow-hidden">
-                                                <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
-                                                <p className="text-[11px] font-black uppercase tracking-wider relative z-10">
-                                                    {language === 'ru' ? 'Удаление аккаунта только после 30 дней' : 'Account deletion only after 30 days'}
-                                                </p>
-                                                {/* Tooltip arrow */}
-                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-600 rotate-45 border-r border-b border-white/20"></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={handleDeleteAccount}
-                                        className={`w-full mt-4 py-3 border rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 ${
-                                            currentUser.deletionRequestedAt 
-                                            ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 hover:bg-amber-600/20' 
-                                            : 'bg-red-600/10 border-red-500/30 text-red-500 hover:bg-red-600/20'
-                                        }`}
-                                    >
-                                        <UsersIcon className="w-3 h-3" />
-                                        {currentUser.deletionRequestedAt 
-                                            ? (language === 'ru' ? 'ПРОВЕРИТЬ ВРЕМЯ УДАЛЕНИЯ' : 'CHECK DELETION TIME')
-                                            : (language === 'ru' ? 'УДАЛИТЬ АККАУНТ И ДАННЫЕ' : 'DELETE ACCOUNT & DATA')}
+                                <ChevronDownIcon className="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform" />
+                            </summary>
+                            <div className="p-4 pt-0 space-y-4 border-t border-white/5 mt-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Уведомления' : 'Notifications'}</span>
+                                    <button onClick={() => setRegNotificationsEnabled(!regNotificationsEnabled)} className={`w-9 h-5 rounded-full relative transition-colors ${regNotificationsEnabled ? 'bg-secondary' : 'bg-slate-700'}`}>
+                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regNotificationsEnabled ? 'right-1' : 'left-1'}`} />
                                     </button>
                                 </div>
-                            </>
-                        )}
-
-                        {/* Chat Settings Section */}
-                        <div className="pt-6 border-t border-white/5 space-y-4">
-                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{language === 'ru' ? 'Настройки чата' : 'Chat Settings'}</h4>
-                            
-                            <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
-                                <div className="flex items-center gap-3">
-                                    <BellIcon className={`w-5 h-5 ${regNotificationsEnabled ? 'text-primary' : 'text-slate-500'}`} />
-                                    <span className="text-xs font-bold text-white">{language === 'ru' ? 'Уведомления' : 'Notifications'}</span>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between"><span className="text-[10px] font-bold text-slate-500 uppercase">{language === 'ru' ? 'Громкость' : 'Volume'}</span><span className="text-[10px] text-secondary">{Math.round(regNotificationVolume * 100)}%</span></div>
+                                    <input type="range" min="0" max="1" step="0.1" value={regNotificationVolume} onChange={e => setRegNotificationVolume(parseFloat(e.target.value))} className="w-full h-1 bg-white/10 rounded-lg accent-secondary" />
                                 </div>
-                                <button 
-                                    onClick={() => setRegNotificationsEnabled(!regNotificationsEnabled)}
-                                    className={`w-10 h-5 rounded-full transition-all relative ${regNotificationsEnabled ? 'bg-primary' : 'bg-slate-700'}`}
+                            </div>
+                        </details>
+
+                        {/* Main CTA */}
+                        <button 
+                            onClick={handleRegistrationComplete} 
+                            className="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(188,111,241,0.25)] hover:shadow-primary/40 hover:scale-[1.01] active:scale-95 transition-all text-xs mb-4"
+                        >
+                            {language === 'ru' ? (isProfileLocked ? 'ОБНОВИТЬ (ЧАСТИЧНО)' : 'ГОТОВО / ПРОДОЛЖИТЬ') : (isProfileLocked ? 'UPDATE (PARTIAL)' : 'CONTINUE')}
+                        </button>
+
+                         {/* Deletion / Logout Area - Subtle */}
+                        {currentUser.id && (
+                             <div className="flex flex-col gap-3 opacity-60 hover:opacity-100 transition-opacity">
+                                <p className="text-[9px] text-center text-slate-500">
+                                    {language === 'ru' 
+                                        ? 'Данные хранятся только в этом браузере пока вы не удалите их.'
+                                        : 'Data is stored only in this browser until you delete it.'}
+                                </p>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    className="text-[9px] font-bold text-red-400/50 hover:text-red-400 uppercase tracking-widest text-center transition-colors"
                                 >
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regNotificationsEnabled ? 'right-1' : 'left-1'}`} />
+                                    {currentUser.deletionRequestedAt 
+                                        ? (language === 'ru' ? 'ОТМЕНИТЬ УДАЛЕНИЕ' : 'CANCEL DELETION')
+                                        : (language === 'ru' ? 'УДАЛИТЬ АККАУНТ' : 'DELETE ACCOUNT')}
                                 </button>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center px-1">
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'Громкость уведомлений' : 'Notification Volume'}</label>
-                                    <span className="text-[10px] font-mono text-primary">{Math.round(regNotificationVolume * 100)}%</span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="0" max="1" step="0.05" 
-                                    value={regNotificationVolume} 
-                                    onChange={(e) => setRegNotificationVolume(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">{language === 'ru' ? 'Звук уведомления' : 'Notification Sound'}</label>
-                                <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
-                                    {(['default', 'soft', 'alert'] as const).map(s => (
-                                        <button 
-                                            key={s} 
-                                            onClick={() => setRegNotificationSound(s)} 
-                                            className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all uppercase ${regNotificationSound === s ? 'bg-white/10 text-primary' : 'text-slate-500 hover:text-white'}`}
-                                        >
-                                            {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+                                
+                                {/* Hard Reset / Fix */}
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm(language === 'ru' ? 'Сбросить профиль локально? (Исправляет ошибки отображения)' : 'Reset local profile? (Fixes display errors)')) {
+                                            localStorage.clear();
+                                            window.location.reload();
+                                        }
+                                    }}
+                                    className="text-[9px] font-bold text-slate-600 hover:text-slate-400 uppercase tracking-widest mt-4 opacity-50 hover:opacity-100 transition-opacity"
+                                >
+                                    {language === 'ru' ? 'СБРОС ДАННЫХ' : 'RESET DATA'}
+                                </button>
+                             </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -2469,108 +2197,197 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             {view === 'search' && (
                 <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
                     <div className="p-6 overflow-y-auto no-scrollbar pb-20">
-                        <div className="space-y-4 mb-8">
-                            <h3 className="text-xl font-black text-white text-center mb-4">{t.findFriends}</h3>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">{language === 'ru' ? 'Возраст от' : 'Age from'}</label>
-                                    <select 
-                                        value={searchAgeFrom} 
-                                        onChange={(e) => setSearchAgeFrom(e.target.value)} 
-                                        className={`w-full bg-white/5 border border-white/10 rounded-xl px-2 py-2.5 text-xs outline-none appearance-none font-bold transition-all ${searchAgeFrom === '18' ? 'text-slate-500' : 'text-white'}`}
-                                    >
-                                        {AGES.map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
-                                    </select>
+                            <div className="flex flex-col items-center gap-1 mb-6">
+                                <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full animate-in fade-in zoom-in duration-500">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                    </span>
+                                    <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">
+                                        {language === 'ru' ? `Сейчас онлайн: ~${onlineStats.totalOnline + 42}` : `Online now: ~${onlineStats.totalOnline + 42}`}
+                                    </span>
                                 </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">{language === 'ru' ? 'до' : 'to'}</label>
-                                    <select 
-                                        value={searchAgeTo} 
-                                        onChange={(e) => setSearchAgeTo(e.target.value)} 
-                                        className={`w-full bg-white/5 border border-white/10 rounded-xl px-2 py-2.5 text-xs outline-none appearance-none font-bold transition-all ${searchAgeTo === '80' ? 'text-slate-500' : 'text-white'}`}
-                                    >
-                                        {AGES.map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">{t.gender}</label>
-                                    <div className="flex bg-white/5 rounded-xl p-1">
-                                        {(['male', 'female'] as const).map(g => (
-                                            <button key={g} onClick={() => setSearchGender(searchGender === g ? 'any' : g)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all uppercase ${searchGender === g ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>{t[g]}</button>
-                                        ))}
-                                    </div>
-                                </div>
+                                <h3 className="text-xl md:text-2xl font-black text-white text-center leading-tight mt-2">
+                                    {language === 'ru' ? 'Найди собеседника прямо сейчас' : 'Find someone right now'}
+                                </h3>
+                                <p className="text-[10px] text-slate-400 font-medium tracking-wide">
+                                    {language === 'ru' ? 'Без истории. Без обязательств. 18+' : 'No history. No strings attached. 18+'}
+                                </p>
                             </div>
-                            <button onClick={handleSearch} className="w-full py-3.5 bg-primary text-white rounded-xl font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all text-xs flex items-center justify-center gap-2"><SearchIcon className="w-4 h-4" /> {t.search}</button>
-                        </div>
-                        <div className="space-y-3">
-                            {(searchResults.length > 0 ? searchResults : onlineUsers).map(user => (
-                                <div key={user.id} className={`p-4 rounded-3xl flex flex-col gap-4 transition-all animate-in slide-in-from-bottom-2 duration-300 border ${user.status === 'online' ? 'bg-white/5 border-white/5 hover:bg-white/[0.08]' : 'bg-white/[0.02] border-white/[0.02] opacity-80'}`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className="relative">
-                                            <img src={user.avatar || ''} className={`w-16 h-16 rounded-2xl object-cover bg-slate-800 shadow-2xl ${user.status === 'offline' ? 'grayscale-[0.5]' : ''}`} />
-                                            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0f172a] ${user.status === 'online' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-slate-500'}`}></div>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <h5 className="font-black text-base text-white truncate flex items-center gap-2">
-                                                    {user.name}
-                                                    <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full">{user.age}</span>
-                                                </h5>
-                                                {user.country && (
-                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-full border border-white/5">
-                                                        <span className="text-[10px] leading-none opacity-80">📍</span>
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{user.country}</span>
-                                                    </div>
-                                                )}
-                                            </div>
 
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <div className="px-2 py-0.5 bg-secondary/10 border border-secondary/20 rounded-lg text-[9px] font-black text-secondary uppercase tracking-tighter">
-                                                    {user.intentStatus || 'Свободен'}
-                                                </div>
-                                                {user.status === 'offline' && (
-                                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter italic">
-                                                        {language === 'ru' ? 'Был: ' : 'Last seen: '} {formatLastSeen(user.lastSeen || (user as any).last_login_at)}
-                                                    </span>
-                                                )}
+                            {/* Quick Actions */}
+                            <div className="grid grid-cols-2 gap-3 mb-8">
+                                <button 
+                                    onClick={() => handleSearch()}
+                                    className="p-4 rounded-2xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 hover:border-indigo-500/60 hover:bg-indigo-600/30 transition-all group text-left relative overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                                        <img src="https://em-content.zobj.net/source/microsoft-teams/363/game-die_1f3b2.png" className="w-8 h-8 grayscale group-hover:grayscale-0 transition-all" />
+                                    </div>
+                                    <p className="text-xl mb-1">🎲</p>
+                                    <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-0.5">{language === 'ru' ? 'Случайный' : 'Random'}</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">{language === 'ru' ? 'Диалог с кем угодно' : 'Chat with anyone'}</p>
+                                </button>
+                                <button 
+                                    onClick={() => handleSearch()}
+                                    className="p-4 rounded-2xl bg-gradient-to-br from-orange-600/20 to-red-600/20 border border-orange-500/30 hover:border-orange-500/60 hover:bg-orange-600/30 transition-all group text-left relative overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                                        <img src="https://em-content.zobj.net/source/microsoft-teams/363/fire_1f525.png" className="w-8 h-8 grayscale group-hover:grayscale-0 transition-all" />
+                                    </div>
+                                    <p className="text-xl mb-1">🔥</p>
+                                    <p className="text-[10px] font-black text-orange-300 uppercase tracking-widest mb-0.5">{language === 'ru' ? 'Кто онлайн' : 'Online Now'}</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">{language === 'ru' ? 'Только активные' : 'Active users only'}</p>
+                                </button>
+                            </div>
+
+                            {/* Refined Filters (Visually Secondary) */}
+                            <div className="space-y-4 mb-2 p-1">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'ИЛИ ПО ПАРАМЕТРАМ' : 'OR BY PARAMETERS'}</span>
+                                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                                </div>
+
+                                <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/5">
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">{language === 'ru' ? 'Возраст' : 'Age'}</label>
+                                            <div className="flex items-center gap-2 bg-black/20 rounded-xl p-1 border border-white/5">
+                                                <select 
+                                                    value={searchAgeFrom} 
+                                                    onChange={(e) => setSearchAgeFrom(e.target.value)} 
+                                                    className="w-full bg-transparent text-xs font-bold text-white outline-none text-center appearance-none py-1.5"
+                                                >
+                                                    {AGES.map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
+                                                </select>
+                                                <span className="text-slate-600">-</span>
+                                                <select 
+                                                    value={searchAgeTo} 
+                                                    onChange={(e) => setSearchAgeTo(e.target.value)} 
+                                                    className="w-full bg-transparent text-xs font-bold text-white outline-none text-center appearance-none py-1.5"
+                                                >
+                                                    {AGES.map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">{t.gender}</label>
+                                            <div className="flex bg-black/20 rounded-xl p-1 border border-white/5 h-[34px]">
+                                                {(['male', 'female'] as const).map(g => (
+                                                    <button 
+                                                        key={g} 
+                                                        onClick={() => setSearchGender(searchGender === g ? 'any' : g)} 
+                                                        className={`flex-1 rounded-lg text-[9px] font-black transition-all uppercase ${searchGender === g ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-white'}`}
+                                                    >
+                                                        {t[g].substring(0, 1)}
+                                                    </button>
+                                                ))}
+                                                <button onClick={() => setSearchGender('any')} className={`flex-1 rounded-lg text-[10px] font-black transition-all ${searchGender === 'any' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-white'}`}>∞</button>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={handleSearch} 
+                                        className="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:scale-[1.02] active:scale-95 transition-all text-xs flex items-center justify-center gap-2 relative overflow-hidden group"
+                                    >
+                                        <span className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
+                                        <SearchIcon className="w-4 h-4" /> 
+                                        {language === 'ru' ? 'НАЧАТЬ ПОИСК' : 'START SEARCH'}
+                                    </button>
+                                    
+                                    <p className="text-[9px] text-slate-500 text-center mt-3 flex items-center justify-center gap-1 opacity-70">
+                                        <span className="w-1 h-1 rounded-full bg-slate-500"></span>
+                                        {language === 'ru' ? 'Сообщения удаляются автоматически' : 'Messages auto-deleted'}
+                                    </p>
+                                </div>
+                            </div>
+                        <div className="space-y-3">
+                            {(searchResults.length > 0 ? searchResults : onlineUsers).map(user => (
+                                <div key={user.id} className={`p-4 rounded-3xl flex flex-col gap-3 transition-all animate-in slide-in-from-bottom-2 duration-300 border ${user.status === 'online' ? 'bg-white/5 border-white/5 hover:bg-white/[0.08]' : 'bg-white/[0.02] border-white/[0.02] opacity-80'}`}>
+                                    
+                                    {/* Header: Identity & Status */}
+                                    <div className="flex items-start gap-3">
+                                        <div className="relative shrink-0">
+                                            <img src={user.avatar || ''} className={`w-14 h-14 rounded-2xl object-cover bg-slate-800 shadow-xl ${user.status === 'offline' ? 'grayscale-[0.5]' : ''}`} />
+                                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0f172a] ${user.status === 'online' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-slate-500'}`}></div>
+                                        </div>
+                                        
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center min-h-[56px]">
+                                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                <h5 className="font-black text-sm text-white truncate flex items-center gap-2">
+                                                    {user.name}
+                                                    <span className="text-[10px] bg-white/10 text-slate-300 px-1.5 py-0.5 rounded-md font-bold">{user.age}</span>
+                                                </h5>
+                                                {user.country && (
+                                                    <div className="flex items-center gap-1 opacity-70 bg-black/20 px-1.5 py-0.5 rounded-full">
+                                                        <span className="text-[10px]">📍</span>
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter max-w-[80px] truncate">{user.country}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <div className="px-2 py-0.5 bg-secondary/10 border border-secondary/20 rounded-md text-[9px] font-black text-secondary uppercase tracking-tight">
+                                                    {user.intentStatus || 'Свободен'}
+                                                </div>
+                                                <span className={`text-[9px] font-bold uppercase tracking-tight ${user.status === 'online' ? 'text-green-400' : 'text-slate-500'}`}>
+                                                    {user.status === 'online' 
+                                                        ? (language === 'ru' ? '● В СЕТИ' : '● ONLINE') 
+                                                        : (language === 'ru' 
+                                                            ? `Был(а): ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
+                                                            : `Seen: ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
+                                                        )
+                                                    }
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Row: Voice & Knock */}
+                                    <div className="flex items-center gap-2 h-11">
                                         {user.voiceIntro ? (
                                             <button 
                                                 onClick={() => {
                                                     const audio = new Audio(user.voiceIntro);
                                                     audio.play();
                                                 }}
-                                                className="flex-1 h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all border border-white/5"
+                                                className="flex-1 h-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 border border-indigo-500/20 rounded-xl flex items-center px-3 gap-3 transition-all group"
                                             >
-                                                <PlayIcon className="w-4 h-4" />
-                                                {language === 'ru' ? 'Послушать голос' : 'Listen Voice'}
+                                                <div className="w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0">
+                                                    <PlayIcon className="w-3.5 h-3.5 text-white ml-0.5" />
+                                                </div>
+                                                <div className="flex-1 flex flex-col justify-center min-w-0">
+                                                    <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest text-left mb-0.5">
+                                                        {language === 'ru' ? 'ГОЛОС' : 'VOICE INTRO'}
+                                                    </span>
+                                                    <div className="flex gap-0.5 items-end h-2 w-full opacity-50">
+                                                        <div className="w-0.5 bg-indigo-400 h-1.5 rounded-full animate-pulse"></div>
+                                                        <div className="w-0.5 bg-indigo-400 h-full rounded-full animate-pulse delay-75"></div>
+                                                        <div className="w-0.5 bg-indigo-400 h-1 rounded-full animate-pulse delay-150"></div>
+                                                        <div className="w-0.5 bg-indigo-400 h-1.5 rounded-full animate-pulse"></div>
+                                                    </div>
+                                                </div>
                                             </button>
                                         ) : (
-                                            <div className="flex-1 h-10 bg-white/5 rounded-xl flex items-center justify-center text-[10px] font-bold text-slate-600 uppercase">
-                                                {language === 'ru' ? 'Без голоса' : 'No voice'}
+                                            <div className="flex-1 h-full bg-white/5 rounded-xl flex items-center justify-center text-[9px] font-bold text-slate-600 uppercase border border-white/5 italic">
+                                                {language === 'ru' ? 'НЕТ ГОЛОСА' : 'NO VOICE'}
                                             </div>
                                         )}
 
                                         {user.id === currentUser.id ? (
-                                            <div 
-                                                className="px-6 h-10 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center"
-                                            >
-                                                {t.online}
+                                            <div className="w-28 h-full bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-[9px] font-black uppercase tracking-widest flex items-center justify-center">
+                                                {language === 'ru' ? 'ЭТО ВЫ' : 'YOU'}
                                             </div>
                                         ) : (
                                             <button 
                                                 onClick={() => handleKnock(user)} 
                                                 disabled={sentKnocks.has(user.id)} 
-                                                className={`px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sentKnocks.has(user.id) ? 'bg-green-500/20 text-green-500' : 'bg-primary text-white hover:shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                                                className={`w-32 h-full rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg ${sentKnocks.has(user.id) ? 'bg-green-500/20 text-green-500 cursor-default' : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:shadow-orange-500/30 hover:scale-[1.02] active:scale-95'}`}
                                             >
-                                                {sentKnocks.has(user.id) ? t.knockSent : t.knock}
+                                                {sentKnocks.has(user.id) ? (language === 'ru' ? 'ОТПРАВЛЕНО' : 'SENT') : (language === 'ru' ? 'ПОСТУЧАТЬСЯ' : 'KNOCK')}
                                             </button>
                                         )}
                                     </div>
@@ -2601,8 +2418,54 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <div className="space-y-2">
                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 pl-2 mb-2">{t.myDialogs}</h4>
                         {activeSessions.size === 0 && (
-                            <div className="text-center py-8 text-slate-500">
-                                <p className="text-xs">{language === 'ru' ? 'Нет активных диалогов' : 'No active dialogs'}</p>
+                            <div className="flex flex-col items-center justify-center py-12 px-6 text-center animate-in fade-in zoom-in duration-500">
+                                <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl relative rotate-3 group transition-transform hover:rotate-6">
+                                    <span className="text-4xl filter drop-shadow-lg grayscale group-hover:grayscale-0 transition-all duration-500">💬</span>
+                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-white/10 rounded-full animate-ping"></div>
+                                </div>
+                                
+                                <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">
+                                    {language === 'ru' ? 'У вас пока нет активных диалогов' : 'No active chats yet'}
+                                </h3>
+                                <p className="text-xs text-slate-400 max-w-[200px] leading-relaxed mb-8">
+                                    {language === 'ru' 
+                                        ? 'Здесь будут появляться ваши текущие разговоры. Начните прямо сейчас!' 
+                                        : 'Your active conversations will appear here. Start one right now!'}
+                                </p>
+
+                                {/* Activity Badge */}
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full mb-6">
+                                    <span className="relative flex h-1.5 w-1.5">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
+                                    </span>
+                                    <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">
+                                        {language === 'ru' ? `~${onlineStats.totalOnline + 15} ищут собеседника` : `~${onlineStats.totalOnline + 15} searching now`}
+                                    </span>
+                                </div>
+
+                                <div className="w-full space-y-3">
+                                    <button 
+                                        onClick={() => setView('search')}
+                                        className="w-full py-4 bg-primary text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.02] active:scale-95 transition-all text-xs flex items-center justify-center gap-2 group"
+                                    >
+                                        <SearchIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                        {language === 'ru' ? 'НАЙТИ СОБЕСЕДНИКА' : 'FIND SOMEONE'}
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => setView('search')}
+                                        className="w-full py-3 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 hover:border-white/10 rounded-xl font-bold uppercase tracking-widest transition-all text-[10px] flex items-center justify-center gap-2"
+                                    >
+                                        <span>🎲</span>
+                                        {language === 'ru' ? 'МНЕ ПОВЕЗЕТ (СЛУЧАЙНЫЙ)' : 'I\'M FEELING LUCKY'}
+                                    </button>
+                                </div>
+
+                                <p className="mt-8 text-[9px] text-slate-600 font-medium flex items-center justify-center gap-1.5 opacity-60">
+                                    <ClockIcon className="w-3 h-3" />
+                                    {language === 'ru' ? 'История не сохраняется' : 'History is not saved'}
+                                </p>
                             </div>
                         )}
                         {Array.from(activeSessions.values()).map(session => {

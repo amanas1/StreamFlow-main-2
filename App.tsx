@@ -13,7 +13,7 @@ import FireEffect from './components/FireEffect';
 import { geolocationService } from './services/geolocationService';
 import { 
   PauseIcon, VolumeIcon, LoadingIcon, MusicNoteIcon, HeartIcon, MenuIcon, AdjustmentsIcon,
-  PlayIcon, ChatBubbleIcon, NextIcon, PreviousIcon, MaximizeIcon, XMarkIcon, DownloadIcon,
+  PlayIcon, ChatBubbleIcon, NextIcon, PreviousIcon, XMarkIcon, DownloadIcon,
   SwatchIcon, EnvelopeIcon, LifeBuoyIcon 
 } from './components/Icons';
 
@@ -178,33 +178,15 @@ export default function App(): React.JSX.Element {
       if (saved) {
         const profile = JSON.parse(saved);
         
-        // 60-day TTL Check (Store Submission Standard)
-        if (profile.registrationTimestamp) {
-          const daysPassed = (Date.now() - profile.registrationTimestamp) / (1000 * 60 * 60 * 24);
-          if (daysPassed >= 60) {
-            console.log(`[PROFILE] Cleanup: Profile expired after ${Math.floor(daysPassed)} days.`);
-            localStorage.removeItem('streamflow_user_profile');
-            // Fall through to return new guest profile
-          } else {
-            // Migration: Add chatSettings if missing
-            if (!profile.chatSettings) {
-              profile.chatSettings = defaultSettings;
-            }
-            return profile;
-          }
-        } else {
-          // No timestamp? Treat as expired/invalid for safety if it looks old
-          // But to avoid deleting non-chat users, let's keep it if it has country/age
-          if (!profile.name || !profile.age) {
-             return profile; 
-          }
-        }
+        // Ensure chatSettings exist
+        if (!profile.chatSettings) profile.chatSettings = defaultSettings;
+        return profile;
       }
     } catch (e) {}
     
     return {
-      id: `guest_${Date.now()}`,
-      name: 'GuestUser',
+      id: localStorage.getItem('streamflow_userId') || '', 
+      name: '', 
       avatar: null,
       age: 0,
       gender: 'other',
@@ -213,10 +195,47 @@ export default function App(): React.JSX.Element {
       blockedUsers: [],
       bio: '',
       hasAgreedToRules: false,
+      isAuthenticated: !!localStorage.getItem('streamflow_userId'),
       filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true },
       chatSettings: defaultSettings
     };
   });
+
+  // Silent Identity Initialization (UUID Flow)
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        let userId = localStorage.getItem('streamflow_userId');
+        let canDeleteAfter: number | undefined;
+
+        if (!userId) {
+          console.log('[AUTH] No identity found. Initializing new UUID...');
+          const data = await socketService.initIdentity();
+          userId = data.userId;
+          canDeleteAfter = data.canDeleteAfter;
+          localStorage.setItem('streamflow_userId', userId);
+          if (canDeleteAfter) localStorage.setItem('streamflow_canDeleteAfter', canDeleteAfter.toString());
+        }
+
+        console.log(`[AUTH] Identity verified: ${userId}`);
+        
+        // Update currentUser with the ID
+        setCurrentUser(prev => ({ 
+          ...prev, 
+          id: userId!, 
+          isAuthenticated: true,
+          canDeleteAfter: canDeleteAfter || parseInt(localStorage.getItem('streamflow_canDeleteAfter') || '0') || prev.canDeleteAfter
+        }));
+
+        // Connect socket
+        socketService.connect();
+      } catch (err) {
+        console.error('[AUTH] Failed to initialize identity:', err);
+      }
+    };
+
+    initAuth();
+  }, []);
   
   const [ambience, setAmbience] = useState<AmbienceState>({ 
       rainVolume: 0, rainVariant: 'soft', fireVolume: 0, cityVolume: 0, vinylVolume: 0, is8DEnabled: false, spatialSpeed: 1 
@@ -461,43 +480,11 @@ export default function App(): React.JSX.Element {
     return () => clearInterval(checkAlarm);
   }, [alarm, isPlaying, currentStation, stations, handlePlayStation]);
 
+  // Idle View Removed as per request
   useEffect(() => {
-    let idleTimer: number;
-    let wakeGracePeriodTimer: number;
-    let canWake = false; 
-
-    const cleanup = () => { clearTimeout(idleTimer); clearTimeout(wakeGracePeriodTimer); };
-
-    if (isIdleView) {
-        canWake = false;
-        wakeGracePeriodTimer = window.setTimeout(() => { canWake = true; }, 100);
-        const handleWake = (e: Event) => { if (!canWake) return; setIsIdleView(false); };
-        window.addEventListener('mousemove', handleWake);
-        window.addEventListener('mousedown', handleWake);
-        window.addEventListener('keydown', handleWake);
-        window.addEventListener('touchstart', handleWake);
-        window.addEventListener('click', handleWake);
-        return () => {
-            cleanup();
-            window.removeEventListener('mousemove', handleWake);
-            window.removeEventListener('mousedown', handleWake);
-            window.removeEventListener('keydown', handleWake);
-            window.removeEventListener('touchstart', handleWake);
-            window.removeEventListener('click', handleWake);
-        };
-    } else {
-        if (!vizSettings.autoIdle) return;
-        const goIdle = () => {
-            if (toolsOpen || chatOpen || manualOpen || tutorialOpen || downloadModalOpen || feedbackOpen) return;
-            setIsIdleView(true);
-        };
-        const resetTimer = () => { clearTimeout(idleTimer); idleTimer = window.setTimeout(goIdle, 60000); };
-        const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
-        events.forEach(e => window.addEventListener(e, resetTimer));
-        resetTimer(); 
-        return () => { cleanup(); events.forEach(e => window.removeEventListener(e, resetTimer)); };
-    }
-  }, [isIdleView, vizSettings.autoIdle, toolsOpen, chatOpen, manualOpen, tutorialOpen, downloadModalOpen, feedbackOpen]);
+    // Legacy cleanup
+    setIsIdleView(false);
+  }, []);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -893,18 +880,7 @@ export default function App(): React.JSX.Element {
             </>
         </div>
 
-        {isIdleView && (
-           <div className="fixed inset-0 z-0 animate-in fade-in duration-1000 bg-[#02040a]">
-              {/* Separate Cosmic Background with Moon */}
-              <CosmicBackground showMoon={visualizerVariant !== 'bubbles'} />
-
-              <div className="absolute inset-0 w-full h-full z-10">
-                {!vizSettings.energySaver && (
-                  <AudioVisualizer analyserNode={analyserNodeRef.current} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} />
-                )}
-              </div>
-           </div>
-        )}
+        {/* Idle View Removed */}
 
         <div className={`absolute bottom-8 left-0 right-0 px-4 md:px-10 transition-all duration-700 ease-in-out z-20 ${chatOpen ? 'md:pr-[420px] lg:pr-[470px]' : ''} ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
            <div className={`pointer-events-auto max-w-5xl mx-auto rounded-[2.5rem] p-4 flex flex-col shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
@@ -924,7 +900,7 @@ export default function App(): React.JSX.Element {
                         <button onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className="w-6 h-6" /></button>
                     </div>
                     <div className="flex-1 flex justify-end items-center gap-2 md:gap-5 z-10">
-                        <button onClick={(e) => { e.stopPropagation(); setIsIdleView(true); }} className={`p-2.5 text-[var(--text-base)] hover:text-primary transition-colors ${isIdleView ? 'hidden' : ''}`}><MaximizeIcon className="w-6 h-6" /></button>
+                        {/* Maximize Button Removed */}
                         <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2.5 text-[var(--text-base)] hover:text-primary transition-colors ${isIdleView ? 'hidden' : ''}`}><AdjustmentsIcon className="w-6 h-6" /></button>
                         <div className="hidden md:flex items-center gap-3"><VolumeIcon className="w-5 h-5 text-slate-400" /><input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-24 accent-primary cursor-pointer h-1.5 bg-slate-400/30 rounded-full" /></div>
                     </div>

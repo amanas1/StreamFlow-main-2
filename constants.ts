@@ -616,6 +616,21 @@ export const ACHIEVEMENTS_LIST: Achievement[] = [
 ];
 
 
+export const PRESET_AVATARS = [
+    // Male
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436188.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-glasses_23-2149436190.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-glasses_23-2149436191.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person_23-2149436192.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436178.jpg',
+    // Female
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-long-hair_23-2149436197.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-pink-hair_23-2149436186.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-glasses_23-2149436189.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person-with-purple-hair_23-2149436184.jpg',
+    'https://img.freepik.com/free-psd/3d-illustration-person_23-2149436187.jpg'
+];
+
 
 export const TRANSLATIONS: Record<string, any> = {
     en: {

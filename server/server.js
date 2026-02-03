@@ -14,7 +14,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const moderation = require('./moderation');
-const { Resend } = require('resend');
 const crypto = require('crypto');
 const path = require('path');
 
@@ -27,13 +26,7 @@ if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-if (!process.env.RESEND_API_KEY) {
-    console.warn("⚠️  RESEND_API_KEY missing, running in limited mode (Email auth will fail)");
-} else {
-    console.log("[AUTH] RESEND_API_KEY is present. Initializing mailer...");
-}
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// Email auth is being removed in favor of UUID-based identity.
 
 const app = express();
 app.use(cors());
@@ -99,11 +92,8 @@ const messages = new Map(Object.entries(rawMessages));
 // Map: userId -> Set<knockRequestId>
 const knockRequests = new Map();
 
-// Authentication Storage
-// Map: email -> { otpHash, expiresAt, attempts, lastSent }
-// Load persistent auth codes
-const rawAuthCodes = storage.load('authCodes', {});
-const authCodes = new Map(Object.entries(rawAuthCodes));
+// Map: IP -> { timestamp }
+const registrationLog = new Map(Object.entries(storage.load('registrationLog', {})));
 
 // ... (skipping unchanged code)
 
@@ -146,8 +136,8 @@ const rawUsers = storage.load('users', []);
 const persistentUsers = new Map(); // userId -> User
 rawUsers.forEach(u => persistentUsers.set(u.id, u));
 
-function saveAuthCodes() {
-  storage.save('authCodes', Object.fromEntries(authCodes));
+function saveRegistrationLog() {
+  storage.save('registrationLog', Object.fromEntries(registrationLog));
 }
 
 function savePersistentUsers() {
@@ -160,8 +150,7 @@ function saveMessages() {
   storage.save('messages', Object.fromEntries(messages));
 }
 
-// Map: token -> { email, expiresAt }
-const magicTokens = new Map();
+// Removed magic link tokens
 
 
 
@@ -202,12 +191,12 @@ setInterval(() => {
     syncGlobalPresence();
   }
 
-  // 3. Permanent Account Deletion (30-day grace period)
-  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-  let persistentModified = false;
-
   for (const [userId, user] of persistentUsers.entries()) {
-      if (user.deletionRequestedAt && (now - user.deletionRequestedAt) > thirtyDaysMs) {
+      const now = Date.now();
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+      const canDeleteAfter = (user.registrationTimestamp || user.created_at) + thirtyDaysMs;
+
+      if (user.deletionRequestedAt && now > canDeleteAfter) {
           console.log(`[USER] PERMANENTLY DELETING account: ${userId} (Grace period expired)`);
           persistentUsers.delete(userId);
           persistentModified = true;
@@ -219,7 +208,6 @@ setInterval(() => {
                   messages.delete(sessionId);
               }
           }
-          persistentModified = true;
       }
   }
 
@@ -380,6 +368,12 @@ io.on('connection', (socket) => {
             userRecord.age = profile.age || userRecord.age;
             userRecord.gender = profile.gender || userRecord.gender;
             userRecord.avatar = profile.avatar || userRecord.avatar;
+            
+            // Fix: Persist location data
+            userRecord.country = profile.country || userRecord.country;
+            userRecord.detectedCountry = profile.detectedCountry || userRecord.detectedCountry;
+            userRecord.detectedCity = profile.detectedCity || userRecord.detectedCity;
+
             userRecord.registrationTimestamp = regTime || now;
             profile.registrationTimestamp = userRecord.registrationTimestamp;
         }
@@ -485,14 +479,23 @@ io.on('connection', (socket) => {
     let userRecord = persistentUsers.get(boundUserId);
     if (userRecord) {
         const now = Date.now();
-        // Only set if not already present (preserve original date)
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        const regTime = userRecord.registrationTimestamp || userRecord.created_at;
+        const canDeleteAfter = regTime + thirtyDaysMs;
+
+        if (now < canDeleteAfter) {
+            const daysLeft = Math.ceil((canDeleteAfter - now) / (1000 * 60 * 60 * 24));
+            return socket.emit('user:error', { 
+                message: `Profile deletion available after 30 days. Please wait ${daysLeft} more days.`,
+                code: 'DELETION_LOCKED'
+            });
+        }
+
         if (!userRecord.deletionRequestedAt) {
             userRecord.deletionRequestedAt = now;
             persistentUsers.set(boundUserId, userRecord);
             savePersistentUsers();
-            console.log(`[USER] Deletion requested for ${boundUserId}. Scheduled for ${new Date(now + 30*24*60*60*1000).toLocaleDateString()}`);
-        } else {
-            console.log(`[USER] Deletion status checked for ${boundUserId}. Original request was at ${new Date(userRecord.deletionRequestedAt).toLocaleDateString()}`);
+            console.log(`[USER] Deletion requested for ${boundUserId}.`);
         }
         
         socket.emit('user:delete_requested', { success: true, deletionRequestedAt: userRecord.deletionRequestedAt });
@@ -788,330 +791,9 @@ io.on('connection', (socket) => {
 // RATE LIMITING SERVICE
 // ============================================
 
-class RateLimitService {
-  constructor() {
-    this.ipLimits = new Map(); // IP -> { count, windowStart }
-    this.emailLimits = new Map(); // Email -> lastRequestTime
-  }
+// Rate limiting for auth initialization is handled within the /auth/init endpoint.
 
-  getIp(socket) {
-    // Handle proxy headers if behind Nginx/Vercel
-    const forwarded = socket.handshake.headers['x-forwarded-for'];
-    if (forwarded) {
-      return forwarded.split(',')[0].trim();
-    }
-    return socket.handshake.address;
-  }
-
-  checkIpLimit(ip) {
-    const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-    const MAX_REQUESTS = 5;
-    
-    const now = Date.now();
-    const limit = this.ipLimits.get(ip) || { count: 0, windowStart: now };
-
-    if (now - limit.windowStart > WINDOW_MS) {
-      // Reset window
-      limit.count = 1;
-      limit.windowStart = now;
-    } else {
-      limit.count++;
-    }
-
-    this.ipLimits.set(ip, limit);
-
-    if (limit.count > MAX_REQUESTS) {
-      const resetIn = Math.ceil((limit.windowStart + WINDOW_MS - now) / 1000);
-      return { limited: true, retryIn: resetIn };
-    }
-    return { limited: false };
-  }
-
-  checkEmailLimit(email) {
-    const WINDOW_MS = 60 * 1000; // 60 seconds
-    const now = Date.now();
-    const lastRequest = this.emailLimits.get(email);
-
-    if (lastRequest && now - lastRequest < WINDOW_MS) {
-      const retryIn = Math.ceil((lastRequest + WINDOW_MS - now) / 1000);
-      return { limited: true, retryIn };
-    }
-
-    this.emailLimits.set(email, now);
-    return { limited: false };
-  }
-}
-
-const rateLimiter = new RateLimitService();
-
-// ============================================
-// AUTHENTICATION HANDLERS
-// ============================================
-
-  socket.on('auth:request_code', async ({ email }) => {
-    try {
-      // 1. Strict Normalization
-      const normalizedEmail = email ? email.normalize().trim().toLowerCase() : '';
-      
-      if (!normalizedEmail || !normalizedEmail.includes('@')) {
-        return socket.emit('auth:error', { message: 'Invalid email' });
-      }
-
-      // 2. RATE LIMITS (Backend Enforcement)
-      const ip = rateLimiter.getIp(socket);
-      
-      // IP Limit (5 req / 15 min)
-      const ipCheck = rateLimiter.checkIpLimit(ip);
-      if (ipCheck.limited) {
-        console.warn(`[AUTH] IP Limit exceeded for ${ip}`);
-        return socket.emit('auth:error', { 
-            message: 'Too many requests from this IP. Start again later.', 
-            retryIn: ipCheck.retryIn,
-            code: 429 
-        });
-      }
-
-      // Email Limit (1 req / 60 sec)
-      const emailCheck = rateLimiter.checkEmailLimit(normalizedEmail);
-      if (emailCheck.limited) {
-         console.warn(`[AUTH] Email Limit exceeded for ${normalizedEmail}`);
-         return socket.emit('auth:error', { 
-             message: 'Please wait before requesting a new code.', 
-             retryIn: emailCheck.retryIn,
-             code: 429
-         });
-      }
-
-      // 3. Generate 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-      const now = Date.now();
-      
-      // Generate Magic Link Token
-      const magicToken = crypto.randomBytes(32).toString('hex');
-
-      console.log(`[AUTH DEBUG] Request for: '${normalizedEmail}' (IP: ${ip})`);
-
-      // Store with 10 minute TTL
-      authCodes.set(normalizedEmail, {
-        otpHash,
-        expiresAt: now + 10 * 60 * 1000,
-        attempts: 0,
-        lastSent: now
-      });
-      
-      // 4. Persist immediately
-      saveAuthCodes();
-
-      magicTokens.set(magicToken, {
-        email: normalizedEmail,
-        expiresAt: now + 10 * 60 * 1000
-      });
-
-      const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
-
-      if (!resend) {
-        const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
-        
-        if (isProduction) {
-            console.error('[AUTH] Registration ATTEMPTED in PROD without RESEND_API_KEY!');
-            return socket.emit('auth:error', { message: 'Registration is currently unavailable.' });
-        }
-
-        console.warn('[AUTH] Resend API Key missing. Switching to MOCK MODE.');
-        console.log(`[MOCK AUTH] OTP for ${normalizedEmail}: ${otp}`);
-        console.log(`[MOCK AUTH] Magic Link: ${appUrl}?token=${magicToken}`);
-        
-        return socket.emit('auth:code_sent', { 
-            email: normalizedEmail, 
-            mock: true,
-            otp: otp // Send OTP back for debug/demo
-        });
-      }
-
-      // Send Email with Timeout
-      console.log(`[AUTH] Attempting to send OTP to ${normalizedEmail} via Resend...`);
-      const sendEmailPromise = resend.emails.send({
-        from: 'StreamFlow <no-reply@mail.mana.kz>', // Must be verified in Resend dashboard!
-        to: [normalizedEmail],
-        subject: 'Ваш код для входа',
-        text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку: ${appUrl}?token=${magicToken}\n\nЕсли это были не вы — проигнорируйте письмо.`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; color: #333;">
-            <h2 style="color: #bc6ff1;">StreamFlow</h2>
-            <p>Ваш код для входа:</p>
-            <div style="background: #f4f4f4; padding: 20px; font-size: 32px; font-weight: bold; text-align: center; border-radius: 12px; letter-spacing: 5px;">
-              ${otp}
-            </div>
-            <p style="margin-top: 20px;">Или нажмите кнопку ниже:</p>
-            <a href="${appUrl}?token=${magicToken}" 
-               style="display: block; background: #bc6ff1; color: white; padding: 15px; text-decoration: none; border-radius: 12px; font-weight: bold; text-align: center;">
-              Войти автоматически
-            </a>
-            <p style="font-size: 10px; color: #999; margin-top: 30px;">
-              Если это были не вы — просто проигнорируйте письмо.
-            </p>
-          </div>
-        `
-      });
-
-      // Timeout Check (15 seconds)
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timed out')), 15000)
-      );
-
-      try {
-        const result = await Promise.race([sendEmailPromise, timeoutPromise]);
-        const { data, error } = result;
-
-        if (error) {
-          console.error('[AUTH] Resend error:', error);
-          socket.emit('auth:error', { message: 'Failed to send email. Check verification status.' });
-        } else {
-          console.log('[AUTH] Email sent:', data.id);
-          socket.emit('auth:code_sent', { email: normalizedEmail });
-        }
-      } catch (err) {
-        console.error('[AUTH] Email send failed/timeout:', err);
-        socket.emit('auth:error', { message: 'Email sending timed out. Please try again.' });
-      }
-
-    } catch (generalError) {
-      console.error('[AUTH CRITICAL] Handler crashed:', generalError);
-      socket.emit('auth:error', { message: 'Internal server error' });
-    }
-  });
-
-  socket.on('auth:verify_code', ({ email, otp }) => {
-    // 1. Strict Normalization
-    const normalizedEmail = email ? email.trim().toLowerCase() : '';
-    const inputOtp = String(otp).trim();
-
-    console.log(`[AUTH DEBUG] Verify Request: '${normalizedEmail}' with Code: '${inputOtp}'`);
-
-    const data = authCodes.get(normalizedEmail);
-    if (!data) {
-        console.log(`[AUTH DEBUG] No record found for: '${normalizedEmail}'`);
-        return socket.emit('auth:error', { message: 'Code expired or not found' });
-    }
-
-    if (Date.now() > data.expiresAt) {
-      authCodes.delete(normalizedEmail);
-      saveAuthCodes(); // Persist deletion
-      return socket.emit('auth:error', { message: 'Code expired' });
-    }
-
-    if (data.attempts >= 5) {
-      return socket.emit('auth:error', { message: 'Too many attempts. Request a new code.' });
-    }
-
-    const inputHash = crypto.createHash('sha256').update(inputOtp).digest('hex');
-    
-    console.log(`[AUTH DEBUG] Stored Hash: ${data.otpHash}`);
-    console.log(`[AUTH DEBUG] Input Hash:  ${inputHash}`);
-
-    if (inputHash === data.otpHash) {
-      // SUCCESS
-      authCodes.delete(normalizedEmail);
-      saveAuthCodes(); // Persist deletion
-      
-      // PERSISTENT USER LOGIC
-      let userRecord = null;
-      for (const user of persistentUsers.values()) {
-          if (user.email === normalizedEmail) {
-              userRecord = user;
-              break;
-          }
-      }
-
-      if (!userRecord) {
-          // CREATE NEW
-          const isEarlyAdopter = persistentUsers.size < MAX_EARLY_USERS;
-          
-          userRecord = {
-              id: crypto.randomUUID(),
-              email: normalizedEmail,
-              created_at: Date.now(),
-              last_login_at: Date.now(),
-              accountStatus: 'active', // Renamed to avoid config with online status
-              role: isEarlyAdopter ? 'early_user' : 'regular',
-              early_access: isEarlyAdopter,
-              registrationTimestamp: Date.now(),
-              free_until: isEarlyAdopter ? Date.now() + (1000 * 60 * 60 * 24 * 30 * 6) : null // 6 months approx
-          };
-          persistentUsers.set(userRecord.id, userRecord);
-          console.log(`[AUTH] Created NEW User: ${userRecord.id} (Early: ${isEarlyAdopter})`);
-      } else {
-          // UPDATE EXISTING
-          userRecord.last_login_at = Date.now();
-          if (userRecord.accountStatus === 'blocked') {
-              return socket.emit('auth:error', { message: 'Account blocked.' });
-          }
-           // Re-set to ensure map updates if it was uncoupled logic
-          persistentUsers.set(userRecord.id, userRecord); 
-      }
-      savePersistentUsers();
-
-      socket.emit('auth:success', { userId: userRecord.id, email: normalizedEmail, profile: userRecord });
-    } else {
-      // FAILURE
-      data.attempts++;
-      saveAuthCodes(); // Persist attempt count
-      
-      console.log(`[AUTH DEBUG] Invalid Code. Attempts: ${data.attempts}/5`);
-      socket.emit('auth:error', { message: 'Invalid code', attemptsRemaining: 5 - data.attempts });
-    }
-  });
-
-  socket.on('auth:verify_token', ({ token }) => {
-    const data = magicTokens.get(token);
-    if (!data) return socket.emit('auth:error', { message: 'Invalid or expired token' });
-
-    if (Date.now() > data.expiresAt) {
-      magicTokens.delete(token);
-      return socket.emit('auth:error', { message: 'Token expired' });
-    }
-
-    const email = data.email;
-    magicTokens.delete(token);
-    
-    // PERSISTENT USER LOGIC (Duplicate of above, refactor later)
-    let userRecord = null;
-    for (const user of persistentUsers.values()) {
-        if (user.email === email) {
-            userRecord = user;
-            break;
-        }
-    }
-
-    if (!userRecord) {
-        // CREATE NEW
-        const isEarlyAdopter = persistentUsers.size < 100;
-        
-        userRecord = {
-            id: crypto.randomUUID(),
-            email: email,
-            created_at: Date.now(),
-            last_login_at: Date.now(),
-            accountStatus: 'active',
-            role: isEarlyAdopter ? 'early_user' : 'regular',
-            early_access: isEarlyAdopter,
-            registrationTimestamp: Date.now(),
-            free_until: isEarlyAdopter ? Date.now() + (1000 * 60 * 60 * 24 * 30 * 6) : null
-        };
-        persistentUsers.set(userRecord.id, userRecord);
-         console.log(`[AUTH] Created NEW User via Token: ${userRecord.id} (Early: ${isEarlyAdopter})`);
-    } else {
-        userRecord.last_login_at = Date.now();
-        if (userRecord.accountStatus === 'blocked') {
-            return socket.emit('auth:error', { message: 'Account blocked.' });
-        }
-        persistentUsers.set(userRecord.id, userRecord);
-    }
-    savePersistentUsers();
-
-    socket.emit('auth:success', { userId: userRecord.id, email, profile: userRecord });
-  });
+// Authentication is now handled silently via the /auth/init REST endpoint.
 
   // FEEDBACK VIA SOCKET
   socket.on('feedback:send', ({ rating, message }) => {
@@ -1154,6 +836,50 @@ app.get('/stats', (req, res) => {
     sessions: activeSessions.size,
     totalMessages: Array.from(messages.values()).reduce((sum, msgs) => sum + msgs.length, 0)
   });
+});
+
+// --- UUID Identity Initialization ---
+
+app.post('/auth/init', (req, res) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    const now = Date.now();
+    const tenMinutesMs = 10 * 60 * 1000;
+
+    // Rate limit: 1 registration per 10 mins per IP
+    const lastReg = registrationLog.get(ip);
+    if (lastReg && (now - lastReg.timestamp) < tenMinutesMs) {
+        const waitMin = Math.ceil((tenMinutesMs - (now - lastReg.timestamp)) / 60000);
+        return res.status(429).json({ 
+            error: 'Too many requests.', 
+            message: `Please wait ${waitMin} minutes before creating a new identity.`,
+            retryIn: Math.ceil((tenMinutesMs - (now - lastReg.timestamp)) / 1000)
+        });
+    }
+
+    const userId = crypto.randomUUID();
+    const isEarlyAdopter = persistentUsers.size < MAX_EARLY_USERS;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+    const userRecord = {
+        id: userId,
+        created_at: now,
+        last_login_at: now,
+        accountStatus: 'active',
+        role: isEarlyAdopter ? 'early_user' : 'regular',
+        early_access: isEarlyAdopter,
+        registrationTimestamp: now,
+        canDeleteAfter: now + thirtyDaysMs,
+        free_until: isEarlyAdopter ? now + (thirtyDaysMs * 6) : null
+    };
+
+    persistentUsers.set(userId, userRecord);
+    registrationLog.set(ip, { userId, timestamp: now });
+    
+    savePersistentUsers();
+    saveRegistrationLog();
+
+    console.log(`[AUTH] Issued new UUID Identity: ${userId} for IP ${ip}`);
+    res.json({ userId, canDeleteAfter: userRecord.canDeleteAfter });
 });
 
 // --- Moderation Admin API ---

@@ -193,12 +193,6 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                     </div>
 
                     <div className={`space-y-4 transition-opacity duration-300 ${vizSettings.energySaver ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.performanceMode}</label>
-                            <button onClick={() => setVizSettings({...vizSettings, autoIdle: !vizSettings.autoIdle})} className={`w-12 h-6 rounded-full relative transition-colors ${vizSettings.autoIdle ? 'bg-primary' : 'bg-slate-700'}`}>
-                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${vizSettings.autoIdle ? 'left-7' : 'left-1'}`}></div>
-                            </button>
-                        </div>
                          <div className="flex items-center justify-between">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.fpsLimit}</label>
                             <button onClick={() => setVizSettings({...vizSettings, fpsLimit: !vizSettings.fpsLimit})} className={`w-12 h-6 rounded-full relative transition-colors ${vizSettings.fpsLimit ? 'bg-primary' : 'bg-slate-700'}`}>

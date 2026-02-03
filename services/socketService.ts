@@ -98,78 +98,19 @@ class SocketService {
     this.socket.once('user:registered', callback);
   }
 
-  // Authentication
-  requestAuthCode(email: string, callback: (data: { email: string; mock?: boolean; retryIn?: number; message?: string }) => void) {
-    if (!this.socket) {
-        callback({ email, message: 'Socket not connected' });
-        return;
+  // Identity Initialization
+  async initIdentity(): Promise<{ userId: string; canDeleteAfter: number }> {
+    const response = await fetch(`${SERVER_URL}/auth/init`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to initialize identity');
     }
-
-    const timeout = setTimeout(() => {
-        this.socket?.off('auth:code_sent', successHandler);
-        this.socket?.off('auth:error', errorHandler);
-        callback({ email, message: 'Request timed out. Please try again.' });
-    }, 15000);
-
-    const successHandler = (data: any) => {
-        clearTimeout(timeout);
-        this.socket?.off('auth:error', errorHandler);
-        callback(data);
-    };
-
-    const errorHandler = (data: any) => {
-        clearTimeout(timeout);
-        this.socket?.off('auth:code_sent', successHandler);
-        callback(data);
-    };
-
-    this.socket.emit('auth:request_code', { email });
-    this.socket.once('auth:code_sent', successHandler);
-    this.socket.once('auth:error', errorHandler);
-  }
-
-  verifyAuthCode(email: string, otp: string, callback: (data: { success: boolean; userId?: string; email?: string; message?: string; attemptsRemaining?: number }) => void) {
-    if (!this.socket) {
-        callback({ success: false, message: 'Socket not connected' });
-        return;
-    }
-
-    const timeout = setTimeout(() => {
-        this.socket?.off('auth:success', successHandler);
-        this.socket?.off('auth:error', errorHandler);
-        callback({ success: false, message: 'Verification timed out. Please try again.' });
-    }, 15000);
-
-    const successHandler = (data: { userId: string; email: string }) => {
-      clearTimeout(timeout);
-      this.socket?.off('auth:error', errorHandler);
-      callback({ success: true, ...data });
-    };
-
-    const errorHandler = (data: { message: string; attemptsRemaining?: number }) => {
-      clearTimeout(timeout);
-      this.socket?.off('auth:success', successHandler);
-      callback({ success: false, ...data });
-    };
-
-    this.socket.emit('auth:verify_code', { email, otp });
-    this.socket.once('auth:success', successHandler);
-    this.socket.once('auth:error', errorHandler);
-  }
-
-  verifyMagicToken(token: string, callback: (data: { success: boolean; userId?: string; email?: string; message?: string }) => void) {
-    if (!this.socket) return;
-    this.socket.emit('auth:verify_token', { token });
-    const successHandler = (data: { userId: string; email: string }) => {
-      this.socket?.off('auth:error', errorHandler);
-      callback({ success: true, ...data });
-    };
-    const errorHandler = (data: { message: string }) => {
-      this.socket?.off('auth:success', successHandler);
-      callback({ success: false, ...data });
-    };
-    this.socket.once('auth:success', successHandler);
-    this.socket.once('auth:error', errorHandler);
+    
+    return response.json();
   }
 
   requestDeletion(callback: (data: { success: boolean; deletionRequestedAt?: number }) => void) {

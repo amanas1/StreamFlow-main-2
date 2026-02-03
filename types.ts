@@ -124,6 +124,7 @@ export interface UserProfile {
   detectedIP?: string;
   deviceId?: string;
   registrationTimestamp?: number;
+  canDeleteAfter?: number;
   // Trust Score system
   trustScore?: number;
   trustLevel?: 'TRUSTED' | 'SUSPICIOUS' | 'HIGH_RISK';
