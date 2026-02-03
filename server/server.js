@@ -20,6 +20,8 @@ if (!fs.existsSync(DATA_DIR)) {
 
 if (!process.env.RESEND_API_KEY) {
     console.warn("⚠️  RESEND_API_KEY missing, running in limited mode (Email auth will fail)");
+} else {
+    console.log("[AUTH] RESEND_API_KEY is present. Initializing mailer...");
 }
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -916,9 +918,9 @@ const rateLimiter = new RateLimitService();
       }
 
       // Send Email with Timeout
-      console.log(`[AUTH DEBUG] Generated OTP for ${normalizedEmail}: ${otp}`); // Log for debugging
+      console.log(`[AUTH] Attempting to send OTP to ${normalizedEmail} via Resend...`);
       const sendEmailPromise = resend.emails.send({
-        from: 'StreamFlow <no-reply@mail.mana.kz>', // Verified domain
+        from: 'StreamFlow <no-reply@mail.mana.kz>', // Must be verified in Resend dashboard!
         to: [normalizedEmail],
         subject: 'Ваш код для входа',
         text: `Ваш код для входа: ${otp}\n\nИли используйте ссылку: ${appUrl}?token=${magicToken}\n\nЕсли это были не вы — проигнорируйте письмо.`,
