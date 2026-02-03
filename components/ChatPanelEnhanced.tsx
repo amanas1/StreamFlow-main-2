@@ -32,6 +32,8 @@ interface ChatPanelProps {
   volume: number;
   onVolumeChange: (vol: number) => void;
   visualMode: VisualMode;
+  favorites: string[];
+  onToggleFavorite: (id: string) => void;
 }
 
 const EMOJIS = [
@@ -252,7 +254,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     isOpen, onClose, language, onLanguageChange,
     currentUser, onUpdateCurrentUser,
     isPlaying, onTogglePlay, onNextStation, onPrevStation, currentStation, analyserNode,
-    volume, onVolumeChange, visualMode
+    volume, onVolumeChange, visualMode, favorites, onToggleFavorite
 }) => {
   const [onlineUsers, setOnlineUsers] = useState<UserProfile[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -2650,7 +2652,23 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         <div className="px-4 py-3 bg-[var(--player-bar-bg)] border-t border-[var(--panel-border)] relative shrink-0 z-30">
             <div className="flex items-center justify-between mb-1"><div className="flex items-center gap-3 w-full"><button onClick={() => setIsVolumeOpen(!isVolumeOpen)} className={`p-2 rounded-xl transition-all ${isVolumeOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:text-white'}`}><VolumeIcon className="w-5 h-5" /></button><div className="h-8 flex-1 bg-black/30 rounded-lg overflow-hidden relative border border-white/5 flex items-center justify-center"><AudioVisualizer analyserNode={analyserNode} isPlaying={isPlaying} variant="segmented" settings={{ scaleX: 1, scaleY: 1, brightness: 100, contrast: 100, saturation: 100, hue: 0, opacity: 0.4, speed: 1, autoIdle: false, performanceMode: true, energySaver: false }} /><div className="absolute inset-0 flex items-center justify-between px-3"><span className="text-[9px] font-black text-white truncate max-w-[100px]">{currentStation?.name || 'Radio'}</span>{isPlaying && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}</div></div><button onClick={() => setIsPlayerOpen(!isPlayerOpen)} className="p-2 text-slate-400 hover:text-white">{isPlayerOpen ? <ChevronDownIcon className="w-5 h-5" /> : <ChevronUpIcon className="w-5 h-5" />}</button></div></div>
             {isVolumeOpen && (<div className="absolute left-4 bottom-16 z-50 bg-[#0f172a] p-3 rounded-xl border border-white/10 shadow-2xl animate-in slide-in-from-bottom-2"><input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => onVolumeChange(parseFloat(e.target.value))} className="w-32 h-1 accent-primary cursor-pointer" /></div>)}
-            {isPlayerOpen && (<div className="flex items-center justify-center gap-6 py-2 animate-in slide-in-from-top-2"><button onClick={onPrevStation} className="text-slate-400 hover:text-white transition-colors"><PreviousIcon className="w-5 h-5" /></button><button onClick={onTogglePlay} className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-all">{isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5 ml-0.5" />}</button><button onClick={onNextStation} className="text-slate-400 hover:text-white transition-colors"><NextIcon className="w-5 h-5" /></button></div>)}
+            {isPlayerOpen && (
+                <div className="flex items-center justify-center gap-6 py-2 animate-in slide-in-from-top-2">
+                    <button onClick={onPrevStation} className="text-slate-400 hover:text-white transition-colors"><PreviousIcon className="w-5 h-5" /></button>
+                    <button onClick={onTogglePlay} className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-all">{isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5 ml-0.5" />}</button>
+                    <button onClick={onNextStation} className="text-slate-400 hover:text-white transition-colors"><NextIcon className="w-5 h-5" /></button>
+                    
+                    {/* Favorite Button in Chat Player */}
+                    {currentStation && (
+                        <button 
+                            onClick={() => onToggleFavorite(currentStation.stationuuid)}
+                            className={`p-1.5 transition-all duration-300 hover:scale-110 ${favorites.includes(currentStation.stationuuid) ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <HeartIcon className={`w-5 h-5 ${favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
 
         {/* CALL OVERLAY */}

@@ -900,7 +900,15 @@ export default function App(): React.JSX.Element {
                         <button onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className="w-6 h-6" /></button>
                     </div>
                     <div className="flex-1 flex justify-end items-center gap-2 md:gap-5 z-10">
-                        {/* Maximize Button Removed */}
+                        {/* Favorite Toggle in Player */}
+                        {currentStation && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); toggleFavorite(currentStation.stationuuid); }}
+                                className={`p-2.5 transition-all duration-300 hover:scale-110 ${favorites.includes(currentStation.stationuuid) ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                <HeartIcon className={`w-6 h-6 ${favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
+                            </button>
+                        )}
                         <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2.5 text-[var(--text-base)] hover:text-primary transition-colors ${isIdleView ? 'hidden' : ''}`}><AdjustmentsIcon className="w-6 h-6" /></button>
                         <div className="hidden md:flex items-center gap-3"><VolumeIcon className="w-5 h-5 text-slate-400" /><input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-24 accent-primary cursor-pointer h-1.5 bg-slate-400/30 rounded-full" /></div>
                     </div>
@@ -951,7 +959,7 @@ export default function App(): React.JSX.Element {
         <Suspense fallback={null}><FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} language={language} currentUserId={currentUser.id} /></Suspense>
 
       </main>
-      <Suspense fallback={null}><ChatPanel isOpen={chatOpen} onClose={() => setChatOpen(false)} language={language} onLanguageChange={setLanguage} currentUser={currentUser} onUpdateCurrentUser={setCurrentUser} isPlaying={isPlaying} onTogglePlay={togglePlay} onNextStation={handleNextStation} onPrevStation={handlePreviousStation} currentStation={currentStation} analyserNode={analyserNodeRef.current} volume={volume} onVolumeChange={setVolume} visualMode={visualMode} /></Suspense>
+      <Suspense fallback={null}><ChatPanel isOpen={chatOpen} onClose={() => setChatOpen(false)} language={language} onLanguageChange={setLanguage} currentUser={currentUser} onUpdateCurrentUser={setCurrentUser} isPlaying={isPlaying} onTogglePlay={togglePlay} onNextStation={handleNextStation} onPrevStation={handlePreviousStation} currentStation={currentStation} analyserNode={analyserNodeRef.current} volume={volume} onVolumeChange={setVolume} visualMode={visualMode} favorites={favorites} onToggleFavorite={toggleFavorite} /></Suspense>
     </div>
   );
 }
