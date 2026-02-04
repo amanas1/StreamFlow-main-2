@@ -311,20 +311,14 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         ctx.fillStyle = '#fff';
         ctx.fill();
         
-        ctx.fillStyle = '#000';
-        ctx.strokeStyle = '#000'; // Ensure stroke is black for closed eyes
-        ctx.lineWidth = 4 * dancerScale; // Thinner lines for eyes
         
         if (isBlinking) {
-            // Draw Closed Eyes (Lines) - Human-like blink
-            ctx.beginPath();
-            ctx.moveTo(shoulderX + headWobble - 12*dancerScale, headY - 4*dancerScale);
-            ctx.lineTo(shoulderX + headWobble - 4*dancerScale, headY - 4*dancerScale);
-            ctx.moveTo(shoulderX + headWobble + 4*dancerScale, headY - 4*dancerScale);
-            ctx.lineTo(shoulderX + headWobble + 12*dancerScale, headY - 4*dancerScale);
-            ctx.stroke();
+            // Draw Closed Eyes (Disappear for high contrast blink)
+            // User requested that eyes disappear then appear for better visibility from distance
         } else {
             // Draw Open Eyes - Larger and clearer
+            ctx.fillStyle = '#000';
+            ctx.strokeStyle = '#000'; 
             ctx.beginPath();
             ctx.arc(shoulderX + headWobble - 8*dancerScale, headY - 4*dancerScale, 4*dancerScale, 0, Math.PI*2);
             ctx.arc(shoulderX + headWobble + 8*dancerScale, headY - 4*dancerScale, 4*dancerScale, 0, Math.PI*2);
@@ -337,17 +331,14 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         ctx.stroke();
       };
 
-      // Human-like Blink Logic (Global for all dancers)
+        // Human-like Blink Logic (Global for all dancers)
       if (time > nextBlinkTimeRef.current) {
           const isDoubleBlink = Math.random() > 0.8;
           nextBlinkTimeRef.current = time + 1.5 + Math.random() * 3; // Next main blink in 1.5-4.5s
           blinkEndTimeRef.current = time + 0.12; // First blink lasts 120ms
           
           if (isDoubleBlink) {
-              // Set the end of the second blink directly (approx 350ms from now)
-              // The isBlinking logic below will handle the 'gap' between blinks if we use a specific pattern
-              // But for simplicity in a frame loop, let's just make one slightly longer or sequence it.
-              // To do it properly without setTimeout, we can use a "secondaryBlinkRef"
+             // Secondary blink logic handled below
           }
       }
 
