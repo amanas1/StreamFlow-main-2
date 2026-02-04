@@ -566,6 +566,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<number | null>(null);
+  const preRecordingVolumeRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -1090,8 +1091,18 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         reader.onloadend = () => {
           setRegVoiceIntro(reader.result as string);
         };
+        // Restore volume
+        if (preRecordingVolumeRef.current !== null) {
+            onVolumeChange(preRecordingVolumeRef.current);
+            preRecordingVolumeRef.current = null;
+        }
         stream.getTracks().forEach(t => t.stop());
       };
+      
+      // Duck volume
+      preRecordingVolumeRef.current = volume;
+      onVolumeChange(volume * 0.1);
+      
       mediaRecorder.start();
       setIsRecordingIntro(true);
       setIntroRecordingTime(0);
@@ -1413,10 +1424,19 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             socketService.sendMessage(activeSession.sessionId, encrypted, 'audio');
           };
         }
+        // Restore volume
+        if (preRecordingVolumeRef.current !== null) {
+            onVolumeChange(preRecordingVolumeRef.current);
+            preRecordingVolumeRef.current = null;
+        }
         stream.getTracks().forEach(track => track.stop());
         setIsRecording(false);
         setRecordingTime(0);
       };
+      
+      // Duck volume
+      preRecordingVolumeRef.current = volume;
+      onVolumeChange(volume * 0.1);
       
       mediaRecorder.start(200);
       setIsRecording(true);
