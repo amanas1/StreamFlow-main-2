@@ -46,6 +46,8 @@ interface ToolsPanelProps {
   setAudioEnhancements: (val: React.SetStateAction<AudioProcessSettings>) => void;
   randomMode: boolean;
   setRandomMode: (val: boolean) => void;
+  danceStyle?: number;
+  setDanceStyle?: (style: number) => void;
   onGlobalReset?: () => void; // New Prop
 }
 
@@ -84,6 +86,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   fxSettings, setFxSettings,
   audioEnhancements, setAudioEnhancements,
   randomMode, setRandomMode,
+  danceStyle = 1, setDanceStyle,
   onGlobalReset
 }) => {
   const [activeTab, setActiveTab] = useState<'viz' | 'eq' | 'look' | 'ambience' | 'fx' | 'timer'>('viz');
@@ -194,6 +197,23 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    {(visualizerVariant === 'stage-dancer' || visualizerVariant === 'trio-dancers') && (
+                        <div className="space-y-4 p-4 bg-primary/10 rounded-2xl border border-primary/20 animate-in slide-in-from-top-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-bold text-primary uppercase tracking-widest">{t.danceMove || "Dance Move"}</label>
+                                    <p className="text-[10px] text-slate-500 font-medium">Style {danceStyle}</p>
+                                </div>
+                                <button 
+                                    onClick={() => setDanceStyle?.(danceStyle === 3 ? 1 : danceStyle + 1)}
+                                    className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/30"
+                                >
+                                    {t.switchMove || "Switch Move"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-4 p-4 bg-white/5 rounded-2xl">
                          <div className="flex items-center justify-between">

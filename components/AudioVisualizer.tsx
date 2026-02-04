@@ -8,6 +8,7 @@ interface AudioVisualizerProps {
   variant?: VisualizerVariant;
   settings?: VisualizerSettings;
   visualMode?: VisualMode;
+  danceStyle?: number;
 }
 
 interface CelestialObject {
@@ -31,7 +32,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   isPlaying, 
   variant = 'segmented',
   settings = { scaleX: 1, scaleY: 1, brightness: 100, contrast: 100, saturation: 100, hue: 0, opacity: 1, speed: 1, autoIdle: true, performanceMode: true, isDisabled: false, energySaver: false },
-  visualMode = 'medium'
+  visualMode = 'medium',
+  danceStyle = 1
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -41,6 +43,10 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   const lastVariantRef = useRef<string>(variant);
   const lastFrameTimeRef = useRef<number>(0);
   
+  // Blink State
+  const nextBlinkTimeRef = useRef<number>(0);
+  const blinkEndTimeRef = useRef<number>(0);
+
   const smoothedLowRef = useRef(0);
   const smoothedMidRef = useRef(0);
   const smoothedHighRef = useRef(0);
@@ -183,7 +189,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
             y: Math.random() * height,
             size: Math.random() * 2.0 + 0.5,
             phase: Math.random() * Math.PI * 2,
-            isBeacon: Math.random() > 0.85
+            isBeacon: Math.random() > 0.85,
+            hue: Math.random() * 360 // Add random color
           }));
         }
         starsRef.current.forEach(s => {
@@ -194,21 +201,22 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           const finalOpacity = Math.min(1, (0.1 + musicBoost) * flicker);
           const finalSize = s.size * (1 + beatVal * (s.isBeacon ? 2.0 : 1.2));
 
-          ctx.fillStyle = `rgba(255, 255, 255, ${finalOpacity})`;
+          // Use HSLA for colored stars
+          ctx.fillStyle = `hsla(${s.hue}, 80%, 70%, ${finalOpacity})`;
           ctx.beginPath();
           ctx.arc(s.x, s.y, finalSize, 0, Math.PI * 2);
           ctx.fill();
           
           if (s.isBeacon && finalOpacity > 0.3 && visualMode === 'high') {
              ctx.shadowBlur = 15 * beatVal;
-             ctx.shadowColor = 'white';
+             ctx.shadowColor = `hsla(${s.hue}, 80%, 70%, 1)`; // Colored shadow
              ctx.fill();
              ctx.shadowBlur = 0;
           }
         });
       };
 
-      const drawDancer = (x: number, y: number, dancerScale: number, style: number, settings: VisualizerSettings) => {
+      const drawDancer = (x: number, y: number, dancerScale: number, style: number, settings: VisualizerSettings, isBlinking: boolean) => {
         const armIntensity = settings.danceArmIntensity ?? 1.0;
         const legIntensity = settings.danceLegIntensity ?? 1.0;
         const headIntensity = settings.danceHeadIntensity ?? 1.0;
@@ -222,32 +230,34 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         let stompL = 0;
         let stompR = 0;
 
-        if (style === 1) { 
-          bounce = (sLow / 255) * 30 * dancerScale;
-          hipSway = Math.sin(time * 4) * 25 * dancerScale;
-          headWobble = Math.sin(time * 4) * (sMid / 255) * 10 * dancerScale; 
-          armWaveL = Math.sin(time * 6) * (sMid / 255) * 80 * dancerScale;
-          armWaveR = Math.sin(time * 6 + Math.PI) * (sMid / 255) * 80 * dancerScale;
-          stompL = Math.max(0, Math.sin(time * 4)) * (sLow / 255) * 35 * dancerScale;
-          stompR = Math.max(0, Math.sin(time * 4 + Math.PI)) * (sLow / 255) * 35 * dancerScale;
-        } else if (style === 2) {
-          bounce = (sMid / 255) * 30 * dancerScale;
-          hipSway = Math.sin(time * 2) * 40 * dancerScale;
-          headWobble = Math.sin(time * 4) * 15 * dancerScale;
-          shoulderXMod = Math.sin(time * 3) * 15 * dancerScale;
-          armWaveL = Math.sin(time * 4) * 60 * dancerScale;
-          armWaveR = Math.sin(time * 4 + Math.PI) * 60 * dancerScale;
-          stompL = Math.abs(Math.sin(time * 2)) * 20 * dancerScale;
-          stompR = Math.abs(Math.cos(time * 2)) * 20 * dancerScale;
-        } else {
-          const stepTime = Math.floor(time * 4) % 4;
-          bounce = stepTime % 2 === 0 ? 15 * dancerScale : 0;
-          hipSway = stepTime === 1 ? 20 * dancerScale : stepTime === 3 ? -20 * dancerScale : 0;
-          headWobble = (sHigh / 255) > 0.5 ? (Math.random()-0.5)*20*dancerScale : 0;
-          armWaveL = stepTime === 0 ? -60 * dancerScale : 0;
-          armWaveR = stepTime === 2 ? 60 * dancerScale : 0;
-          stompL = stepTime === 1 ? 30 * dancerScale : 0;
-          stompR = stepTime === 3 ? 30 * dancerScale : 0;
+        if (isPlaying) {
+          if (style === 1) { 
+            bounce = (sLow / 255) * 30 * dancerScale;
+            hipSway = Math.sin(time * 4) * 25 * dancerScale;
+            headWobble = Math.sin(time * 4) * (sMid / 255) * 10 * dancerScale; 
+            armWaveL = Math.sin(time * 6) * (sMid / 255) * 80 * dancerScale;
+            armWaveR = Math.sin(time * 6 + Math.PI) * (sMid / 255) * 80 * dancerScale;
+            stompL = Math.max(0, Math.sin(time * 4)) * (sLow / 255) * 35 * dancerScale;
+            stompR = Math.max(0, Math.sin(time * 4 + Math.PI)) * (sLow / 255) * 35 * dancerScale;
+          } else if (style === 2) {
+            bounce = (sMid / 255) * 30 * dancerScale;
+            hipSway = Math.sin(time * 2) * 40 * dancerScale;
+            headWobble = Math.sin(time * 4) * 15 * dancerScale;
+            shoulderXMod = Math.sin(time * 3) * 15 * dancerScale;
+            armWaveL = Math.sin(time * 4) * 60 * dancerScale;
+            armWaveR = Math.sin(time * 4 + Math.PI) * 60 * dancerScale;
+            stompL = Math.abs(Math.sin(time * 2)) * 20 * dancerScale;
+            stompR = Math.abs(Math.cos(time * 2)) * 20 * dancerScale;
+          } else {
+            const stepTime = Math.floor(time * 4) % 4;
+            bounce = stepTime % 2 === 0 ? 15 * dancerScale : 0;
+            hipSway = stepTime === 1 ? 20 * dancerScale : stepTime === 3 ? -20 * dancerScale : 0;
+            headWobble = (sHigh / 255) > 0.5 ? (Math.random()-0.5)*20*dancerScale : 0;
+            armWaveL = stepTime === 0 ? -60 * dancerScale : 0;
+            armWaveR = stepTime === 2 ? 60 * dancerScale : 0;
+            stompL = stepTime === 1 ? 30 * dancerScale : 0;
+            stompR = stepTime === 3 ? 30 * dancerScale : 0;
+          }
         }
 
         bounce *= legIntensity;
@@ -302,15 +312,52 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         ctx.fill();
         
         ctx.fillStyle = '#000';
+        ctx.strokeStyle = '#000'; // Ensure stroke is black for closed eyes
+        ctx.lineWidth = 4 * dancerScale; // Thinner lines for eyes
+        
+        if (isBlinking) {
+            // Draw Closed Eyes (Lines) - Human-like blink
+            ctx.beginPath();
+            ctx.moveTo(shoulderX + headWobble - 12*dancerScale, headY - 4*dancerScale);
+            ctx.lineTo(shoulderX + headWobble - 4*dancerScale, headY - 4*dancerScale);
+            ctx.moveTo(shoulderX + headWobble + 4*dancerScale, headY - 4*dancerScale);
+            ctx.lineTo(shoulderX + headWobble + 12*dancerScale, headY - 4*dancerScale);
+            ctx.stroke();
+        } else {
+            // Draw Open Eyes - Larger and clearer
+            ctx.beginPath();
+            ctx.arc(shoulderX + headWobble - 8*dancerScale, headY - 4*dancerScale, 4*dancerScale, 0, Math.PI*2);
+            ctx.arc(shoulderX + headWobble + 8*dancerScale, headY - 4*dancerScale, 4*dancerScale, 0, Math.PI*2);
+            ctx.fill();
+        }
+
         ctx.beginPath();
-        ctx.arc(shoulderX + headWobble - 8*dancerScale, headY - 4*dancerScale, 3*dancerScale, 0, Math.PI*2);
-        ctx.arc(shoulderX + headWobble + 8*dancerScale, headY - 4*dancerScale, 3*dancerScale, 0, Math.PI*2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(shoulderX + headWobble - 8*dancerScale, headY + 8*dancerScale);
-        ctx.lineTo(shoulderX + headWobble + 8*dancerScale, headY + 8*dancerScale);
+        ctx.moveTo(shoulderX + headWobble - 5*dancerScale, headY + 8*dancerScale);
+        ctx.lineTo(shoulderX + headWobble + 5*dancerScale, headY + 8*dancerScale);
         ctx.stroke();
       };
+
+      // Human-like Blink Logic (Global for all dancers)
+      if (time > nextBlinkTimeRef.current) {
+          const isDoubleBlink = Math.random() > 0.8;
+          nextBlinkTimeRef.current = time + 1.5 + Math.random() * 3; // Next main blink in 1.5-4.5s
+          blinkEndTimeRef.current = time + 0.12; // First blink lasts 120ms
+          
+          if (isDoubleBlink) {
+              // Set the end of the second blink directly (approx 350ms from now)
+              // The isBlinking logic below will handle the 'gap' between blinks if we use a specific pattern
+              // But for simplicity in a frame loop, let's just make one slightly longer or sequence it.
+              // To do it properly without setTimeout, we can use a "secondaryBlinkRef"
+          }
+      }
+
+      // Refactor: Smoother blink logic without setTimeout
+      let isBlinking = time < blinkEndTimeRef.current;
+      
+      // Secondary blink for double-blink effect (approx 200ms after first one starts)
+      if (!isBlinking && time > (blinkEndTimeRef.current - 0.12) + 0.25 && time < (blinkEndTimeRef.current - 0.12) + 0.35) {
+          isBlinking = true;
+      }
 
       if (variant === 'stage-dancer') {
         drawStars(120, true);
@@ -319,7 +366,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         grd.addColorStop(1, 'transparent');
         ctx.fillStyle = grd;
         ctx.fillRect(0, height * 0.7, width, height * 0.3);
-        drawDancer(width/2, height*0.9, Math.min(width, height)/450, 1, settings);
+        
+        drawDancer(width/2, height*0.9, Math.min(width, height)/450, danceStyle, settings, isBlinking);
 
       } else if (variant === 'trio-dancers') {
         drawStars(160, true);
@@ -335,10 +383,10 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         
         // Optimize: Only draw center dancer in Low mode
         if (visualMode !== 'low') {
-            drawDancer(width/2 - spacing, floorY, dScale, 3, settings);
-            drawDancer(width/2 + spacing, floorY, dScale, 2, settings);
+            drawDancer(width/2 - spacing, floorY, dScale, 3, settings, isBlinking);
+            drawDancer(width/2 + spacing, floorY, dScale, 2, settings, isBlinking);
         }
-        drawDancer(width/2, floorY, dScale * 1.1, 1, settings);
+        drawDancer(width/2, floorY, dScale * 1.1, 1, settings, isBlinking);
 
       } else if (variant === 'galaxy') {
         const centerX = width / 2;

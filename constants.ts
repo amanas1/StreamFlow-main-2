@@ -685,7 +685,9 @@ export const TRANSLATIONS: Record<string, any> = {
         energySaverDesc: "Reduces battery and CPU usage. Audio quality remains unchanged.",
         // Global Reset
         resetApp: "Reset App to Defaults",
-        resetConfirm: "Are you sure you want to reset all settings and data? This action cannot be undone."
+        resetConfirm: "Are you sure you want to reset all settings and data? This action cannot be undone.",
+        danceMove: "Dance Move",
+        switchMove: "Switch Move"
     },
     ru: {
         genres: 'Жанры', eras: 'Эпохи', moods: 'Настроение', effects: 'Эффекты', favorites: 'Избранное',
@@ -739,6 +741,8 @@ export const TRANSLATIONS: Record<string, any> = {
         energySaverDesc: "Снижает нагрузку на батарею и CPU. Качество звука не меняется.",
         // Global Reset
         resetApp: "Сброс настроек (Reset)",
-        resetConfirm: "Вы уверены, что хотите сбросить все настройки и данные приложения? Это действие нельзя отменить."
+        resetConfirm: "Вы уверены, что хотите сбросить все настройки и данные приложения? Это действие нельзя отменить.",
+        danceMove: "Танцевальное движение",
+        switchMove: "Сменить"
     }
 };

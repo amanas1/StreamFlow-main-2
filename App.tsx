@@ -14,7 +14,7 @@ import { geolocationService } from './services/geolocationService';
 import { 
   PauseIcon, VolumeIcon, LoadingIcon, MusicNoteIcon, HeartIcon, MenuIcon, AdjustmentsIcon,
   PlayIcon, ChatBubbleIcon, NextIcon, PreviousIcon, XMarkIcon, DownloadIcon,
-  SwatchIcon, EnvelopeIcon, LifeBuoyIcon, ShuffleIcon 
+  SwatchIcon, EnvelopeIcon, LifeBuoyIcon, ShuffleIcon, PlusIcon // Using PlusIcon as placeholder for EQ if needed, or AdjustmentsIcon
 } from './components/Icons';
 
 const ToolsPanel = React.lazy(() => import('./components/ToolsPanel'));
@@ -150,6 +150,7 @@ export default function App(): React.JSX.Element {
   });
   const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>('galaxy');
   const [vizSettings, setVizSettings] = useState<VisualizerSettings>(DEFAULT_VIZ_SETTINGS);
+  const [danceStyle, setDanceStyle] = useState<number>(1);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isRandomMode, setIsRandomMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -916,7 +917,7 @@ export default function App(): React.JSX.Element {
             {selectedCategory && viewMode !== 'favorites' && (
                 <div className="mb-10 p-10 h-56 rounded-[2.5rem] glass-panel relative overflow-hidden flex flex-col justify-end">
                     <div className={`absolute inset-0 bg-gradient-to-r ${selectedCategory.color} opacity-20 mix-blend-overlay`}></div>
-                    <div className="absolute inset-x-0 bottom-0 top-0 z-0 opacity-40"><AudioVisualizer analyserNode={analyserNodeRef.current} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} /></div>
+                    <div className="absolute inset-x-0 bottom-0 top-0 z-0 opacity-40"><AudioVisualizer analyserNode={analyserNodeRef.current} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} danceStyle={danceStyle} /></div>
                     <div className="relative z-10 pointer-events-none hidden"><h2 className="text-5xl md:text-7xl font-extrabold tracking-tighter uppercase">{t[selectedCategory.id] || selectedCategory.name}</h2></div>
                 </div>
             )}
@@ -948,22 +949,46 @@ export default function App(): React.JSX.Element {
                         </div>
                     </div>
                     <div className="flex items-center gap-3 md:gap-6 z-10 mx-4">
+                        {/* EQ Button (Left of Previous) */}
+                        <button 
+                            onClick={() => setToolsOpen(!toolsOpen)} 
+                            className="p-2 transition-all hover:scale-110 active:scale-95 group"
+                            title={t.visualizer}
+                        >
+                            <div className="w-5 h-5 flex gap-0.5 items-end justify-center">
+                                <div className="w-1 h-3 bg-gradient-to-t from-green-400 to-blue-500 rounded-full animate-[bounce_1s_infinite]"></div>
+                                <div className="w-1 h-5 bg-gradient-to-t from-purple-400 to-pink-500 rounded-full animate-[bounce_1.2s_infinite]"></div>
+                                <div className="w-1 h-2 bg-gradient-to-t from-yellow-400 to-red-500 rounded-full animate-[bounce_0.8s_infinite]"></div>
+                            </div>
+                        </button>
+
                         <button onClick={handlePreviousStation} className="p-2 text-slate-400 hover:text-white transition-colors"><PreviousIcon className="w-6 h-6" /></button>
+                        
                         <button onClick={togglePlay} className="w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white text-black shadow-xl hover:scale-105 transition-all">
                             {isBuffering ? <LoadingIcon className="animate-spin w-6 h-6" /> : isPlaying ? <PauseIcon className="w-6 h-6" /> : <PlayIcon className="w-6 h-6 ml-1" />}
                         </button>
+                        
                         <button onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className="w-6 h-6" /></button>
+
+                        {/* Favorite Button (Right of Next) */}
+                        <button 
+                             onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.stationuuid); }}
+                             className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`}
+                             disabled={!currentStation}
+                        >
+                            <HeartIcon className={`w-6 h-6 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
+                        </button>
+
+                        {/* Shuffle Button (Right of Heart) */}
+                        <button 
+                            onClick={() => setIsRandomMode(!isRandomMode)} 
+                            className={`p-2 transition-all hover:scale-110 active:scale-95 ${isRandomMode ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`}
+                            title={t.randomMode}
+                        >
+                            <ShuffleIcon className="w-5 h-5" />
+                        </button>
                     </div>
                     <div className="flex-1 flex justify-end items-center gap-2 md:gap-5 z-10">
-                        {/* Favorite Toggle in Player */}
-                        {currentStation && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); toggleFavorite(currentStation.stationuuid); }}
-                                className={`p-2.5 transition-all duration-300 hover:scale-110 ${favorites.includes(currentStation.stationuuid) ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                <HeartIcon className={`w-6 h-6 ${favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
-                            </button>
-                        )}
                         <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2.5 text-[var(--text-base)] hover:text-primary transition-colors ${isIdleView ? 'hidden' : ''}`}><AdjustmentsIcon className="w-6 h-6" /></button>
                         <div className="hidden md:flex items-center gap-3"><VolumeIcon className="w-5 h-5 text-slate-400" /><input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-24 accent-primary cursor-pointer h-1.5 bg-slate-400/30 rounded-full" /></div>
                     </div>
@@ -988,6 +1013,7 @@ export default function App(): React.JSX.Element {
                 setLanguage={setLanguage} 
                 visualizerVariant={visualizerVariant} setVisualizerVariant={setVisualizerVariant} 
               vizSettings={vizSettings} setVizSettings={setVizSettings}
+              danceStyle={danceStyle} setDanceStyle={setDanceStyle}
               randomMode={isRandomMode} setRandomMode={setIsRandomMode}
               onStartTutorial={() => { setToolsOpen(false); setTutorialOpen(true); }} 
               onOpenManual={() => { setToolsOpen(false); setManualOpen(true); }} 
