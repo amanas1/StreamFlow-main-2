@@ -1119,6 +1119,7 @@ export default function App(): React.JSX.Element {
             onToggleFavorite={toggleFavorite}
             randomMode={isRandomMode}
             onToggleRandomMode={() => setIsRandomMode(!isRandomMode)}
+            onShare={() => setShareOpen(true)}
         />
       </Suspense>
 
