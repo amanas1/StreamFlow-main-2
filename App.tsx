@@ -977,7 +977,8 @@ export default function App(): React.JSX.Element {
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       <span className="whitespace-nowrap hidden sm:inline">{language === 'ru' ? 'Сейчас слушают онлайн' : 'Listening Online'}</span> 
                       <span className="whitespace-nowrap sm:hidden">{language === 'ru' ? 'Онлайн' : 'Online'}</span> 
-                      <span className="text-white font-mono text-xs">{Math.max(onlineStats.totalOnline, 0)}</span>
+                      {/* Show at least 1 if we are the one viewing and the stats are loading/0 */}
+                      <span className="text-white font-mono text-xs">{onlineStats.totalOnline || 1}</span>
                   </span>
               </div>
             </div>

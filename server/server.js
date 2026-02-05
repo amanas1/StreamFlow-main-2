@@ -320,15 +320,23 @@ function saveSessions() {
 // PRESENCE TRACKING
 // ============================================
 
-const broadcastPresenceCount = () => {
+const broadcastPresenceCount = (targetSocket = null) => {
     const totalOnline = io.engine.clientsCount;
     const chatOnline = activeUsers.size;
-    io.emit('presence:count', { totalOnline, chatOnline });
+    const data = { totalOnline, chatOnline };
+    
+    if (targetSocket) {
+        targetSocket.emit('presence:count', data);
+    } else {
+        io.emit('presence:count', data);
+    }
 
-    // Log to history
-    const now = Date.now();
-    onlineHistory[now] = totalOnline;
-    saveOnlineHistory();
+    // Log to history (once per broadcast to all)
+    if (!targetSocket) {
+        const now = Date.now();
+        onlineHistory[now] = totalOnline;
+        saveOnlineHistory();
+    }
 };
 
 // Clean online history every 24 hours (Keep 30 days)
@@ -355,7 +363,8 @@ setInterval(() => {
 
 io.on('connection', (socket) => {
   console.log(`[SOCKET] New connection: ${socket.id}`);
-  broadcastPresenceCount();
+  broadcastPresenceCount(socket); // Send current count immediately to the new client
+  broadcastPresenceCount(); // Then update everyone else
   
   let boundUserId = null;
 
