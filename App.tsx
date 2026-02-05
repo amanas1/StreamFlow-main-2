@@ -22,7 +22,6 @@ const ChatPanel = React.lazy(() => import('./components/ChatPanelEnhanced'));
 const ManualModal = React.lazy(() => import('./components/ManualModal'));
 const TutorialOverlay = React.lazy(() => import('./components/TutorialOverlay'));
 const DownloadAppModal = React.lazy(() => import('./components/DownloadAppModal'));
-const DownloadAppModal = React.lazy(() => import('./components/DownloadAppModal'));
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
 const ShareModal = React.lazy(() => import('./components/ShareModal'));
 
@@ -1121,7 +1120,6 @@ export default function App(): React.JSX.Element {
             randomMode={isRandomMode}
             onToggleRandomMode={() => setIsRandomMode(!isRandomMode)}
         />
-      </Suspense>
       </Suspense>
 
       <Suspense fallback={null}>
