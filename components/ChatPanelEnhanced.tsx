@@ -6,7 +6,7 @@ import {
     PlayIcon, PauseIcon, CameraIcon, SearchIcon, ClockIcon,
     NextIcon, PreviousIcon, VolumeIcon, ChevronDownIcon, ChevronUpIcon,
     HeartIcon, PhoneIcon, VideoCameraIcon, ArrowLeftIcon, UserIcon, ChatBubbleIcon,
-    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon, ArrowRightOnRectangleIcon, AdjustmentsIcon, ShuffleIcon
+    BellIcon, NoSymbolIcon, LifeBuoyIcon, SpeakIcon, GlobeIcon, ArrowRightOnRectangleIcon, AdjustmentsIcon, ShuffleIcon, ShareIcon
 } from './Icons';
 import { ChatMessage, UserProfile, Language, RadioStation, ChatSession, VisualMode } from '../types';
 import AudioVisualizer from './AudioVisualizer';
@@ -33,7 +33,6 @@ interface ChatPanelProps {
   onVolumeChange: (vol: number) => void;
   visualMode: VisualMode;
   favorites: string[];
-  onToggleFavorite: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   randomMode: boolean;
   onToggleRandomMode: () => void;
