@@ -821,6 +821,7 @@ export default function App(): React.JSX.Element {
   const visibleStations = useMemo(() => stations.slice(0, visibleCount), [stations, visibleCount]);
 
   return (
+    <ErrorBoundary>
     <div className={`relative flex h-screen font-sans overflow-hidden bg-[var(--base-bg)] text-[var(--text-base)] transition-all duration-700`}>
       <RainEffect intensity={ambience.rainVolume} />
       <FireEffect intensity={ambience.fireVolume} />

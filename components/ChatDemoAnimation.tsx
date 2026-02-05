@@ -17,13 +17,13 @@ const ChatDemoAnimation: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         setMessages(prev => [...prev, { ...msg, id }]);
         
         // Accelerated fading for demo
-        // Start fading after 3s, remove after 5s
+        // Start fading after 6s (was 3s), remove after 8s (was 5s)
         setTimeout(() => {
             setMessages(prev => prev.map(m => m.id === id ? { ...m, fading: true } : m));
-        }, 3000); 
+        }, 6000); 
         setTimeout(() => {
             setMessages(prev => prev.filter(m => m.id !== id));
-        }, 5000); 
+        }, 8000); 
     };
 
     useEffect(() => {
@@ -33,13 +33,13 @@ const ChatDemoAnimation: React.FC<{ onClose: () => void }> = ({ onClose }) => {
              for (let i = 0; i <= text.length; i++) {
                 if (!mounted) return;
                 setTypedText(text.slice(0, i));
-                await wait(30 + Math.random() * 20); // Typing speed
+                await wait(50 + Math.random() * 30); // Slower typing (was 30+20)
             }
-            await wait(300);
+            await wait(500);
             
             // Move cursor to send
             setCursorPos({ x: '92%', y: '92%' }); 
-            await wait(400);
+            await wait(600);
             click();
             addMessage({ sender: 'Me', text, type: 'text' });
             setTypedText('');
@@ -54,63 +54,63 @@ const ChatDemoAnimation: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             if (!mounted) return;
 
             // --- PHASE 1: SEARCH & KNOCK ---
-            await wait(500);
+            await wait(800);
             // Search list
             // Move to Max
             setCursorPos({ x: '60%', y: '40%' }); 
-            await wait(800);
+            await wait(1000);
             click();
             
-            await wait(400);
+            await wait(600);
             setStep(1); // Knocking
             setCursorPos({ x: '80%', y: '80%' }); // Move clear
 
             // --- PHASE 2: CONNECTED ---
-            await wait(1200);
+            await wait(1500);
             setStep(2); // Chat open
 
             // 1. Me: Привет как дела?
-            await wait(500);
+            await wait(1000);
             await typeAndSend("Привет как дела?");
 
             // 2. Him: Приветики Лена нормально ,как ты?
-            await wait(1500); // Thinking time
+            await wait(2500); // Thinking time increased
             addMessage({ sender: 'Max', text: 'Приветики Лена нормально ,как ты?', type: 'text' });
 
             // 3. Me: Что делаешь сегодня ты свободен?
-            await wait(1000);
+            await wait(2000); // Reading time
             await typeAndSend("Что делаешь сегодня ты свободен?");
 
             // 4. Him: Даа дома ,могу приехать...
-            await wait(2000);
+            await wait(3000);
             addMessage({ sender: 'Max', text: 'Даа дома ,могу приехать к тебе в гости, а ты кушать приготовила,я голодный?', type: 'text' });
 
             // 5. Me: Да я приготовила курочку...
-            await wait(1500);
+            await wait(3500); // Reading long msg
             await typeAndSend("Да я приготовила курочку в духовке ,приходи пораньше я по тебе соскучилась!");
 
             // 5.1 Photo of Chicken
-            await wait(500);
+            await wait(1000);
             setCursorPos({ x: '8%', y: '92%' }); // Paperclip
-            await wait(500);
+            await wait(800);
             click();
-            await wait(800); // Selecting file
+            await wait(1500); // Selecting file
             addMessage({ sender: 'Me', image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=400&h=300&fit=crop', type: 'image' });
 
             // 6. Him: Хорошо ,я детей отправлю к родителям
-            await wait(2000);
+            await wait(3000);
             addMessage({ sender: 'Max', text: 'Хорошо ,я детей отправлю к родителям', type: 'text' });
             
             // 7. Me: возьми с собой вино красное ок?
-            await wait(1000);
+            await wait(2000);
             await typeAndSend("возьми с собой вино красное ок?");
 
             // 8. Him: Хорошо ,жди родная! + Emoji
-            await wait(1500);
+            await wait(2500);
             addMessage({ sender: 'Max', text: 'Хорошо ,жди родная! 😘', type: 'text' });
             
             // --- FINISH ---
-            await wait(4000); // Let users see the fading effect
+            await wait(6000); // Let users see the fading effect longer
             setStep(5);
         };
 
