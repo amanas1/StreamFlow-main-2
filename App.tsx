@@ -14,7 +14,7 @@ import { geolocationService } from './services/geolocationService';
 import { 
   PauseIcon, VolumeIcon, LoadingIcon, MusicNoteIcon, HeartIcon, MenuIcon, AdjustmentsIcon,
   PlayIcon, ChatBubbleIcon, NextIcon, PreviousIcon, XMarkIcon, DownloadIcon,
-  SwatchIcon, EnvelopeIcon, LifeBuoyIcon, ShuffleIcon, PlusIcon // Using PlusIcon as placeholder for EQ if needed, or AdjustmentsIcon
+  SwatchIcon, EnvelopeIcon, LifeBuoyIcon, ShuffleIcon, PlusIcon, ShareIcon // Using PlusIcon as placeholder for EQ if needed, or AdjustmentsIcon
 } from './components/Icons';
 
 const ToolsPanel = React.lazy(() => import('./components/ToolsPanel'));
@@ -22,7 +22,9 @@ const ChatPanel = React.lazy(() => import('./components/ChatPanelEnhanced'));
 const ManualModal = React.lazy(() => import('./components/ManualModal'));
 const TutorialOverlay = React.lazy(() => import('./components/TutorialOverlay'));
 const DownloadAppModal = React.lazy(() => import('./components/DownloadAppModal'));
+const DownloadAppModal = React.lazy(() => import('./components/DownloadAppModal'));
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
+const ShareModal = React.lazy(() => import('./components/ShareModal'));
 
 const THEME_COLORS: Record<ThemeName, { primary: string; secondary: string }> = {
   default: { primary: '#bc6ff1', secondary: '#f038ff' },
@@ -1118,6 +1120,14 @@ export default function App(): React.JSX.Element {
             onToggleFavorite={toggleFavorite}
             randomMode={isRandomMode}
             onToggleRandomMode={() => setIsRandomMode(!isRandomMode)}
+        />
+      </Suspense>
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ShareModal 
+            isOpen={shareOpen} 
+            onClose={() => setShareOpen(false)} 
         />
       </Suspense>
     </div>
