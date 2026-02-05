@@ -954,6 +954,17 @@ export default function App(): React.JSX.Element {
                 </span>
             </div>
 
+            {/* Online Counter moved to left side for visibility */}
+            {onlineStats.totalOnline > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <span className="whitespace-nowrap">{language === 'ru' ? 'Слушают' : 'Online'}</span> 
+                        <span className="text-white font-mono text-xs">{onlineStats.totalOnline}</span>
+                    </span>
+                </div>
+            )}
+
 
             {/* Action icons moved left on mobile */}
             <div className="flex items-center gap-1.5 sm:gap-4">
@@ -974,15 +985,7 @@ export default function App(): React.JSX.Element {
           </div>
           
           <div className="flex items-center shrink-0 gap-4">
-            {onlineStats.totalOnline > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                        <span>{language === 'ru' ? 'Сейчас слушают онлайн' : 'Listening Now Online'}</span> 
-                        <span className="text-white font-mono text-xs">{onlineStats.totalOnline}</span>
-                    </span>
-                </div>
-            )}
+            {/* Online Counter moved elsewhere */}
 
             {/* Super-chat label with arrow */}
             {!chatOpen && (
