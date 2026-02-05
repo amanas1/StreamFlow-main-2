@@ -972,8 +972,8 @@ export default function App(): React.JSX.Element {
 
         {/* Idle View Removed */}
 
-        <div className={`absolute bottom-8 left-0 right-0 px-4 md:px-10 transition-all duration-700 ease-in-out z-20 ${chatOpen ? 'md:pr-[420px] lg:pr-[470px]' : ''} ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
-           <div className={`pointer-events-auto max-w-[95%] xl:max-w-7xl mx-auto rounded-[2.5rem] p-4 md:px-6 flex flex-col md:flex-row shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
+        <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${chatOpen ? 'md:pr-[420px] lg:pr-[470px]' : ''} ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
+           <div className={`pointer-events-auto w-full md:w-auto md:max-w-7xl mx-auto rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6 flex flex-col md:flex-row shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
                
                 {/* ROW 1: INFO & SECONDARY ACTIONS */}
                 <div className="flex items-center justify-between w-full md:w-auto md:flex-1 min-w-0 z-10 pb-2 md:pb-0 mb-2 md:mb-0 md:border-0 border-b border-white/5">
