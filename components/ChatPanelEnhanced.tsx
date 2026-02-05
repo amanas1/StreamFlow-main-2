@@ -13,6 +13,7 @@ import AudioVisualizer from './AudioVisualizer';
 import DancingAvatar from './DancingAvatar';
 const ChatDemoAnimation = React.lazy(() => import('./ChatDemoAnimation'));
 const RegistrationDemoAnimation = React.lazy(() => import('./RegistrationDemoAnimation'));
+const InteractionDemoAnimation = React.lazy(() => import('./InteractionDemoAnimation'));
 import { socketService } from '../services/socketService';
 import { encryptionService } from '../services/encryptionService';
 import { geolocationService } from '../services/geolocationService';
@@ -270,6 +271,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [isRegDemoOpen, setIsRegDemoOpen] = useState(false);
   const [showDemoMenu, setShowDemoMenu] = useState(false);
+  const [isInteractDemoOpen, setIsInteractDemoOpen] = useState(false);
   const deleteHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update current time every second for live countdowns
@@ -1870,6 +1872,22 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 <div className="text-[9px] text-slate-400">Step-by-step</div>
                                             </div>
                                         </button>
+
+                                        <button 
+                                            onClick={() => {
+                                                setIsInteractDemoOpen(true);
+                                                setShowDemoMenu(false);
+                                            }}
+                                            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 text-left transition-colors group"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                                                <span className="text-sm">🤝</span>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-bold text-white leading-tight">{language === 'ru' ? 'Событие' : 'Interaction'}</div>
+                                                <div className="text-[9px] text-slate-400">Social Loop</div>
+                                            </div>
+                                        </button>
                                     </div>
                                     <div className="bg-white/5 p-2 text-center">
                                         <p className="text-[9px] text-slate-500">v1.2 Demo Mode</p>
@@ -2902,7 +2920,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
 
 
-        {isDemoOpen || isRegDemoOpen ? (
+        {isDemoOpen || isRegDemoOpen || isInteractDemoOpen ? (
             <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
                 <React.Suspense fallback={<div className="text-white">Loading demo...</div>}>
                     <div className="w-full max-w-sm">
@@ -2910,9 +2928,16 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 <RegistrationDemoAnimation onComplete={() => setIsRegDemoOpen(false)} />
             )}
             
+            {/* INTERACTION DEMO OVERLAY */}
+            {isInteractDemoOpen && (
+                <InteractionDemoAnimation onComplete={() => setIsInteractDemoOpen(false)} />
+            )}
+
+            {/* CHAT SCENARIO */}
             {isDemoOpen && (
                 <ChatDemoAnimation onComplete={() => setIsDemoOpen(false)} />
-            )}        </div>
+            )}
+        </div>
                 </React.Suspense>
             </div>
         ) : null}
