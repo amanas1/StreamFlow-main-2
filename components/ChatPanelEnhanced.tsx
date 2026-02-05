@@ -1842,7 +1842,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
                                 <XMarkIcon className="w-6 h-6" />
                             </button>
-                        </div>        
+                        </div>
+                </>
+            )}
         </header>
 
         {/* VOICE SETTINGS PANEL */}
