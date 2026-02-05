@@ -384,6 +384,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       setRegNotificationsEnabled(currentUser.chatSettings.notificationsEnabled);
       setRegNotificationVolume(currentUser.chatSettings.notificationVolume);
       setRegNotificationSound(currentUser.chatSettings.notificationSound);
+      setRegBannerEnabled(currentUser.chatSettings.bannerNotificationsEnabled ?? false);
+      setRegVoiceNotifEnabled(currentUser.chatSettings.voiceNotificationsEnabled ?? false);
+      setRegNotifVoice(currentUser.chatSettings.notificationVoice ?? 'female');
     }
   }, [currentUser.id, currentUser.name, currentUser.age, currentUser.gender, currentUser.avatar, currentUser.intentStatus, currentUser.voiceIntro]);
   const [profileExpiresAt, setProfileExpiresAt] = useState<number | null>(null);
@@ -567,8 +570,81 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const [regNotificationsEnabled, setRegNotificationsEnabled] = useState(currentUser.chatSettings?.notificationsEnabled ?? true);
   const [regNotificationVolume, setRegNotificationVolume] = useState(currentUser.chatSettings?.notificationVolume ?? 0.8);
   const [regNotificationSound, setRegNotificationSound] = useState(currentUser.chatSettings?.notificationSound ?? 'default');
+  const [regBannerEnabled, setRegBannerEnabled] = useState(currentUser.chatSettings?.bannerNotificationsEnabled ?? false);
+  const [regVoiceNotifEnabled, setRegVoiceNotifEnabled] = useState(currentUser.chatSettings?.voiceNotificationsEnabled ?? false);
+  const [regNotifVoice, setRegNotifVoice] = useState<'female' | 'male'>(currentUser.chatSettings?.notificationVoice ?? 'female');
+  const [notificationToast, setNotificationToast] = useState<{ senderName: string; text: string; senderId: string; avatar?: string } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ... (Call State) ...
+
+  // Helper: Banner Notification
+  const showBannerNotification = (title: string, body: string) => {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+          new Notification(title, { body, icon: '/pwa-192x192.png' });
+      } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                  new Notification(title, { body, icon: '/pwa-192x192.png' });
+              }
+          });
+      }
+  };
+
+  // Helper: Voice Notification
+  const playVoiceNotification = () => {
+      const text = language === 'ru' 
+        ? "К вам пришло сообщение - посмотрим в чате !" 
+        : "You have a new message - let's check the chat!";
+      
+      speakMessage(text, 'other'); // Uses the existing speakMessage helper but forces our text
+  };
+
+  // Override speakMessage to use our specific notification settings if called for notification context
+  // Actually, let's just make a specialized one or reuse speakMessage with a ref hack?
+  // Easier to make a standalone simplified one for reliability or adapt speakMessage.
+  // We will adapt the socket listener to call speakMessage with the specific text if Voice Notification is ON.
+  // BUT we need to ensure speakMessage uses the correct VOICE (Male/Female) selected in settings.
+  // The existing speakMessage uses `voiceSettingsRef` (which is for the Voice Mode).
+  // We should create a dedicated simple speaker for notifications to not conflict with Voice Mode settings.
   
-  // Call State
+  const speakNotification = () => {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      
+      const text = language === 'ru' 
+        ? "К вам пришло сообщение - посмотрим в чате !" 
+        : "You have a new message - let's check the chat!";
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.volume = regNotificationVolume;
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0; 
+      utterance.lang = language === 'ru' ? 'ru-RU' : 'en-US';
+
+      // Find voice
+      const voices = window.speechSynthesis.getVoices();
+      const targetGender = regNotifVoice; // 'female' or 'male'
+      
+      // Re-use logic or simplified logic
+      const genderKeywords = {
+          female: ['woman', 'girl', 'female', 'elena', 'milena', 'anna', 'samantha', 'zira', 'google русский'], // "Google Русский" is often female
+          male: ['man', 'boy', 'male', 'pavel', 'alexander', 'david', 'google us english'] 
+      };
+
+      let selectedVoice = voices.find(v => {
+          const name = v.name.toLowerCase();
+          return genderKeywords[targetGender].some(k => name.includes(k));
+      });
+
+      if (!selectedVoice) selectedVoice = voices.find(v => v.lang.startsWith(language === 'ru' ? 'ru' : 'en'));
+      
+      if (selectedVoice) utterance.voice = selectedVoice;
+      
+      window.speechSynthesis.speak(utterance);
+  };
+
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'ringing' | 'connected'>('idle');
   const [callPartner, setCallPartner] = useState<UserProfile | null>(null);
   const [isMicPreparing, setIsMicPreparing] = useState(false);
@@ -909,8 +985,43 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (message.senderId !== currentUser.id) {
           playNotificationSound('knock');
           
-          // Voice Mode: Read incoming message
-          if (decrypted.text && voiceModeRef.current) {
+          // Banner Notification
+          if (currentUser.chatSettings?.bannerNotificationsEnabled && document.visibilityState === 'hidden') {
+               const senderName = activeSession?.partnerProfile?.name || onlineUsers.find(u => u.id === message.senderId)?.name || (language === 'ru' ? 'Собеседник' : 'Partner');
+               showBannerNotification(
+                   language === 'ru' ? 'Новое сообщение' : 'New Message', 
+                   `${senderName}: ${decrypted.messageType === 'text' ? (decrypted.text?.substring(0, 30) + '...') : (language === 'ru' ? 'Отправил файл' : 'Sent a file')}`
+               );
+          }
+
+          // Voice Notification
+          if (currentUser.chatSettings?.voiceNotificationsEnabled) {
+              speakNotification();
+          }
+
+          // In-App Toast Notification (New Colorful Animation)
+          // Show if we are NOT in the chat view tailored to this user, OR if we just want to notify always (user request implies visibility).
+          // We'll show it if the user is NOT currently looking at this specific conversation.
+          const isViewingThisChat = view === 'chat' && activeSession?.partnerId === message.senderId;
+          
+          if (!isViewingThisChat) {
+             const senderName = activeSession?.partnerProfile?.name 
+                || onlineUsers.find(u => u.id === message.senderId)?.name 
+                || (language === 'ru' ? 'Собеседник' : 'Partner');
+             const senderAvatar = activeSession?.partnerProfile?.avatar || onlineUsers.find(u => u.id === message.senderId)?.avatar;
+             
+             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+             setNotificationToast({
+                 senderName,
+                 text: decrypted.messageType === 'text' ? (decrypted.text || '') : (language === 'ru' ? '📷 Фото' : '📷 Photo'),
+                 senderId: message.senderId,
+                 avatar: senderAvatar
+             });
+             toastTimeoutRef.current = setTimeout(() => setNotificationToast(null), 5000);
+          }
+
+          // Voice Mode (Reading content) - Only if Voice Notification is OFF to avoid double speaking overrides
+          if (decrypted.text && voiceModeRef.current && !currentUser.chatSettings?.voiceNotificationsEnabled) {
               // Get partner gender
               let partnerGender = 'other';
               if (activeSession) {
@@ -968,7 +1079,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                      hasAgreedToRules: true,
                      isAuthenticated: true,
                      filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true },
-                     chatSettings: { notificationsEnabled: true, notificationVolume: 0.8, notificationSound: 'default' }
+                     chatSettings: { 
+                         notificationsEnabled: true, 
+                         notificationVolume: 0.8, 
+                         notificationSound: 'default',
+                         bannerNotificationsEnabled: false,
+                         voiceNotificationsEnabled: false,
+                         notificationVoice: 'female'
+                     }
                  };
              }
          }
@@ -1222,7 +1340,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       chatSettings: {
         notificationsEnabled: regNotificationsEnabled,
         notificationVolume: regNotificationVolume,
-        notificationSound: regNotificationSound as 'default' | 'soft' | 'alert'
+        notificationSound: regNotificationSound as 'default' | 'soft' | 'alert',
+        bannerNotificationsEnabled: regBannerEnabled,
+        voiceNotificationsEnabled: regVoiceNotifEnabled,
+        notificationVoice: regNotifVoice
       },
       safetyLevel: 'green',
       blockedUsers: currentUser.blockedUsers || [],
@@ -2002,6 +2123,53 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 </div>
             )}
 
+            {/* In-App Toast Notification with Animated Border */}
+            {notificationToast && (
+                <div 
+                    onClick={() => {
+                        // Switch to chat
+                        const session = Array.from(activeSessions.values()).find(s => s.partnerId === notificationToast.senderId);
+                        if (session) {
+                             setActiveSession(session);
+                             setView('chat');
+                             setNotificationToast(null);
+                        } else {
+                            // If no session found (rare/bug?), just go inbox
+                            setView('inbox');
+                        }
+                    }}
+                    className="absolute top-4 left-4 right-4 z-[100] cursor-pointer animate-in slide-in-from-top duration-500"
+                >
+                    {/* Animated Border Container */}
+                    <div className="relative p-[3px] rounded-2xl overflow-hidden group">
+                        {/* Spinning Gradient Background */}
+                        <div className="absolute inset-0 bg-[conic-gradient(from_var(--shimmer-angle),theme(colors.slate.900),theme(colors.pink.500),theme(colors.blue.500),theme(colors.slate.900))] animate-[spin_4s_linear_infinite]" />
+                        
+                        {/* Inner Content */}
+                        <div className="relative bg-slate-900/95 backdrop-blur-xl rounded-xl p-3 flex items-center gap-3 border border-white/10">
+                            {notificationToast.avatar && (
+                                <img src={notificationToast.avatar} className="w-10 h-10 rounded-full border border-white/10" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-xs font-black text-white truncate flex items-center gap-2">
+                                    {notificationToast.senderName}
+                                    <span className="text-[9px] bg-pink-500/20 text-pink-300 px-1 rounded uppercase tracking-wider">New</span>
+                                </h4>
+                                <p className="text-[10px] text-slate-400 truncate leading-tight">
+                                    {notificationToast.text}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setNotificationToast(null); }}
+                                className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {violationMessage && (
                 <div className="px-4 py-2 bg-orange-500/90 text-white text-[10px] font-bold text-center animate-in slide-in-from-top duration-300 relative z-40">
                     ⚠️ {violationMessage}
@@ -2250,15 +2418,61 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <ChevronDownIcon className="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform" />
                             </summary>
                             <div className="p-4 pt-0 space-y-4 border-t border-white/5 mt-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Уведомления' : 'Notifications'}</span>
-                                    <button onClick={() => setRegNotificationsEnabled(!regNotificationsEnabled)} className={`w-9 h-5 rounded-full relative transition-colors ${regNotificationsEnabled ? 'bg-secondary' : 'bg-slate-700'}`}>
-                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regNotificationsEnabled ? 'right-1' : 'left-1'}`} />
-                                    </button>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between"><span className="text-[10px] font-bold text-slate-500 uppercase">{language === 'ru' ? 'Громкость' : 'Volume'}</span><span className="text-[10px] text-secondary">{Math.round(regNotificationVolume * 100)}%</span></div>
-                                    <input type="range" min="0" max="1" step="0.1" value={regNotificationVolume} onChange={e => setRegNotificationVolume(parseFloat(e.target.value))} className="w-full h-1 bg-white/10 rounded-lg accent-secondary" />
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Звуки' : 'Sounds'}</span>
+                                        <button onClick={() => setRegNotificationsEnabled(!regNotificationsEnabled)} className={`w-9 h-5 rounded-full relative transition-colors ${regNotificationsEnabled ? 'bg-secondary' : 'bg-slate-700'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regNotificationsEnabled ? 'right-1' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Баннеры' : 'Banners'}</span>
+                                            <span className="text-[9px] text-slate-500">{language === 'ru' ? 'В фоне' : 'Background'}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                if (!regBannerEnabled) Notification.requestPermission();
+                                                setRegBannerEnabled(!regBannerEnabled);
+                                            }} 
+                                            className={`w-9 h-5 rounded-full relative transition-colors ${regBannerEnabled ? 'bg-green-500' : 'bg-slate-700'}`}
+                                        >
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regBannerEnabled ? 'right-1' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Голос' : 'Voice Alert'}</span>
+                                            <span className="text-[9px] text-slate-500">{language === 'ru' ? 'Озвучка' : 'Announce'}</span>
+                                        </div>
+                                        <button onClick={() => setRegVoiceNotifEnabled(!regVoiceNotifEnabled)} className={`w-9 h-5 rounded-full relative transition-colors ${regVoiceNotifEnabled ? 'bg-pink-500' : 'bg-slate-700'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regVoiceNotifEnabled ? 'right-1' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    {regVoiceNotifEnabled && (
+                                        <div className="flex bg-black/40 p-1 rounded-lg">
+                                            <button 
+                                                onClick={() => setRegNotifVoice('female')}
+                                                className={`flex-1 py-1.5 text-[10px] uppercase font-bold rounded-md transition-colors ${regNotifVoice === 'female' ? 'bg-pink-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                                            >
+                                                👩 {language === 'ru' ? 'Жен' : 'Fem'}
+                                            </button>
+                                            <button 
+                                                onClick={() => setRegNotifVoice('male')}
+                                                className={`flex-1 py-1.5 text-[10px] uppercase font-bold rounded-md transition-colors ${regNotifVoice === 'male' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                                            >
+                                                👨 {language === 'ru' ? 'Муж' : 'Male'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between"><span className="text-[10px] font-bold text-slate-500 uppercase">{language === 'ru' ? 'Громкость' : 'Volume'}</span><span className="text-[10px] text-secondary">{Math.round(regNotificationVolume * 100)}%</span></div>
+                                        <input type="range" min="0" max="1" step="0.1" value={regNotificationVolume} onChange={e => setRegNotificationVolume(parseFloat(e.target.value))} className="w-full h-1 bg-white/10 rounded-lg accent-secondary" />
+                                    </div>
                                 </div>
                             </div>
                         </details>

@@ -81,6 +81,9 @@ export interface ChatSettings {
   notificationsEnabled: boolean;
   notificationVolume: number; // 0.0 – 1.0
   notificationSound: 'default' | 'soft' | 'alert';
+  bannerNotificationsEnabled: boolean;
+  voiceNotificationsEnabled: boolean;
+  notificationVoice: 'female' | 'male';
 }
 
 export interface UserProfile {
