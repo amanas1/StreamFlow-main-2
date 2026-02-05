@@ -40,6 +40,11 @@ export default function RegistrationDemoAnimation({ onComplete }: RegistrationDe
   // Helper for delays
   const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -161,13 +166,13 @@ export default function RegistrationDemoAnimation({ onComplete }: RegistrationDe
         
         // Finish
         await wait(2000);
-        onComplete();
+        onCompleteRef.current(); // Use ref here
     };
 
     runScript();
 
     return () => { mounted = false; };
-  }, [onComplete]);
+  }, []); // Empty dependency array ensures runScript runs only once
 
   return (
     <div ref={containerRef} className="absolute inset-0 z-[60] bg-slate-900 overflow-hidden flex flex-col font-sans select-none pointer-events-none">
