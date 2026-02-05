@@ -1080,9 +1080,9 @@ export default function App(): React.JSX.Element {
                 <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
                     {/* Reset Button (Compact) */}
                     <button
-                        onClick={() => setActivePresetId(null)}
+                        onClick={() => handleApplyPreset('reset')}
                         className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border flex items-center gap-1 ${
-                            activePresetId === null
+                            activePresetId === 'reset'
                             ? 'bg-slate-700 text-white border-slate-600' 
                             : 'bg-white/5 text-slate-500 border-white/5 hover:bg-white/10'
                         }`}
@@ -1090,7 +1090,7 @@ export default function App(): React.JSX.Element {
                         <XMarkIcon className="w-3 h-3" />
                         <span>Reset</span>
                     </button>
-                    {GLOBAL_PRESETS.map(preset => (
+                    {GLOBAL_PRESETS.filter(p => p.id !== 'reset').map(preset => (
                         <button
                             key={preset.id}
                             onClick={() => handleApplyPreset(preset.id)}
