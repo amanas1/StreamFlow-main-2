@@ -976,7 +976,7 @@ export default function App(): React.JSX.Element {
            <div className={`pointer-events-auto max-w-[95%] xl:max-w-7xl mx-auto rounded-[2.5rem] p-4 md:px-6 flex flex-col md:flex-row shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
                
                 {/* ROW 1: INFO & SECONDARY ACTIONS */}
-                <div className="flex items-center justify-between w-full md:w-auto md:flex-1 min-w-0 z-10 pb-3 md:pb-0 mb-3 md:mb-0 md:border-0 border-b border-white/5">
+                <div className="flex items-center justify-between w-full md:w-auto md:flex-1 min-w-0 z-10 pb-2 md:pb-0 mb-2 md:mb-0 md:border-0 border-b border-white/5">
                     <div className="flex items-center gap-4 min-w-0">
                         <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-12 h-12" visualMode={visualMode} />
                         <div className="min-w-0">
@@ -999,8 +999,25 @@ export default function App(): React.JSX.Element {
                     </div>
                 </div>
 
-                {/* ROW 2: CONTROLS */}
-                <div className="flex items-center justify-between w-full md:w-auto md:gap-6 z-10 px-1 md:px-0 md:mx-4">
+                {/* ROW 2 (Mobile Only): PRESETS SCROLLABLE ZIPPER */}
+                <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-2 pb-3 mb-2 mask-linear-fade">
+                    {GLOBAL_PRESETS.map(preset => (
+                        <button
+                            key={preset.id}
+                            onClick={() => handleApplyPreset(preset.id)}
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border ${
+                                activePresetId === preset.id 
+                                ? 'bg-primary text-black border-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]' 
+                                : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:border-white/10'
+                            }`}
+                        >
+                            {preset.name}
+                        </button>
+                    ))}
+                </div>
+
+                {/* ROW 3: CONTROLS */}
+                <div className="flex items-center justify-between w-full md:w-auto md:gap-6 z-10 px-4 md:px-0 md:mx-4">
                     
                     {/* LEFT GROUP: Viz & Heart */}
                     <div className="flex items-center gap-2 md:gap-6">
@@ -1048,7 +1065,7 @@ export default function App(): React.JSX.Element {
                             <ShuffleIcon className="w-5 h-5" />
                         </button>
                         
-                        {/* Presets (Desktop Only) */}
+                        {/* Presets (Desktop Only - keep existing logic) */}
                         <div className="hidden 2xl:flex items-center gap-1.5 bg-black/20 p-1.5 rounded-xl border border-white/5">
                             {GLOBAL_PRESETS.map(preset => (
                                 <button
