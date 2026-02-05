@@ -62,6 +62,33 @@ const VISUALIZERS: { id: VisualizerVariant; name: string }[] = [
 
 const THEMES: ThemeName[] = ['default', 'emerald', 'midnight', 'cyber', 'volcano', 'ocean', 'sakura', 'gold', 'frost', 'forest'];
 
+const GLOBAL_PRESETS = [
+    { 
+        id: 'dj', name: 'DJ', ru: 'DJ', 
+        eq: [4, 3, 2, 0, -1, -1, 1, 2, 3, 4], // V-shape
+        fx: { reverb: 0.05, speed: 1.0 },
+        process: { compressorEnabled: true, compressorThreshold: -20, compressorRatio: 4, bassBoost: 5, loudness: 3 }
+    },
+    { 
+        id: 'stars', name: 'Stars', ru: 'Stars', 
+        eq: [1, 1, 0, 0, 0, 1, 2, 4, 6, 8], // Air/Treble boost
+        fx: { reverb: 0.4, speed: 1.0 },
+        process: { compressorEnabled: true, compressorThreshold: -15, compressorRatio: 2, bassBoost: 2, loudness: 0 }
+    },
+    { 
+        id: 'neon', name: 'Neon', ru: 'Neon', 
+        eq: [0, 2, 4, 1, 0, 0, 1, 3, 5, 2], // Punchy Upper-Mid
+        fx: { reverb: 0.15, speed: 1.0 },
+        process: { compressorEnabled: true, compressorThreshold: -18, compressorRatio: 8, bassBoost: 3, loudness: 2 }
+    },
+    { 
+        id: 'deep', name: 'Deep', ru: 'Deep', 
+        eq: [8, 6, 4, 2, 0, -2, -4, -4, -2, 0], // Sub-bass focus, darker highs
+        fx: { reverb: 0.25, speed: 1.0 },
+        process: { compressorEnabled: true, compressorThreshold: -12, compressorRatio: 2, bassBoost: 8, loudness: 2 }
+    }
+];
+
 const EQ_PRESETS = [
     { id: 'flat', name: 'Flat', ru: 'Сброс', values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
     { id: 'bass', name: 'Bass', ru: 'Бас', values: [8, 7, 6, 3, 0, 0, 0, 0, 0, 0] },
@@ -118,10 +145,24 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     { id: 'timer', icon: ClockIcon, label: t.sleep },
   ];
 
+    const handleApplyPreset = (presetId: string) => {
+        const preset = GLOBAL_PRESETS.find(p => p.id === presetId);
+        if (!preset) return;
+
+        // Apply EQ
+        if (onSetEqValues) onSetEqValues(preset.eq);
+        
+        // Apply FX
+        setFxSettings(prev => ({ ...prev, ...preset.fx }));
+        
+        // Apply Audio Enhancements
+        setAudioEnhancements(prev => ({ ...prev, ...preset.process }));
+    };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-       <div className="relative w-full max-w-4xl bg-[var(--panel-bg)] glass-panel rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[85vh] animate-in zoom-in duration-300 border border-[var(--panel-border)]">
+       <div className="relative w-full max-w-[95vw] xl:max-w-[1600px] bg-[var(--panel-bg)] glass-panel rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[85vh] animate-in zoom-in duration-300 border border-[var(--panel-border)]">
           
           <div className="w-full md:w-24 bg-black/20 md:border-r border-b md:border-b-0 border-white/5 p-4 flex md:flex-col items-center justify-center md:justify-start gap-4 overflow-x-auto md:overflow-visible shrink-0 no-scrollbar">
              {tabs.map(tab => (
@@ -387,6 +428,31 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
              {activeTab === 'fx' && (
                  <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                       
+                      {/* GLOBAL SOUND PROFILES */}
+                      <div className="space-y-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+                          <div className="flex items-center justify-between">
+                             <h4 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                                 <span className="text-lg">🎛️</span> Sound Profiles
+                             </h4>
+                             <span className="text-[9px] font-bold text-slate-500 uppercase">One-Click Setup</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-4 gap-2">
+                              {GLOBAL_PRESETS.map(preset => (
+                                  <button 
+                                    key={preset.id}
+                                    onClick={() => handleApplyPreset(preset.id)}
+                                    className="relative overflow-hidden group py-3 rounded-xl bg-black/20 border border-white/5 hover:border-primary/50 hover:bg-white/10 transition-all"
+                                  >
+                                      <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                      <span className="relative z-10 text-[10px] font-black uppercase tracking-wider text-slate-300 group-hover:text-white group-active:scale-95 block">
+                                          {preset.name}
+                                      </span>
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
                       {/* Mastering Section */}
                       <div className="space-y-4 bg-white/5 p-4 rounded-2xl">
                           <h4 className="text-xs font-bold text-primary uppercase tracking-widest">{t.mastering || "Mastering & Dynamics"}</h4>
