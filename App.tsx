@@ -24,6 +24,7 @@ const TutorialOverlay = React.lazy(() => import('./components/TutorialOverlay'))
 const DownloadAppModal = React.lazy(() => import('./components/DownloadAppModal'));
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
 const ShareModal = React.lazy(() => import('./components/ShareModal'));
+import ErrorBoundary from './components/ErrorBoundary';
 
 const THEME_COLORS: Record<ThemeName, { primary: string; secondary: string }> = {
   default: { primary: '#bc6ff1', secondary: '#f038ff' },
