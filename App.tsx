@@ -1036,7 +1036,7 @@ export default function App(): React.JSX.Element {
                             <img src={currentStation.favicon} alt={currentStation.name} className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-slate-800">
-                                <MusicNoteIcon className="w-4 h-4 text-slate-500" />
+                                <PlayIcon className="w-4 h-4 text-slate-500" />
                             </div>
                         )}
                     </div>
