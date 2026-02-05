@@ -386,25 +386,25 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       if (variant === 'stage-dancer') {
         // Light Show - Dynamic Spotlights
         if (isPlaying && visualMode !== 'low') {
-            // Left Spotlight (Responsive to Bass/Low Mids)
+            // Left Spotlight (Chaotic & Active)
             drawSpotlight(
-                width * 0.25, 
-                -Math.PI * 0.15 + Math.sin(time * 0.5) * 0.08, // Closer to center, less angle
-                (time * 40) % 360, 
-                (sLow / 255) 
+                width * 0.2, 
+                -Math.PI * 0.15 + Math.sin(time * 2.5) * 0.25 + Math.cos(time * 4.3) * 0.15, // Fast, wide chaotic swing
+                (time * 60) % 360, 
+                (sLow / 255) * 1.2
             );
             
-            // Right Spotlight (Responsive to High Mids/Treble)
+            // Right Spotlight (Chaotic & Active)
             drawSpotlight(
-                width * 0.75, 
-                Math.PI * 0.15 + Math.cos(time * 0.6) * 0.08, // Closer to center, less angle
-                (time * 40 + 180) % 360, 
-                (sMid / 255) 
+                width * 0.8, 
+                Math.PI * 0.15 + Math.cos(time * 2.2) * 0.25 + Math.sin(time * 3.7) * 0.15, // Different chaotic pattern
+                (time * 70 + 180) % 360, 
+                (sMid / 255) * 1.2
             );
 
-            // Center Strobe (Fast flashing on beat)
-            if (beatVal > 0.6) {
-                 drawSpotlight(width * 0.5, 0, 0, Math.pow(beatVal, 4) * 0.6); 
+            // Center Strobe (More aggressive)
+            if (beatVal > 0.45) { // Lower threshold for more activity
+                 drawSpotlight(width * 0.5, Math.sin(time * 10) * 0.1, 0, Math.pow(beatVal, 3) * 0.8); 
             }
         }
 

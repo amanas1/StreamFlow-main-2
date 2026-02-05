@@ -181,7 +181,10 @@ export default function App(): React.JSX.Element {
     }
     return 'ru';
   });
-  const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>('galaxy');
+  const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'stage-dancer';
+    return 'galaxy';
+  });
   const [vizSettings, setVizSettings] = useState<VisualizerSettings>(DEFAULT_VIZ_SETTINGS);
   const [danceStyle, setDanceStyle] = useState<number>(1);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -1051,7 +1054,11 @@ export default function App(): React.JSX.Element {
                 
                     {/* Info - Left Aligned */}
                     <div className="min-w-0 flex-1 flex flex-col justify-center">
-                            <h4 className="font-black text-sm leading-tight truncate text-slate-100">{currentStation?.name || 'Radio Stream'}</h4>
+                            <h4 className="font-black text-sm leading-tight truncate text-slate-100 uppercase tracking-wider">
+                                {selectedCategory 
+                                    ? (t[selectedCategory.id] || selectedCategory.name) 
+                                    : (currentStation?.tags?.[0] || (currentStation?.name ? 'Radio' : 'Stream'))}
+                            </h4>
                             <p className="text-[9px] text-primary font-black uppercase tracking-widest leading-tight mt-0.5">{isBuffering ? 'Buffering...' : 'LIVE'}</p>
                     </div>
 
