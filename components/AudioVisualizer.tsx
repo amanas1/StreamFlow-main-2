@@ -179,6 +179,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       const time = Date.now() / 1000 * animationSpeed;
 
       const drawStars = (baseCount: number, syncToBeat: boolean) => {
+        // ... existing logic ...
         // --- ADAPTIVE PARTICLE COUNT ---
         const multiplier = visualMode === 'low' ? 0.3 : visualMode === 'medium' ? 0.6 : 1;
         const finalCount = Math.floor(baseCount * multiplier);
@@ -214,6 +215,41 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
              ctx.shadowBlur = 0;
           }
         });
+      };
+
+      const drawSpotlight = (x: number, angle: number, colorHue: number, intensity: number) => {
+          if (!isPlaying || intensity < 0.05) return;
+          
+          ctx.save();
+          ctx.translate(x, 0); // Top edge
+          ctx.rotate(angle);
+          
+          // Cone gradient
+          const length = height * 1.5;
+          const spread = width * 0.3;
+          
+          const grd = ctx.createLinearGradient(0, 0, 0, length);
+          grd.addColorStop(0, `hsla(${colorHue}, 100%, 70%, ${intensity * 0.8})`); // Bright source
+          grd.addColorStop(0.2, `hsla(${colorHue}, 100%, 60%, ${intensity * 0.3})`);
+          grd.addColorStop(1, `hsla(${colorHue}, 100%, 50%, 0)`);
+          
+          ctx.fillStyle = grd;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-spread * 0.5, length);
+          ctx.lineTo(spread * 0.5, length);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Lens Flare / Source Glow
+          ctx.shadowBlur = 20 * intensity;
+          ctx.shadowColor = `hsla(${colorHue}, 100%, 70%, 1)`;
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(0, 5, 5 + intensity * 10, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.restore();
       };
 
       const drawDancer = (x: number, y: number, dancerScale: number, style: number, settings: VisualizerSettings, isBlinking: boolean) => {
@@ -348,6 +384,30 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       }
 
       if (variant === 'stage-dancer') {
+        // Light Show - Dynamic Spotlights
+        if (isPlaying && visualMode !== 'low') {
+            // Left Spotlight (Responsive to Bass/Low Mids)
+            drawSpotlight(
+                width * 0.2, 
+                Math.PI * 0.15 + Math.sin(time * 0.8) * 0.1, // Swaying
+                (time * 50) % 360, // Cycling Colors
+                (sLow / 255) // Intensity by Bass
+            );
+            
+            // Right Spotlight (Responsive to High Mids/Treble)
+            drawSpotlight(
+                width * 0.8, 
+                -Math.PI * 0.15 + Math.sin(time * 1.2) * 0.1, 
+                (time * 50 + 180) % 360, // Opposite Color
+                (sMid / 255) // Intensity by Mids
+            );
+
+            // Center Strobe (Fast flashing on beat)
+            if (beatVal > 0.6) {
+                 drawSpotlight(width * 0.5, 0, 0, Math.pow(beatVal, 4) * 0.5); // White flash
+            }
+        }
+
         drawStars(120, true);
         const grd = ctx.createLinearGradient(0, height, 0, height * 0.7);
         grd.addColorStop(0, 'rgba(30, 41, 59, 0.4)');
