@@ -988,7 +988,7 @@ export default function App(): React.JSX.Element {
                       <span className="whitespace-nowrap hidden sm:inline">{language === 'ru' ? 'Сейчас слушают онлайн' : 'Listening Online'}</span> 
                       <span className="whitespace-nowrap sm:hidden">{language === 'ru' ? 'Онлайн' : 'Online'}</span> 
                       {/* Show at least 1 if we are the one viewing and the stats are loading/0 */}
-                      <span className="text-white font-mono text-xs">{onlineStats.totalOnline || 1}</span>
+                      <span className="text-white font-mono text-xs">{Number(onlineStats.totalOnline) || 1}</span>
                   </span>
               </div>
             </div>
