@@ -1008,8 +1008,8 @@ export default function App(): React.JSX.Element {
             </div>
 
 
-            {/* Action icons */}
-            <div className="flex items-center gap-1.5 sm:gap-4">
+            {/* Action icons - Tighter gap for mobile */}
+            <div className="flex items-center gap-1 sm:gap-4">
               {isAiAvailable() && viewMode !== 'favorites' && !isLoading && (
                   <button 
                     onClick={handleAiCuration} 
@@ -1022,11 +1022,11 @@ export default function App(): React.JSX.Element {
                   </button>
               )}
               {/* Restored Rocket (App) and Envelope (Feedback) - Visible on Mobile now */}
-              <button onClick={() => setDownloadModalOpen(true)} className="p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title="Download App"><RocketIcon className="w-5 h-5" /></button>
-              <button onClick={() => setFeedbackOpen(true)} className="p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title={t.feedbackTitle}><EnvelopeIcon className="w-5 h-5" /></button>
+              <button onClick={() => setDownloadModalOpen(true)} className="p-1.5 text-slate-400 hover:text-white transition-transform hover:scale-110" title="Download App"><RocketIcon className="w-5 h-5" /></button>
+              <button onClick={() => setFeedbackOpen(true)} className="p-1.5 text-slate-400 hover:text-white transition-transform hover:scale-110" title={t.feedbackTitle}><EnvelopeIcon className="w-5 h-5" /></button>
               
               {/* Online Counter - Smart Ticker Mode */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500 shadow-lg ml-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500 shadow-lg ml-1">
                   <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)] ${onlineStats.totalOnline > 0 ? 'bg-green-500' : 'bg-slate-500 shadow-none'}`}></div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       {Object.keys(countryStats).length > 0 ? (
@@ -1036,8 +1036,9 @@ export default function App(): React.JSX.Element {
                           </>
                       ) : (
                           <>
-                            <span className="whitespace-nowrap hidden sm:inline">{language === 'ru' ? 'Слушают' : 'Listening'}</span> 
-                            <span className="text-white font-mono text-xs">{Number(onlineStats.totalOnline) || 1}</span>
+                             {/* Fallback to KZ for user request if no country data yet */}
+                            <span>🇰🇿</span> 
+                            <span className="text-white">KZ - {Number(onlineStats.totalOnline) || 1}</span>
                           </>
                       )}
                   </span>
