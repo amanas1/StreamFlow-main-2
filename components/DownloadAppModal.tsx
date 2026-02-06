@@ -69,73 +69,73 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onClose, la
 
                 {/* Header */}
                 <div className="mb-6 relative">
-                    <div className="absolute inset-0 bg-primary blur-[60px] opacity-20 animate-pulse"></div>
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg relative z-10">
-                        <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                        </svg>
+            <div className="absolute inset-0 bg-primary/20 blur-[80px] animate-pulse rounded-full"></div>
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-secondary to-primary flex items-center justify-center shadow-[0_0_30px_rgba(188,111,241,0.4)] relative z-10 animate-transition border border-white/20">
+                <svg className="w-10 h-10 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                </svg>
+            </div>
+        </div>
+
+        <h2 className="text-3xl font-black text-white mb-2 tracking-tight">{t.title}</h2>
+        <p className="text-slate-400 text-sm mb-8 font-medium">{t.subtitle}</p>
+
+        <div className="flex flex-col md:flex-row items-stretch gap-8 w-full mb-8 min-h-[180px]">
+            {/* Left Side: QR or Instructions */}
+            <div className="flex-1 flex flex-col items-center justify-center relative p-6 bg-white/5 rounded-3xl border border-white/10 shadow-inner">
+                {instruction ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 animate-in fade-in slide-in-from-left duration-300">
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 mb-4 w-full backdrop-blur-sm">
+                            <p className="text-sm font-bold text-white leading-relaxed">
+                                {instruction === 'android' ? t.androidInst : t.iosInst}
+                            </p>
+                        </div>
+                        <button onClick={() => setInstruction(null)} className="flex items-center gap-2 text-xs font-bold text-primary hover:text-white transition-colors uppercase tracking-widest">
+                            <ArrowLeftIcon className="w-4 h-4" /> {t.back}
+                        </button>
                     </div>
-                </div>
-
-                <h2 className="text-3xl font-black text-white mb-2">{t.title}</h2>
-                <p className="text-slate-400 text-sm mb-8">{t.subtitle}</p>
-
-                <div className="flex flex-col md:flex-row items-stretch gap-8 w-full mb-8 min-h-[180px]">
-                    {/* Left Side: QR or Instructions */}
-                    <div className="flex-1 flex flex-col items-center justify-center relative">
-                        {instruction ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center animate-in fade-in slide-in-from-left duration-300">
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 mb-4 w-full">
-                                    <p className="text-sm font-bold text-white leading-relaxed">
-                                        {instruction === 'android' ? t.androidInst : t.iosInst}
-                                    </p>
-                                </div>
-                                <button onClick={() => setInstruction(null)} className="flex items-center gap-2 text-xs font-bold text-primary hover:text-white transition-colors uppercase tracking-widest">
-                                    <ArrowLeftIcon className="w-4 h-4" /> {t.back}
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-                                <div className="p-3 bg-white rounded-2xl shadow-lg mb-4 transform hover:scale-105 transition-transform duration-500">
-                                     {qrUrl && <img src={qrUrl} alt="QR Code" className="w-32 h-32 rounded-lg" />}
-                                </div>
-                                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">{t.scan}</p>
-                            </div>
-                        )}
+                ) : (
+                    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+                        <div className="p-4 bg-white rounded-[2rem] shadow-[0_0_40px_rgba(255,255,255,0.1)] mb-4 transform hover:scale-105 transition-all duration-500 border-4 border-white/10">
+                             {qrUrl && <img src={qrUrl} alt="QR Code" className="w-32 h-32 rounded-xl" />}
+                        </div>
+                        <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">{t.scan}</p>
                     </div>
+                )}
+            </div>
 
-                    <div className="hidden md:block w-px bg-white/10 self-stretch"></div>
+            <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-white/10 to-transparent self-stretch"></div>
 
-                    {/* Right Side: Buttons */}
-                    <div className="flex-1 flex flex-col justify-center gap-3 w-full">
-                         {installPrompt && (
-                             <button onClick={handleInstallClick} className="w-full py-3.5 bg-white text-black rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2">
-                                 {t.install}
-                             </button>
-                         )}
-                         
-                         <div className="flex gap-2">
-                             <button 
-                                onClick={() => setInstruction('android')}
-                                className={`flex-1 py-3 bg-white/5 border rounded-xl flex items-center justify-center gap-2 transition-all group ${instruction === 'android' ? 'border-primary bg-primary/10' : 'border-white/10 hover:bg-white/10'}`}
-                             >
-                                <AndroidIcon className={`w-5 h-5 transition-colors ${instruction === 'android' ? 'text-[#3DDC84]' : 'text-slate-400 group-hover:text-[#3DDC84]'}`} />
-                                <span className={`text-xs font-bold ${instruction === 'android' ? 'text-white' : 'text-slate-300'}`}>{t.android}</span>
-                             </button>
-                             <button 
-                                onClick={() => setInstruction('ios')}
-                                className={`flex-1 py-3 bg-white/5 border rounded-xl flex items-center justify-center gap-2 transition-all group ${instruction === 'ios' ? 'border-white bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
-                             >
-                                <AppleIcon className={`w-5 h-5 transition-colors ${instruction === 'ios' ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
-                                <span className={`text-xs font-bold ${instruction === 'ios' ? 'text-white' : 'text-slate-300'}`}>{t.ios}</span>
-                             </button>
-                         </div>
-                         <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">{t.desc}</p>
-                    </div>
-                </div>
-                
-                <div className="w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                <p className="mt-4 text-[9px] text-slate-600 uppercase font-bold tracking-[0.2em]">StreamFlow Mobile Engine</p>
+            {/* Right Side: Buttons */}
+            <div className="flex-1 flex flex-col justify-center gap-4 w-full">
+                 {installPrompt && (
+                     <button onClick={handleInstallClick} className="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-2xl font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(188,111,241,0.3)] flex items-center justify-center gap-2 border border-white/20">
+                         {t.install}
+                     </button>
+                 )}
+                 
+                 <div className="flex gap-3">
+                     <button 
+                        onClick={() => setInstruction('android')}
+                        className={`flex-1 py-4 bg-white/5 border rounded-2xl flex items-center justify-center gap-3 transition-all group ${instruction === 'android' ? 'border-primary bg-primary/20 shadow-[0_0_20px_rgba(188,111,241,0.2)]' : 'border-white/10 hover:bg-white/10 shadow-lg'}`}
+                     >
+                        <AndroidIcon className={`w-6 h-6 transition-colors ${instruction === 'android' ? 'text-[#3DDC84]' : 'text-slate-400 group-hover:text-[#3DDC84]'}`} />
+                        <span className={`text-xs font-black uppercase tracking-wider ${instruction === 'android' ? 'text-white' : 'text-slate-300'}`}>{t.android}</span>
+                     </button>
+                     <button 
+                        onClick={() => setInstruction('ios')}
+                        className={`flex-1 py-4 bg-white/5 border rounded-2xl flex items-center justify-center gap-3 transition-all group ${instruction === 'ios' ? 'border-white bg-white/20 shadow-[0_0_20px_rgba(255,255,255,0.1)]' : 'border-white/10 hover:bg-white/10 shadow-lg'}`}
+                     >
+                        <AppleIcon className={`w-6 h-6 transition-colors ${instruction === 'ios' ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                        <span className={`text-xs font-black uppercase tracking-wider ${instruction === 'ios' ? 'text-white' : 'text-slate-300'}`}>{t.ios}</span>
+                     </button>
+                 </div>
+                 <p className="text-[10px] text-slate-500 mt-2 font-medium leading-relaxed opacity-80">{t.desc}</p>
+            </div>
+        </div>
+        
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+        <p className="mt-6 text-[9px] text-slate-500 uppercase font-black tracking-[0.4em] opacity-50">StreamFlow Mobile Engine</p>
             </div>
         </div>
     );
