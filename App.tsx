@@ -53,7 +53,8 @@ const DEFAULT_VIZ_SETTINGS: VisualizerSettings = {
   energySaver: false,
   barDensity: 1.4,
   vizAlignment: 'bottom',
-  glowIntensity: 1.4
+  glowIntensity: 1.4,
+  bgOpacity: 0
 };
 
 const INITIAL_CHUNK = 5; 

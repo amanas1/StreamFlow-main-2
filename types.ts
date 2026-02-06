@@ -50,6 +50,7 @@ export interface VisualizerSettings {
   barDensity?: number; // 0.5 to 2.0 multiplier
   vizAlignment?: 'center' | 'bottom';
   glowIntensity?: number; // 0 to 2
+  bgOpacity?: number; // 0 to 0.8
 }
 
 export interface FxSettings {

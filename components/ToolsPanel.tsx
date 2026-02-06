@@ -235,6 +235,14 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                                 />
                             </div>
                             <div className="flex items-center gap-4">
+                                <span className="text-[10px] font-bold text-slate-500 w-16 uppercase">{t.bgOpacity}</span>
+                                <input type="range" min="0" max="0.8" step="0.05" 
+                                    value={vizSettings.bgOpacity ?? 0} 
+                                    onChange={(e) => setVizSettings({...vizSettings, bgOpacity: parseFloat(e.target.value)})}
+                                    className="flex-1 accent-primary h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer"
+                                />
+                            </div>
+                            <div className="flex items-center gap-4">
                                 <span className="text-[10px] font-bold text-slate-500 w-16 uppercase">{t.layout}</span>
                                 <div className="flex bg-black/40 rounded-lg p-1 flex-1">
                                     <button 
@@ -549,71 +557,71 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                             </div>
                         </div>
                      </div>
-                 </div>
-             )}
+                  </div>
+              )}
 
-             {activeTab === 'timer' && (
-                 <div className="h-full flex flex-col items-center justify-center space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                     
-                     <div className="w-full bg-white/5 p-6 rounded-3xl border border-white/5">
-                         <h3 className="text-xl font-bold text-white mb-6 text-center uppercase tracking-widest flex items-center justify-center gap-2"><ClockIcon className="w-6 h-6 text-indigo-400" /> {t.sleepTimer}</h3>
-                         <div className="grid grid-cols-3 gap-3 mb-6">
-                             {[15, 30, 45, 60, 90, 120].map(min => (
-                                 <button 
-                                    key={min}
-                                    onClick={() => setSleepTimer(min)}
-                                    className={`py-4 rounded-xl text-lg font-bold transition-all ${sleepTimer === min ? 'bg-indigo-500 text-white shadow-lg' : 'bg-black/40 text-slate-400 hover:bg-white/10'}`}
-                                 >
-                                     {min} m
-                                 </button>
-                             ))}
-                         </div>
-                         {sleepTimer && (
-                             <div className="text-center">
-                                 <p className="text-4xl font-black text-white mb-4 animate-pulse">{sleepTimer} min</p>
-                                 <button onClick={() => setSleepTimer(null)} className="px-6 py-2 rounded-full bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/40 transition-all">{t.turnOffTimer}</button>
-                             </div>
-                         )}
-                     </div>
+              {activeTab === 'timer' && (
+                  <div className="h-full flex flex-col items-center justify-center space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                      
+                      <div className="w-full bg-white/5 p-6 rounded-3xl border border-white/5">
+                          <h3 className="text-xl font-bold text-white mb-6 text-center uppercase tracking-widest flex items-center justify-center gap-2"><ClockIcon className="w-6 h-6 text-indigo-400" /> {t.sleepTimer}</h3>
+                          <div className="grid grid-cols-3 gap-3 mb-6">
+                              {[15, 30, 45, 60, 90, 120].map(min => (
+                                  <button 
+                                     key={min}
+                                     onClick={() => setSleepTimer(min)}
+                                     className={`py-4 rounded-xl text-lg font-bold transition-all ${sleepTimer === min ? 'bg-indigo-500 text-white shadow-lg' : 'bg-black/40 text-slate-400 hover:bg-white/10'}`}
+                                  >
+                                      {min} m
+                                  </button>
+                              ))}
+                          </div>
+                          {sleepTimer && (
+                              <div className="text-center">
+                                  <p className="text-4xl font-black text-white mb-4 animate-pulse">{sleepTimer} min</p>
+                                  <button onClick={() => setSleepTimer(null)} className="px-6 py-2 rounded-full bg-red-500/20 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/40 transition-all">{t.turnOffTimer}</button>
+                              </div>
+                          )}
+                      </div>
 
-                     <div className="w-full bg-white/5 p-6 rounded-3xl border border-white/5">
-                         <div className="flex justify-between items-center mb-6">
-                             <h3 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-2"><BellIcon className="w-6 h-6 text-red-400" /> {t.alarm}</h3>
-                             <button onClick={() => updateAlarm('enabled', !alarm.enabled)} className={`w-14 h-7 rounded-full relative transition-colors ${alarm.enabled ? 'bg-green-500' : 'bg-slate-700'}`}>
-                                 <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all shadow-md ${alarm.enabled ? 'left-8' : 'left-1'}`}></div>
-                             </button>
-                         </div>
-                         
-                         <div className={`transition-all duration-300 ${alarm.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                             <div className="flex justify-center mb-6">
-                                 <input 
-                                     type="time" 
-                                     value={alarm.time}
-                                     onChange={(e) => updateAlarm('time', e.target.value)}
-                                     className="bg-black/40 text-white text-5xl font-black rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/50"
-                                 />
-                             </div>
-                             <div className="flex justify-between gap-1">
-                                 {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
-                                     <button 
-                                         key={day}
-                                         onClick={() => toggleAlarmDay(i)}
-                                         className={`w-10 h-10 rounded-full text-[10px] font-bold uppercase flex items-center justify-center transition-all ${alarm.days.includes(i) ? 'bg-primary text-white shadow-lg' : 'bg-black/40 text-slate-500 hover:bg-white/10'}`}
-                                     >
-                                         {day.charAt(0)}
-                                     </button>
-                                 ))}
-                             </div>
-                             {alarm.enabled && (
-                                 <p className="text-center text-xs text-green-400 font-bold mt-6 uppercase tracking-widest animate-pulse">
-                                     {t.alarm_set} {alarm.time}
-                                 </p>
-                             )}
-                         </div>
-                     </div>
+                      <div className="w-full bg-white/5 p-6 rounded-3xl border border-white/5">
+                          <div className="flex justify-between items-center mb-6">
+                              <h3 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-2"><BellIcon className="w-6 h-6 text-red-400" /> {t.alarm}</h3>
+                              <button onClick={() => updateAlarm('enabled', !alarm.enabled)} className={`w-14 h-7 rounded-full relative transition-colors ${alarm.enabled ? 'bg-green-500' : 'bg-slate-700'}`}>
+                                  <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all shadow-md ${alarm.enabled ? 'left-8' : 'left-1'}`}></div>
+                              </button>
+                          </div>
+                          
+                          <div className={`transition-all duration-300 ${alarm.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                              <div className="flex justify-center mb-6">
+                                  <input 
+                                      type="time" 
+                                      value={alarm.time}
+                                      onChange={(e) => updateAlarm('time', e.target.value)}
+                                      className="bg-black/40 text-white text-5xl font-black rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-primary/50"
+                                  />
+                              </div>
+                              <div className="flex justify-between gap-1">
+                                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
+                                      <button 
+                                          key={day}
+                                          onClick={() => toggleAlarmDay(i)}
+                                          className={`w-10 h-10 rounded-full text-[10px] font-bold uppercase flex items-center justify-center transition-all ${alarm.days.includes(i) ? 'bg-primary text-white shadow-lg' : 'bg-black/40 text-slate-500 hover:bg-white/10'}`}
+                                      >
+                                          {day.charAt(0)}
+                                      </button>
+                                  ))}
+                              </div>
+                              {alarm.enabled && (
+                                  <p className="text-center text-xs text-green-400 font-bold mt-6 uppercase tracking-widest animate-pulse">
+                                      {t.alarm_set} {alarm.time}
+                                  </p>
+                              )}
+                          </div>
+                      </div>
 
-                 </div>
-             )}
+                  </div>
+              )}
           </div>
        </div>
     </div>

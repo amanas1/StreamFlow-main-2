@@ -115,6 +115,12 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 
       ctx.clearRect(0, 0, width, height);
       
+      // Draw background dimming layer
+      if (settings.bgOpacity && settings.bgOpacity > 0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${settings.bgOpacity})`;
+        ctx.fillRect(0, 0, width, height);
+      }
+      
       // If Disabled, Draw Simple Twinkling Stars and Return
       if (settings.isDisabled) {
           if (starsRef.current.length === 0) {
