@@ -43,14 +43,17 @@ const DEFAULT_VIZ_SETTINGS: VisualizerSettings = {
   scaleX: 1,
   scaleY: 1,
   brightness: 110,
-  contrast: 120,
-  saturation: 110,
+  contrast: 130,
+  saturation: 120,
   hue: 0,
   opacity: 1,
   speed: 1,
   autoIdle: true,
   performanceMode: true,
-  energySaver: false
+  energySaver: false,
+  barDensity: 1.4,
+  vizAlignment: 'bottom',
+  glowIntensity: 1.4
 };
 
 const INITIAL_CHUNK = 5; 

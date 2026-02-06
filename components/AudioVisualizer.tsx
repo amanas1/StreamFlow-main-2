@@ -652,57 +652,76 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           ctx.fill();
         });
       } else {
-        const barCount = visualMode === 'low' ? 60 : (visualMode === 'medium' ? 100 : 160);
+        const baseBarCount = visualMode === 'low' ? 50 : (visualMode === 'medium' ? 80 : 120);
+        const barCount = Math.floor(baseBarCount * (settings.barDensity || 1.2));
         const barWidth = effectiveWidth / barCount;
         const timeShift = Date.now() / 100 * animationSpeed;
+        const glowMult = settings.glowIntensity ?? 1.2;
         
         for (let i = 0; i < barCount; i++) {
-          // Use a non-linear mapping to emphasize bass/mids and stretch the highs to fill the width
-          // Most energy is in first 40% of bufferLength, so we stretch it
           const t = i / barCount;
-          const freqIndex = Math.floor(Math.pow(t, 0.7) * (bufferLength * 0.8));
+          // Improved frequency mapping: logarithmic at start, linear at end
+          const freqIndex = Math.floor(Math.pow(t, 0.6) * (bufferLength * 0.95));
           
-          const intensityVal = (dataArray[freqIndex] || 0) / 255;
+          const rawVal = (dataArray[freqIndex] || 0) / 255;
+          // Boost high frequencies slightly to ensure they are visible even with lower energy
+          const sensitivity = 1 + t * 0.4;
+          const intensityVal = Math.min(1, rawVal * sensitivity);
+          
           const barHeight = intensityVal * effectiveHeight;
           const x = offsetX + (i * barWidth);
           const hue = (i / barCount) * 360 + (isPlaying ? timeShift : 0);
           
           if (variant === 'segmented') {
-            const centerY = height / 2;
+            const isBottom = settings.vizAlignment === 'bottom';
+            const baselineY = isBottom ? height - 10 : height / 2;
             const segH = 4;
             const segG = 2;
-            const count = Math.floor(barHeight / (segH + segG));
+            const count = Math.max(isBottom ? 1 : 0, Math.floor(barHeight / (segH + segG)));
             
-            // Vibrant Neon Gradient
-            const barGrd = ctx.createLinearGradient(x, centerY - barHeight - 20, x, centerY + barHeight + 20);
-            barGrd.addColorStop(0, `hsla(${hue}, 100%, 75%, 1)`); // Brightest top
-            barGrd.addColorStop(0.5, `hsla(${hue}, 90%, 55%, 0.9)`); // Saturated middle
-            barGrd.addColorStop(1, `hsla(${hue}, 100%, 75%, 1)`); // Brightest bottom
-            
-            ctx.fillStyle = barGrd;
-            
-            if (visualMode !== 'low' && intensityVal > 0.15) {
-              ctx.shadowBlur = 15 * intensityVal;
-              ctx.shadowColor = `hsla(${hue}, 100%, 65%, 0.9)`;
+            if (visualMode !== 'low' && intensityVal > 0.05) {
+              ctx.shadowBlur = 15 * intensityVal * glowMult;
+              ctx.shadowColor = `hsla(${hue}, 100%, 65%, 0.8)`;
             }
 
+            // Draw segments
             for(let s=0; s<count; s++) {
-              const rectYTop = centerY - s*(segH+segG) - segH;
-              const rectYBottom = centerY + s*(segH+segG);
-              
-              // Draw with slight rounding effect or just clean blocks
-              ctx.fillRect(x, rectYTop, barWidth - 1, segH);
-              ctx.fillRect(x, rectYBottom, barWidth - 1, segH);
+              if (isBottom) {
+                const rectY = baselineY - s*(segH+segG) - segH;
+                const opacity = 0.4 + (1 - s/count) * 0.6;
+                ctx.fillStyle = `hsla(${hue}, 100%, ${70 - (s/count)*20}%, ${opacity})`;
+                ctx.fillRect(x, rectY, barWidth - 1.5, segH);
+                
+                // Add a small highlight on top segment
+                if (s === count - 1) {
+                  ctx.fillStyle = '#fff';
+                  ctx.globalAlpha = 0.5 * intensityVal;
+                  ctx.fillRect(x, rectY, barWidth - 1.5, 1);
+                  ctx.globalAlpha = 1;
+                }
+              } else {
+                const rectYTop = baselineY - s*(segH+segG) - segH;
+                const rectYBottom = baselineY + s*(segH+segG);
+                const opacity = 0.4 + (1 - s/count) * 0.6;
+                ctx.fillStyle = `hsla(${hue}, 100%, 70%, ${opacity})`;
+                ctx.fillRect(x, rectYTop, barWidth - 1.5, segH);
+                ctx.fillRect(x, rectYBottom, barWidth - 1.5, segH);
+              }
             }
             
             ctx.shadowBlur = 0;
           } else {
             const barGrd = ctx.createLinearGradient(x, height, x, height - barHeight);
-            barGrd.addColorStop(0, `hsla(${hue}, 90%, 50%, 0.8)`);
-            barGrd.addColorStop(1, `hsla(${hue}, 100%, 70%, 1)`);
+            barGrd.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.9)`);
+            barGrd.addColorStop(1, `hsla(${hue}, 100%, 80%, 1)`);
             
             ctx.fillStyle = barGrd;
+            if (visualMode === 'high') {
+                ctx.shadowBlur = 10 * intensityVal;
+                ctx.shadowColor = `hsla(${hue}, 100%, 60%, 0.5)`;
+            }
             ctx.fillRect(x, height - barHeight - (height - effectiveHeight)/2, barWidth - 1, barHeight);
+            ctx.shadowBlur = 0;
           }
         }
       }

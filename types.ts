@@ -47,6 +47,9 @@ export interface VisualizerSettings {
   fpsLimit?: boolean;
   isDisabled?: boolean; // Deprecated in favor of energySaver, kept for compatibility if needed
   energySaver: boolean; // New Energy Saver Mode
+  barDensity?: number; // 0.5 to 2.0 multiplier
+  vizAlignment?: 'center' | 'bottom';
+  glowIntensity?: number; // 0 to 2
 }
 
 export interface FxSettings {

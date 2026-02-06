@@ -216,6 +216,41 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                                     className="flex-1 accent-primary h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer"
                                 />
                             </div>
+                            
+                            <div className="w-full h-px bg-white/5 my-2"></div>
+                             <div className="flex items-center gap-4">
+                                <span className="text-[10px] font-bold text-slate-500 w-16 uppercase">{t.density}</span>
+                                <input type="range" min="0.5" max="3" step="0.1" 
+                                    value={vizSettings.barDensity || 1.2} 
+                                    onChange={(e) => setVizSettings({...vizSettings, barDensity: parseFloat(e.target.value)})}
+                                    className="flex-1 accent-primary h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer"
+                                />
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] font-bold text-slate-500 w-16 uppercase">{t.glow}</span>
+                                <input type="range" min="0" max="2.5" step="0.1" 
+                                    value={vizSettings.glowIntensity ?? 1.2} 
+                                    onChange={(e) => setVizSettings({...vizSettings, glowIntensity: parseFloat(e.target.value)})}
+                                    className="flex-1 accent-primary h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer"
+                                />
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] font-bold text-slate-500 w-16 uppercase">{t.layout}</span>
+                                <div className="flex bg-black/40 rounded-lg p-1 flex-1">
+                                    <button 
+                                        onClick={() => setVizSettings({...vizSettings, vizAlignment: 'center'})}
+                                        className={`flex-1 py-1 rounded-md text-[10px] font-bold transition-all ${vizSettings.vizAlignment !== 'bottom' ? 'bg-primary text-white shadow-sm' : 'text-slate-500'}`}
+                                    >
+                                        {t.layoutCenter}
+                                    </button>
+                                    <button 
+                                        onClick={() => setVizSettings({...vizSettings, vizAlignment: 'bottom'})}
+                                        className={`flex-1 py-1 rounded-md text-[10px] font-bold transition-all ${vizSettings.vizAlignment === 'bottom' ? 'bg-primary text-white shadow-sm' : 'text-slate-500'}`}
+                                    >
+                                        {t.layoutBottom}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

@@ -687,7 +687,8 @@ export const TRANSLATIONS: Record<string, any> = {
         resetApp: "Reset App to Defaults",
         resetConfirm: "Are you sure you want to reset all settings and data? This action cannot be undone.",
         danceMove: "Dance Move",
-        switchMove: "Switch Move"
+        switchMove: "Switch Move",
+        density: 'Density', layout: 'Layout', layoutCenter: 'Center', layoutBottom: 'Bottom', glow: 'Glow'
     },
     ru: {
         genres: 'Жанры', eras: 'Эпохи', moods: 'Настроение', effects: 'Эффекты', favorites: 'Избранное',
@@ -743,7 +744,8 @@ export const TRANSLATIONS: Record<string, any> = {
         resetApp: "Сброс настроек (Reset)",
         resetConfirm: "Вы уверены, что хотите сбросить все настройки и данные приложения? Это действие нельзя отменить.",
         danceMove: "Танцевальное движение",
-        switchMove: "Сменить"
+        switchMove: "Сменить",
+        density: 'Плотность', layout: 'Вид', layoutCenter: 'Центр', layoutBottom: 'Низ', glow: 'Свечение'
     }
 };
 export const GLOBAL_PRESETS = [
