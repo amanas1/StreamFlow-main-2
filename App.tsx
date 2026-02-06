@@ -106,31 +106,51 @@ const StationCard = React.memo(({
   );
 });
 
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Kazakhstan': '🇰🇿', 'KZ': '🇰🇿',
+  'Russia': '🇷🇺', 'RU': '🇷🇺',
+  'USA': '🇺🇸', 'US': '🇺🇸',
+  'Uzbekistan': '🇺🇿', 'UZ': '🇺🇿',
+  'Ukraine': '🇺🇦', 'UA': '🇺🇦',
+  'Germany': '🇩🇪', 'DE': '🇩🇪',
+  'France': '🇫🇷', 'FR': '🇫🇷',
+  'China': '🇨🇳', 'CN': '🇨🇳',
+  'Japan': '🇯🇵', 'JP': '🇯🇵',
+  'UK': '🇬🇧', 'GB': '🇬🇧',
+  'Kyrgyzstan': '🇰🇬', 'KG': '🇰🇬',
+  'Turkey': '🇹🇷', 'TR': '🇹🇷',
+  'Global': '🌍'
+};
+
+function getCountryFlag(country: string): string {
+    return COUNTRY_FLAGS[country] || COUNTRY_FLAGS[country.toUpperCase()] || '🌍';
+}
+
 export default function App(): React.JSX.Element {
-  
+
   // Radio State
   const [viewMode, setViewMode] = useState<ViewMode>('genres');
   const [selectedCategory, setSelectedCategory] = useState<CategoryInfo | null>(GENRES[0]);
   const [stations, setStations] = useState<RadioStation[]>([]);
   const [visibleCount, setVisibleCount] = useState(INITIAL_CHUNK);
   const [currentStation, setCurrentStation] = useState<RadioStation | null>(null);
-  
+
   // AI State
   const [isAiCurating, setIsAiCurating] = useState(false);
   const [aiNotification, setAiNotification] = useState<string | null>(null);
-  
+
   // Common Player State
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); 
+  const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
-  
+
   // UI State
   const [toolsOpen, setToolsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [downloadModalOpen, setDownloadModalOpen] = useState(false); 
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
@@ -138,7 +158,7 @@ export default function App(): React.JSX.Element {
   const handleApplyPreset = (presetId: string) => {
       const preset = GLOBAL_PRESETS.find(p => p.id === presetId);
       if (!preset) return;
-      
+
       setActivePresetId(presetId);
       
       // Apply Theme
@@ -820,10 +840,29 @@ export default function App(): React.JSX.Element {
     // Connect to socket on page load to track all visitors
     socketService.connect();
     
-    const cleanup = socketService.onPresenceCount((stats) => {
+    // Subscribe to presence updates
+    const cleanupPresence = socketService.onPresenceCount((stats) => {
         setOnlineStats(stats);
     });
-    return cleanup;
+
+    const cleanupPresenceList = socketService.onPresenceList((users) => {
+         const stats: Record<string, number> = {};
+         users.forEach(u => {
+             // Prefer detectedCountry (IP based) or fallback to profile country
+             const c = u.detectedCountry || u.country || 'Global';
+             // Normalize: if it looks like a full name, map it? For now just use it.
+             // We can rely on getCountryFlag to handle mapping if needed.
+             // Ideally we want short codes "KZ", "RU"
+             stats[c] = (stats[c] || 0) + 1;
+         });
+         setCountryStats(stats);
+    });
+
+    // Handle incoming knocks
+    return () => {
+      cleanupPresence();
+      cleanupPresenceList();
+    };
   }, []);
 
   const loadCategory = useCallback(async (category: CategoryInfo | null, mode: ViewMode, autoPlay: boolean = false) => { 
@@ -981,17 +1020,25 @@ export default function App(): React.JSX.Element {
                       {!isAiCurating && <span className="xs:hidden font-bold">AI</span>}
                   </button>
               )}
-              {/* Restored Rocket (App) and Envelope (Feedback) */}
-              <button onClick={() => setDownloadModalOpen(true)} className="hidden md:block p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title="Download App"><RocketIcon className="w-6 h-6" /></button>
-              <button onClick={() => setFeedbackOpen(true)} className="hidden md:block p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title={t.feedbackTitle}><EnvelopeIcon className="w-6 h-6" /></button>
+              {/* Restored Rocket (App) and Envelope (Feedback) - Visible on Mobile now */}
+              <button onClick={() => setDownloadModalOpen(true)} className="p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title="Download App"><RocketIcon className="w-5 h-5" /></button>
+              <button onClick={() => setFeedbackOpen(true)} className="p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title={t.feedbackTitle}><EnvelopeIcon className="w-5 h-5" /></button>
               
               {/* Online Counter - Smart Ticker Mode */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500 shadow-lg ml-2">
                   <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)] ${onlineStats.totalOnline > 0 ? 'bg-green-500' : 'bg-slate-500 shadow-none'}`}></div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <span className="whitespace-nowrap hidden sm:inline">{language === 'ru' ? 'Слушают' : 'Listening'}</span> 
-                      {/* <span className="whitespace-nowrap sm:hidden">{language === 'ru' ? 'Онлайн' : 'Online'}</span>  */}
-                      <span className="text-white font-mono text-xs">{Number(onlineStats.totalOnline) || 1}</span>
+                      {Object.keys(countryStats).length > 0 ? (
+                          <>
+                            <span>{getCountryFlag(Object.keys(countryStats)[0])}</span>
+                            <span className="text-white">{Object.keys(countryStats)[0]} - {countryStats[Object.keys(countryStats)[0]]}</span>
+                          </>
+                      ) : (
+                          <>
+                            <span className="whitespace-nowrap hidden sm:inline">{language === 'ru' ? 'Слушают' : 'Listening'}</span> 
+                            <span className="text-white font-mono text-xs">{Number(onlineStats.totalOnline) || 1}</span>
+                          </>
+                      )}
                   </span>
               </div>
             </div>
