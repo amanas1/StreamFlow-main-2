@@ -1046,21 +1046,15 @@ export default function App(): React.JSX.Element {
               
               {/* Online Counter - Smart Ticker Mode */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500 shadow-lg ml-1">
-                  <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)] ${onlineStats.totalOnline > 0 ? 'bg-green-500' : 'bg-slate-500 shadow-none'}`}></div>
+                  {/* Green Dot - Desktop Only now */}
+                  <div className={`hidden md:block w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)] ${onlineStats.totalOnline > 0 ? 'bg-green-500' : 'bg-slate-500 shadow-none'}`}></div>
                   
-                  {/* MOBILE VERSION (Compact) */}
+                  {/* MOBILE VERSION (Minimalist: "KZ - 1") */}
                   <span className="md:hidden text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       {Object.keys(countryStats).length > 0 ? (
-                          <>
-                            <span>{getCountryFlag(Object.keys(countryStats)[0])}</span>
-                            <span className="text-white">{Object.keys(countryStats)[0]} - {countryStats[Object.keys(countryStats)[0]]}</span>
-                          </>
+                          <span className="text-white">{Object.keys(countryStats)[0]} - {countryStats[Object.keys(countryStats)[0]]}</span>
                       ) : (
-                          <>
-                             {/* Fallback to KZ for user request if no country data yet */}
-                            <span>🇰🇿</span> 
-                            <span className="text-white">KZ - {Number(onlineStats.totalOnline) || 1}</span>
-                          </>
+                          <span className="text-white">KZ - {Number(onlineStats.totalOnline) || 1}</span>
                       )}
                   </span>
                   
