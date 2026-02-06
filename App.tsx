@@ -1001,9 +1001,12 @@ export default function App(): React.JSX.Element {
             </button>
         ))}
         </div>
-        {/* Sidebar Footer cleared as requested */}
-        <div className="p-4 pt-2 border-t border-[var(--panel-border)]">
-             {/* hidden or empty if user wants nothing here, or maybe just copyright/version? leaving empty for now based on 'delete this' */}
+        {/* Sidebar Footer - Restore PWA/Download for Desktop only */}
+        <div className="p-4 pt-2 border-t border-[var(--panel-border)] hidden md:block">
+             <button onClick={() => setDownloadModalOpen(true)} className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 group">
+                <DownloadIcon className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                <div className="text-left"><p className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-white transition-colors">Mobile App</p><p className="text-xs font-black text-white">Download</p></div>
+             </button>
         </div>
       </aside>
 
