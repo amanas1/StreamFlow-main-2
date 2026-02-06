@@ -15,7 +15,7 @@ import {
   PauseIcon, VolumeIcon, LoadingIcon, MusicNoteIcon, HeartIcon, MenuIcon, AdjustmentsIcon,
   PlayIcon, ChatBubbleIcon, NextIcon, PreviousIcon, XMarkIcon, DownloadIcon,
   SwatchIcon, EnvelopeIcon, LifeBuoyIcon, ShuffleIcon, PlusIcon, ShareIcon, // Using PlusIcon as placeholder for EQ if needed, or AdjustmentsIcon
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon, RocketIcon
 } from './components/Icons';
 
 const ToolsPanel = React.lazy(() => import('./components/ToolsPanel'));
@@ -942,19 +942,9 @@ export default function App(): React.JSX.Element {
             </button>
         ))}
         </div>
+        {/* Sidebar Footer cleared as requested */}
         <div className="p-4 pt-2 border-t border-[var(--panel-border)]">
-                <div className="flex gap-2 mb-2">
-                    <button onClick={() => setManualOpen(true)} className="flex-1 py-3 px-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all flex items-center justify-center gap-2 group" title={t.manualTooltip}>
-                       <QuestionMarkCircleIcon className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
-                    </button>
-                    <button onClick={() => setFeedbackOpen(true)} className="flex-1 py-3 px-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all flex items-center justify-center gap-2 group" title={t.feedbackTitle}>
-                       <EnvelopeIcon className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
-                    </button>
-                </div>
-             <button onClick={() => setDownloadModalOpen(true)} className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 border border-white/5 hover:border-white/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 group">
-                <DownloadIcon className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
-                <div className="text-left"><p className="text-[10px] uppercase font-bold text-slate-400 group-hover:text-white transition-colors">Mobile App</p><p className="text-xs font-black text-white">Download</p></div>
-             </button>
+             {/* hidden or empty if user wants nothing here, or maybe just copyright/version? leaving empty for now based on 'delete this' */}
         </div>
       </aside>
 
@@ -991,9 +981,11 @@ export default function App(): React.JSX.Element {
                       {!isAiCurating && <span className="xs:hidden font-bold">AI</span>}
                   </button>
               )}
-              {/* Help/Feedback moved to sidebar */}
+              {/* Restored Rocket (App) and Envelope (Feedback) */}
+              <button onClick={() => setDownloadModalOpen(true)} className="hidden md:block p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title="Download App"><RocketIcon className="w-6 h-6" /></button>
+              <button onClick={() => setFeedbackOpen(true)} className="hidden md:block p-2 text-slate-400 hover:text-white transition-transform hover:scale-110" title={t.feedbackTitle}><EnvelopeIcon className="w-6 h-6" /></button>
               
-              {/* Online Counter - Moved here and made always visible for debugging/visibility */}
+              {/* Online Counter - Smart Ticker Mode */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500 shadow-lg ml-2">
                   <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)] ${onlineStats.totalOnline > 0 ? 'bg-green-500' : 'bg-slate-500 shadow-none'}`}></div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
