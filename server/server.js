@@ -9,15 +9,26 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const fs = require('fs');
+console.log('[INIT] ✓ fs loaded');
 const express = require('express');
+console.log('[INIT] ✓ express loaded');
 const http = require('http');
+console.log('[INIT] ✓ http loaded');
 const { Server } = require('socket.io');
+console.log('[INIT] ✓ socket.io loaded');
 const cors = require('cors');
+console.log('[INIT] ✓ cors loaded');
 const moderation = require('./moderation');
+console.log('[INIT] ✓ moderation loaded');
 const crypto = require('crypto');
+console.log('[INIT] ✓ crypto loaded');
 const path = require('path');
+console.log('[INIT] ✓ path loaded');
 
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+// Load environment variables (Railway provides these automatically)
+require('dotenv').config();
+console.log('[INIT] ✓ dotenv configured');
+
 
 // ENSURE DATA DIRECTORY EXISTS
 const DATA_DIR = path.join(__dirname, 'data');
