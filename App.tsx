@@ -314,7 +314,13 @@ export default function App(): React.JSX.Element {
           canDeleteAfter = data.canDeleteAfter;
           localStorage.setItem('streamflow_userId', userId);
           if (canDeleteAfter) localStorage.setItem('streamflow_canDeleteAfter', canDeleteAfter.toString());
+          
+          // Reset theme to default 'volcano' for new users
+          console.log('[AUTH] New user - resetting theme to volcano');
+          localStorage.setItem('streamflow_current_theme', 'volcano');
+          setCurrentTheme('volcano');
         }
+
 
         console.log(`[AUTH] Identity verified: ${userId}`);
         
