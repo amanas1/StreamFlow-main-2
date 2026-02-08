@@ -40,6 +40,7 @@ interface ChatPanelProps {
   randomMode: boolean;
   onToggleRandomMode: () => void;
   onShare: () => void;
+  onPendingKnocksChange?: (count: number) => void;
 }
 
 const EMOJIS = [
@@ -263,7 +264,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     isOpen, onClose, language, onLanguageChange,
     currentUser, onUpdateCurrentUser,
     isPlaying, onTogglePlay, onNextStation, onPrevStation, currentStation, analyserNode,
-    volume, onVolumeChange, visualMode, favorites, onToggleFavorite, randomMode, onToggleRandomMode, onShare
+    volume, onVolumeChange, visualMode, favorites, onToggleFavorite, randomMode, onToggleRandomMode, onShare,
+    onPendingKnocksChange
 }) => {
   const [onlineUsers, setOnlineUsers] = useState<UserProfile[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -671,6 +673,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   useEffect(() => { scrollToBottom(); }, [messages, view]);
+
+  // Notify parent about pending knocks count changes
+  useEffect(() => {
+    onPendingKnocksChange?.(pendingKnocks.length);
+  }, [pendingKnocks.length, onPendingKnocksChange]);
+  
 
   useEffect(() => {
     const cleanup = socketService.onPresenceCount((stats) => {

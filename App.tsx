@@ -1099,9 +1099,9 @@ export default function App(): React.JSX.Element {
             )}
             <button onClick={() => setChatOpen(!chatOpen)} className="p-2 rounded-full relative text-primary hover:scale-110 transition-transform shrink-0 z-50">
                 <ChatBubbleIcon className="w-6 h-6" />
-                {onlineStats.chatOnline > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-[#1e293b]">
-                        {onlineStats.chatOnline}
+                {pendingKnocksCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#1e293b] animate-pulse">
+                        {pendingKnocksCount}
                     </span>
                 )}
             </button>
@@ -1359,6 +1359,7 @@ export default function App(): React.JSX.Element {
             randomMode={isRandomMode}
             onToggleRandomMode={() => setIsRandomMode(!isRandomMode)}
             onShare={() => setShareOpen(true)}
+            onPendingKnocksChange={setPendingKnocksCount}
         />
       </Suspense>
 
