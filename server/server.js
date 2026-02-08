@@ -170,6 +170,8 @@ function saveMessages() {
 setInterval(() => {
   const now = Date.now();
   const expiredUsers = [];
+  let persistentModified = false; // Track if we need to save changes
+  
   
   for (const [userId, userData] of activeUsers.entries()) {
     if (now > userData.expiresAt) {
