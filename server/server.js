@@ -495,8 +495,8 @@ io.on('connection', (socket) => {
           return false;
         }
         
-        // Ensure only complete profiles are shown
-        if (!user.name || !user.age) return false;
+        // Ensure only FULLY complete profiles are shown (name, age, avatar, agreed to rules)
+        if (!user.name || !user.age || !user.avatar || !user.hasAgreedToRules) return false;
 
         return true;
     });

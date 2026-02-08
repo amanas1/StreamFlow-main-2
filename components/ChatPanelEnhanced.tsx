@@ -829,9 +829,30 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     };
     
     // Listen for incoming knocks
-    cleanups.push(socketService.onKnockReceived((data) => {
+    cleanups.push(socketService.onKnockReceived((data) =>{
       if (currentUser.blockedUsers.includes(data.fromUserId)) return;
-      playNotificationSound('knock');
+      
+      // Voice notification (sound)
+      if (currentUser.chatSettings.voiceNotificationsEnabled) {
+        playNotificationSound('knock');
+      }
+      
+      // Banner notification
+      if (currentUser.chatSettings.bannerNotificationsEnabled && document.visibilityState === 'hidden') {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const notif = new Notification(`${data.fromUser.name || 'Кто-то'} стучится!`, {
+            body: language === 'ru' ? 'Новый запрос на общение' : 'New chat request',
+            icon: data.fromUser.avatar || '/icon-192.png',
+            tag: `knock-${data.knockId}`,
+            requireInteraction: true
+          });
+          notif.onclick = () => {
+            window.focus();
+            notif.close();
+          };
+        }
+      }
+      
       setPendingKnocks(prev => [...prev, data]);
     }));
 
