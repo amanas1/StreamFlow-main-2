@@ -309,7 +309,7 @@ export default function App(): React.JSX.Element {
 
         if (!userId) {
           console.log('[AUTH] No identity found. Initializing new UUID...');
-          const data = await socketService.initIdentity();
+          const data = await socketService.initIdentity(); // No userId = create new
           userId = data.userId;
           canDeleteAfter = data.canDeleteAfter;
           localStorage.setItem('streamflow_userId', userId);
@@ -322,6 +322,13 @@ export default function App(): React.JSX.Element {
           
           // Reset visualizer to default settings (red hue)
           setVizSettings(DEFAULT_VIZ_SETTINGS);
+        } else {
+          // User has existing userId - re-authenticate (bypass rate limit)
+          console.log('[AUTH] Existing identity found. Re-authenticating...');
+          const data = await socketService.initIdentity(userId);
+          userId = data.userId; // Server confirms the userId
+          canDeleteAfter = data.canDeleteAfter;
+          if (canDeleteAfter) localStorage.setItem('streamflow_canDeleteAfter', canDeleteAfter.toString());
         }
 
 

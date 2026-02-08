@@ -24,6 +24,8 @@ const crypto = require('crypto');
 console.log('[INIT] ✓ crypto loaded');
 const path = require('path');
 console.log('[INIT] ✓ path loaded');
+const cookieParser = require('cookie-parser');
+console.log('[INIT] ✓ cookie-parser loaded');
 
 // Load environment variables (Railway provides these automatically)
 require('dotenv').config();
@@ -42,6 +44,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -896,8 +899,27 @@ app.post('/auth/init', (req, res) => {
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     const now = Date.now();
     const tenMinutesMs = 10 * 60 * 1000;
+    const { userId: existingUserId } = req.body; // Check if user already has ID
 
-    // Rate limit: 1 registration per 10 mins per IP
+    // If user provides existing userId, verify and return it (bypass rate limit)
+    if (existingUserId && persistentUsers.has(existingUserId)) {
+        const user = persistentUsers.get(existingUserId);
+        user.last_login_at = now;
+        savePersistentUsers();
+        
+        // Set HttpOnly cookie for persistence across browser sessions
+        res.cookie('streamflow_uid', existingUserId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+        
+        console.log(`[AUTH] Existing user re-authenticated: ${existingUserId} from IP ${ip}`);
+        return res.json({ userId: existingUserId, canDeleteAfter: user.canDeleteAfter });
+    }
+
+    // Rate limit: 1 registration per 10 mins per IP (for NEW users only)
     const lastReg = registrationLog.get(ip);
     if (lastReg && (now - lastReg.timestamp) < tenMinutesMs) {
         const waitMin = Math.ceil((tenMinutesMs - (now - lastReg.timestamp)) / 60000);
@@ -930,9 +952,18 @@ app.post('/auth/init', (req, res) => {
     savePersistentUsers();
     saveRegistrationLog();
 
+    // Set HttpOnly cookie for new users too
+    res.cookie('streamflow_uid', userId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
     console.log(`[AUTH] Issued new UUID Identity: ${userId} for IP ${ip}`);
     res.json({ userId, canDeleteAfter: userRecord.canDeleteAfter });
 });
+
 
 // --- Moderation Admin API ---
 

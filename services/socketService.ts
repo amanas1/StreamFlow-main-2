@@ -99,10 +99,12 @@ class SocketService {
   }
 
   // Identity Initialization
-  async initIdentity(): Promise<{ userId: string; canDeleteAfter: number }> {
+  async initIdentity(existingUserId?: string): Promise<{ userId: string; canDeleteAfter: number }> {
     const response = await fetch(`${SERVER_URL}/auth/init`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Include cookies for persistence
+      body: JSON.stringify({ userId: existingUserId }) // Send existing userId if available
     });
     
     if (!response.ok) {
