@@ -1002,6 +1002,52 @@ app.post('/admin/cleanup-fake-users', (req, res) => {
   });
 });
 
+// Full database wipe (For pre-launch cleanup)
+app.post('/admin/nuke-all-users', (req, res) => {
+  const { adminPassword } = req.body;
+  
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'cleanup2026secure';
+  
+  if (adminPassword !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const usersBefore = persistentUsers.size;
+  const removedUsersList = Array.from(persistentUsers.values()).map(u => ({
+    id: u.id,
+    name: u.name || 'no name',
+    created: new Date(u.created_at || u.registrationTimestamp).toISOString()
+  }));
+  
+  // NUKE EVERYTHING
+  persistentUsers.clear();
+  activeUsers.clear();
+  activeSessions.clear();
+  messages.clear();
+  knockRequests.clear();
+  
+  // Save empty state
+  savePersistentUsers();
+  saveSessions();
+  saveMessages();
+  
+  syncGlobalPresence();
+  broadcastPresenceCount();
+  
+  console.log(`[ADMIN] 💥 NUKED ALL USERS: ${usersBefore} users removed`);
+  
+  res.json({
+    success: true,
+    action: 'FULL_DATABASE_WIPE',
+    usersBefore,
+    usersAfter: 0,
+    removedCount: usersBefore,
+    removedUsers: removedUsersList,
+    message: 'All users, sessions, and messages have been permanently deleted.'
+  });
+});
+
+
 // ============================================
 // START SERVER
 // ============================================
