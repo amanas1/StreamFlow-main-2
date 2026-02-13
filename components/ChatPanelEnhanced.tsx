@@ -1275,10 +1275,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             sessionId: data.sessionId,
             partnerProfile: data.partnerProfile
         });
+        
+        // AUTO-JOIN: Immediately join the session without manual click
+        console.log(`[CLIENT] Auto-joining session ${data.sessionId} after knock acceptance`);
+        socketService.joinSession(data.sessionId);
+
         playNotificationSound('knock'); // Success sound
         announceNotification(language === 'ru' 
-            ? `Стук принят! ${data.partnerProfile.name} ждет вас.` 
-            : `Knock accepted! ${data.partnerProfile.name} is waiting for you.`);
+            ? `Стук принят! Подключаемся...` 
+            : `Knock accepted! Connecting...`);
     }));
 
     // Listen for incoming knock (Receiver side) - OVERRIDE existing listener
@@ -1324,6 +1329,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             });
             return newMap;
           });
+          
+          // AUTO-RESUME: If we have sessions but aren't in chat, jump to the most recent one
+          // This fixes the case where user disconnects during "waiting" state
+          const latestSession = data.activeSessions[data.activeSessions.length - 1];
+          if (latestSession) {
+              console.log("[SESSION] Auto-resuming latest session:", latestSession.sessionId);
+              setActiveSession(latestSession);
+              setView('chat');
+          }
         }
       });
     }
