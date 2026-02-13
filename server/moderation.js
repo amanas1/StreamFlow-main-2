@@ -164,10 +164,18 @@ async function moderateImage(imageBuffer) {
         const textAnnotations = result.textAnnotations || [];
         const webDetection = result.webDetection || {};
 
-        // 1. NSFW CHECK (Strict)
-        const nsfwLevels = ['LIKELY', 'VERY_LIKELY'];
-        if (nsfwLevels.includes(safeSearch.adult) || nsfwLevels.includes(safeSearch.racy)) {
+        // 1. NSFW CHECK (Strict — catch borderline content too)
+        const strictNsfwLevels = ['LIKELY', 'VERY_LIKELY'];
+        const moderateNsfwLevels = ['POSSIBLE', 'LIKELY', 'VERY_LIKELY'];
+        
+        if (strictNsfwLevels.includes(safeSearch.adult) || strictNsfwLevels.includes(safeSearch.racy)) {
             return { approved: false, reason: 'NSFW content detected (Adult/Racy)', errorCode: 'ERR_NSFW' };
+        }
+        if (strictNsfwLevels.includes(safeSearch.violence)) {
+            return { approved: false, reason: 'Violence detected in photo.', errorCode: 'ERR_VIOLENCE' };
+        }
+        if (strictNsfwLevels.includes(safeSearch.medical)) {
+            return { approved: false, reason: 'Medical/graphic content detected.', errorCode: 'ERR_MEDICAL' };
         }
 
         // 2. TEXT / AD DETECTION
@@ -186,35 +194,60 @@ async function moderateImage(imageBuffer) {
             return { approved: false, reason: 'The photo should have one person.', errorCode: 'ERR_GROUP_PHOTO' };
         }
 
-        // 4. MASK & GESTURE DETECTION (via Labels)
+        // 4. LABEL-BASED CONTENT FILTERING
         const blockLabels = {
-            animals: ['dog', 'cat', 'pet', 'animal', 'bird', 'horse', 'kitten', 'puppy'],
-            children: ['child', 'baby', 'infant', 'toddler', 'boy', 'girl'],
-            gestures: ['middle finger', 'offensive gesture']
+            animals: ['dog', 'cat', 'pet', 'animal', 'bird', 'horse', 'kitten', 'puppy', 'fish', 'snake', 'rabbit', 'hamster', 'parrot'],
+            children: ['child', 'baby', 'infant', 'toddler'],
+            gestures: ['middle finger', 'offensive gesture'],
+            nudity: ['swimwear', 'underwear', 'lingerie', 'bikini', 'shirtless', 'bare chest', 'topless', 'nudity', 'naked', 'brassiere', 'bathing suit'],
+            objects: ['car', 'vehicle', 'automobile', 'motorcycle', 'truck', 'food', 'dish', 'meal', 'building', 'architecture', 'landscape', 'scenery', 'nature', 'mountain', 'beach', 'ocean', 'sunset', 'flower', 'plant', 'tree', 'furniture', 'electronics', 'phone', 'computer', 'guitar', 'piano', 'weapon', 'gun', 'knife', 'money', 'cash', 'toy', 'game', 'sport equipment'],
+            memes: ['meme', 'screenshot', 'cartoon', 'drawing', 'painting', 'poster', 'logo', 'banner', 'collage', 'comic']
+        };
+
+        const labelReasons = {
+            animals: 'Please upload a photo of yourself, not animals.',
+            children: 'Photo does not meet safety rules.',
+            gestures: 'Offensive gestures are not allowed.',
+            nudity: 'Please upload a clothed photo (shirt/t-shirt required).',
+            objects: 'Please upload a photo of your face, not objects or scenery.',
+            memes: 'Please upload a real photo of yourself.'
         };
 
         for (const [category, keywords] of Object.entries(blockLabels)) {
-            const match = labels.find(l => keywords.some(k => l.description.toLowerCase().includes(k)) && l.score > 0.85);
+            const match = labels.find(l => keywords.some(k => l.description.toLowerCase().includes(k)) && l.score > 0.80);
             if (match) {
-                let errorCode = `ERR_${category.toUpperCase()}`;
-                let reason = 'Photo does not meet safety rules.';
-                if (category === 'animals') reason = 'Please use a real photo of a face.';
-                if (category === 'children') reason = 'Photo does not meet safety rules.';
-                
+                const errorCode = `ERR_${category.toUpperCase()}`;
+                const reason = labelReasons[category] || 'Photo does not meet safety rules.';
+                console.log(`[MODERATION] Blocked label: ${match.description} (${match.score}) → ${category}`);
                 return { approved: false, reason, errorCode };
             }
         }
 
-        // 5. CELEBRITY & WEB DETECTION (Optional but good for identity theft)
+        // 5. CELEBRITY & WEB DETECTION (Block actors, singers, famous people)
         if (webDetection.webEntities) {
+            const celebrityKeywords = [
+                'actor', 'actress', 'singer', 'celebrity', 'model', 'politician',
+                'athlete', 'footballer', 'basketball player', 'musician', 'rapper',
+                'influencer', 'youtuber', 'tiktoker', 'public figure', 'star',
+                'president', 'minister', 'sportsman', 'sportswoman'
+            ];
             const celebrityMatch = webDetection.webEntities.find(entity => 
-                (entity.description && entity.score > 0.9) && 
-                (entity.description.toLowerCase().includes('actor') || 
-                 entity.description.toLowerCase().includes('singer') ||
-                 entity.description.toLowerCase().includes('celebrity'))
+                entity.description && entity.score > 0.7 && 
+                celebrityKeywords.some(k => entity.description.toLowerCase().includes(k))
             );
             if (celebrityMatch) {
-                return { approved: false, reason: 'Please use your real photo.', errorCode: 'ERR_CELEBRITY' };
+                console.log(`[MODERATION] Celebrity detected: ${celebrityMatch.description} (${celebrityMatch.score})`);
+                return { approved: false, reason: 'Celebrity/public figure photos are not allowed. Please use your own real photo.', errorCode: 'ERR_CELEBRITY' };
+            }
+            
+            // Also check for high visual similarity to known web images (reverse image search)
+            if (webDetection.visuallySimilarImages && webDetection.visuallySimilarImages.length > 5) {
+                console.log(`[MODERATION] Photo has ${webDetection.visuallySimilarImages.length} similar images online — possible stock/celebrity photo`);
+                // Only block if combined with a named entity
+                const namedEntity = webDetection.webEntities?.find(e => e.description && e.score > 0.5);
+                if (namedEntity) {
+                    return { approved: false, reason: 'This photo appears to be from the internet. Please use your own real photo.', errorCode: 'ERR_STOCK_PHOTO' };
+                }
             }
         }
 

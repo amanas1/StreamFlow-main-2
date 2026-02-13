@@ -1761,6 +1761,16 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
        return;
     }
     
+    // Photo Check: Block if user has no real profile photo (dicebear/default avatar)
+    const isDefaultAvatar = !currentUser.avatar || currentUser.avatar.includes('dicebear.com') || currentUser.avatar.includes('avataaars');
+    if (isDefaultAvatar) {
+       alert(language === 'ru' 
+         ? '📷 Загрузите реальное фото профиля, чтобы начать общение.' 
+         : '📷 Please upload a real profile photo to start chatting.');
+       setView('register');
+       return;
+    }
+    
     // Continue with normal knock flow
     setSentKnocks(prev => new Set(prev).add(targetUser.id));
     socketService.sendKnock(targetUser.id, () => {
@@ -1859,8 +1869,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         return;
     }
     
-    if (file.size > 5 * 1024 * 1024) { // Increased to 5MB for better user experience
-      alert(language === 'ru' ? 'Фото не больше 5 МБ' : 'Photo must be under 5MB');
+    if (file.size > 10 * 1024 * 1024) { // 10MB photo limit
+      alert(language === 'ru' ? 'Фото не больше 10 МБ' : 'Photo must be under 10MB');
       return;
     }
     
