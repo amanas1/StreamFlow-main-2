@@ -1597,16 +1597,18 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       return;
     }
 
-    // NEW: Voice intro validation (mandatory)
-    if (!regVoiceIntro) {
+    // Voice intro and status are mandatory for FIRST registration only
+    // Existing users can update without re-recording
+    const isExistingUser = isProfileLocked || !!currentUser.registrationTimestamp || !!currentUser.voiceIntro;
+    
+    if (!regVoiceIntro && !isExistingUser) {
       alert(language === 'ru' 
         ? '❌ Пожалуйста, запишите голосовое приветствие.\n\nНажмите на кнопку микрофона и представьтесь (до 7 секунд).' 
         : '❌ Please record a voice introduction.\n\nClick the microphone button and introduce yourself (up to 7 seconds).');
       return;
     }
 
-    // NEW: Status validation (mandatory)
-    if (!regIntentStatus) {
+    if (!regIntentStatus && !isExistingUser) {
       alert(language === 'ru' 
         ? '❌ Пожалуйста, выберите ваш статус.' 
         : '❌ Please select your status.');
