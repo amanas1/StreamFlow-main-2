@@ -1286,23 +1286,23 @@ export default function App(): React.JSX.Element {
                 
                     {/* Info - Left Aligned */}
                     <div className="min-w-0 flex-1 flex flex-col justify-center">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center">
                                 <h4 className="font-black text-sm leading-tight truncate text-slate-100 uppercase tracking-wider">
                                     {selectedCategory 
                                         ? (t[selectedCategory.id] || selectedCategory.name) 
                                         : (currentStation?.tags?.[0] || (currentStation?.name ? 'Radio' : 'Stream'))}
                                 </h4>
-                                {/* Language Switcher - Mobile Player Bar */}
-                                <div className="flex items-center bg-white/10 rounded-md p-0.5 border border-white/5">
+                                {/* Language Switcher - Mobile Player Bar - Bigger & Spaced */}
+                                <div className="flex items-center bg-white/10 rounded-md p-0.5 border border-white/5 ml-4">
                                     <button 
                                         onClick={() => setLanguage('en')} 
-                                        className={`px-1.5 py-0.5 text-[8px] font-bold rounded-sm transition-all ${language === 'en' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}
+                                        className={`px-2 py-1 text-[10px] font-bold rounded-sm transition-all ${language === 'en' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}
                                     >
                                         EN
                                     </button>
                                     <button 
                                         onClick={() => setLanguage('ru')} 
-                                        className={`px-1.5 py-0.5 text-[8px] font-bold rounded-sm transition-all ${language === 'ru' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}
+                                        className={`px-2 py-1 text-[10px] font-bold rounded-sm transition-all ${language === 'ru' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}
                                     >
                                         RU
                                     </button>
