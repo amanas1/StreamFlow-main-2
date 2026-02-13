@@ -248,8 +248,10 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           ctx.fill();
           
           // Lens Flare / Source Glow
-          ctx.shadowBlur = 20 * intensity;
-          ctx.shadowColor = `hsla(${colorHue}, 100%, 70%, 1)`;
+          if (visualMode !== 'low') {
+              ctx.shadowBlur = 20 * intensity;
+              ctx.shadowColor = `hsla(${colorHue}, 100%, 70%, 1)`;
+          }
           ctx.fillStyle = '#fff';
           ctx.beginPath();
           ctx.arc(0, 5, 5 + intensity * 10, 0, Math.PI * 2);
@@ -390,8 +392,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       }
 
       if (variant === 'stage-dancer') {
-        // Light Show - Dynamic Spotlights
-        if (isPlaying && visualMode !== 'low') {
+        // Light Show - Dynamic Spotlights (Enabled for Mobile/Low too, but optimized)
+        if (isPlaying) {
             // Left Spotlight (Chaotic & Active)
             drawSpotlight(
                 width * 0.2, 
