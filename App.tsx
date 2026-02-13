@@ -1148,7 +1148,7 @@ export default function App(): React.JSX.Element {
                   {/* MOBILE VERSION (Minimalist: "KZ - 1") */}
                   <span className="md:hidden text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                       {Object.keys(countryStats).length > 0 ? (
-                          <span className="text-white">{Object.keys(countryStats)[0]} - {countryStats[Object.keys(countryStats)[0]]}</span>
+                          <span className="text-white">{(Object.keys(countryStats)[0] === 'UNKNOWN' ? 'KZ' : Object.keys(countryStats)[0])} - {countryStats[Object.keys(countryStats)[0]]}</span>
                       ) : (
                           <span className="text-white">KZ - {Number(onlineStats.totalOnline) || 1}</span>
                       )}
@@ -1159,8 +1159,8 @@ export default function App(): React.JSX.Element {
                       {Object.keys(countryStats).length > 0 ? (
                           <>
                             <span className="text-slate-500">{language === 'ru' ? 'Сейчас слушает' : 'Listening now'}</span>
-                            <span>{getCountryFlag(Object.keys(countryStats)[0])}</span>
-                            <span className="text-primary">"{getCountryName(Object.keys(countryStats)[0], language)}"</span>
+                            <span>{getCountryFlag(Object.keys(countryStats)[0] === 'UNKNOWN' ? 'KZ' : Object.keys(countryStats)[0])}</span>
+                            <span className="text-primary">"{getCountryName(Object.keys(countryStats)[0] === 'UNKNOWN' ? 'KZ' : Object.keys(countryStats)[0], language)}"</span>
                             <span className="text-slate-500">-</span>
                             <span className="text-slate-500">{language === 'ru' ? 'онлайн' : 'online'}</span>
                             <span className="text-white">{countryStats[Object.keys(countryStats)[0]]}</span>
@@ -1181,8 +1181,8 @@ export default function App(): React.JSX.Element {
           </div>
           
           <div className="flex items-center shrink-0 gap-1 md:gap-4">
-            {/* Language Switcher */}
-            <div className="hidden sm:flex items-center bg-white/5 rounded-lg p-0.5 mr-2 border border-white/5">
+            {/* Language Switcher - Now Visible on Mobile */}
+            <div className="flex items-center bg-white/5 rounded-lg p-0.5 mr-2 border border-white/5">
                 <button 
                     onClick={() => setLanguage('en')} 
                     className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${language === 'en' ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
