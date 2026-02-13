@@ -1592,39 +1592,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
     // Avatar: if no custom photo, generate a default based on gender
     const effectiveAvatar = regAvatar || currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${regName.trim()}&gender=${regGender === 'female' ? 'female' : 'male'}`;
-    if (!effectiveAvatar) {
-      alert(language === 'ru' 
-        ? '❌ Пожалуйста, загрузите фотографию профиля.\n\nНажмите на иконку камеры, чтобы выбрать фото.' 
-        : '❌ Please upload a profile photo.\n\nClick the camera icon to select a photo.');
-      return;
-    }
 
-    // Voice intro and status are mandatory for FIRST registration only
-    // Existing users can update without re-recording
-    const isExistingUser = isProfileLocked || !!currentUser.registrationTimestamp || !!currentUser.voiceIntro;
-    
-    if (!regVoiceIntro && !isExistingUser) {
-      alert(language === 'ru' 
-        ? '❌ Пожалуйста, запишите голосовое приветствие.\n\nНажмите на кнопку микрофона и представьтесь (до 7 секунд).' 
-        : '❌ Please record a voice introduction.\n\nClick the microphone button and introduce yourself (up to 7 seconds).');
-      return;
-    }
-
-    if (!regIntentStatus && !isExistingUser) {
-      alert(language === 'ru' 
-        ? '❌ Пожалуйста, выберите ваш статус.' 
-        : '❌ Please select your status.');
-      return;
-    }
-
-    // 2. Pre-save Confirmation
-    const confirmMessage = language === 'ru' 
-        ? "✅ Все поля заполнены!\n\nПроверьте свои данные - после регистрации изменения недоступны до истечения 30 дней.\n\nСохранить профиль?" 
-        : "✅ All fields completed!\n\nCheck your details - core changes will be locked for 30 days after saving.\n\nProceed?";
-    
-    if (!window.confirm(confirmMessage)) {
-        return;
-    }
+    // Voice intro and status are optional — nice to have but not blocking
 
     const updatedUser: UserProfile = { 
       ...currentUser, 
