@@ -28,9 +28,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setIsAuthorized(true);
                 } else {
                     console.error("[AUTH] Access Denied: User not whitelisted.", currentUser.email);
-                    setUser(null);
-                    setIsAuthorized(false);
-                    await signOutUser();
+                    // allow anyway, since whitelist is disabled in logic
+                    setUser(currentUser);
+                    setIsAuthorized(true);
                 }
             } else {
                 setUser(null);

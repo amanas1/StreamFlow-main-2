@@ -1,7 +1,7 @@
 {
-  "name": "streamflow-server",
+  "name": "auradiochat-server",
   "version": "1.0.0",
-  "description": "Socket.IO server for StreamFlow chat application",
+  "description": "Socket.IO server for AU RadioChat chat application",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

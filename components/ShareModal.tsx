@@ -21,8 +21,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     
     if (!isOpen) return null;
 
-    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://streamflow.app';
-    const shareText = "StreamFlow - Listen to the world's music with visual magic! 🎵✨";
+    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auradiochat.app';
+    const shareText = "AU RadioChat - Listen to the world's music with visual magic! 🎵✨";
 
     const handleCopy = () => {
         navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);

@@ -42,6 +42,7 @@ interface ChatPanelProps {
   onShare: () => void;
   onPendingKnocksChange?: (count: number) => void;
   detectedLocation: (LocationData) | null;
+  onRequireLogin?: () => void;
 }
 
 const EMOJIS = [
@@ -266,11 +267,40 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     currentUser, onUpdateCurrentUser,
     isPlaying, onTogglePlay, onNextStation, onPrevStation, currentStation, analyserNode,
     volume, onVolumeChange, visualMode, favorites, onToggleFavorite, randomMode, onToggleRandomMode, onShare,
-    onPendingKnocksChange
+    onPendingKnocksChange, detectedLocation: passedLocation, onRequireLogin
 }) => {
   const [onlineUsers, setOnlineUsers] = useState<UserProfile[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showDeleteHint, setShowDeleteHint] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
+
+  // Knock Flow States
+  const [isWaitingForPartner, setIsWaitingForPartner] = useState(false);
+  const [knockAcceptedData, setKnockAcceptedData] = useState<{ sessionId: string; partnerProfile: UserProfile } | null>(null);
+  const [incomingKnock, setIncomingKnock] = useState<{ knockId: string; fromUser: UserProfile } | null>(null);
+
+  // Helper for TTS
+  const announceNotification = (text: string) => {
+      if (!currentUser.chatSettings?.voiceNotificationsEnabled) return;
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'ru' ? 'ru-RU' : 'en-US';
+      
+      // Select voice based on settings
+      const voices = window.speechSynthesis.getVoices();
+      const preferredGender = currentUser.chatSettings.notificationVoice || 'female';
+      const selectedVoice = voices.find(v => 
+          v.lang.startsWith(language === 'ru' ? 'ru' : 'en') && 
+          v.name.toLowerCase().includes(preferredGender)
+      );
+      
+      if (selectedVoice) utterance.voice = selectedVoice;
+      window.speechSynthesis.speak(utterance);
+  };
+
+  // Refs
+  // messagesEndRef is defined below, removing duplicate
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [isRegDemoOpen, setIsRegDemoOpen] = useState(false);
   const [showDemoMenu, setShowDemoMenu] = useState(false);
@@ -916,10 +946,6 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       try {
           setActiveSessions(prev => new Map(prev).set(data.sessionId, data));
           
-          // Force view change first to ensure user sees the chat
-          setActiveSession(data);
-          setView('chat');
-          
           // Clean up any pending knocks that match this partner
           setPendingKnocks(prev => prev.filter(k => k.fromUserId !== data.partnerId));
           // Also clear sent knocks since we are now connected
@@ -929,11 +955,23 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
               return newSet;
           });
 
-          // Try playing sound safely
-          try {
-             playNotificationSound('door');
-          } catch(e) {
-             console.warn("Sound play failed", e);
+          // Handshake Logic
+          if (data.waitingForPartner) {
+              // Receiver: Don't enter chat yet, wait for Sender
+              setIsWaitingForPartner(true);
+              setActiveSession(data); // Set session but don't change view?
+              // Actually, we stay in 'search' or 'inbox', showing overlay
+          } else {
+              // Sender (via join) OR old flow: Enter immediately
+              setActiveSession(data);
+              setView('chat');
+              
+              // Try playing sound safely
+              try {
+                 playNotificationSound('door');
+              } catch(e) {
+                 console.warn("Sound play failed", e);
+              }
           }
 
           // Load messages for this session
@@ -1208,19 +1246,57 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         alert(language === 'ru' ? 'Ваша жалоба отправлена на рассмотрение.' : 'Your report has been sent for review.');
     }));
 
+    // Listen for partner joining (Receiver side)
+    cleanups.push(socketService.onPartnerJoined((data) => {
+        setIsWaitingForPartner(false);
+        playNotificationSound('door'); 
+        announceNotification(language === 'ru' ? 'Собеседник вошел в чат' : 'Partner has joined the chat');
+        setView('chat');
+    }));
+
+    // Listen for knock accepted (Sender side)
+    cleanups.push(socketService.onKnockAccepted((data) => {
+        setKnockAcceptedData({
+            sessionId: data.sessionId,
+            partnerProfile: data.partnerProfile
+        });
+        playNotificationSound('knock'); // Success sound
+        announceNotification(language === 'ru' 
+            ? `Стук принят! ${data.partnerProfile.name} ждет вас.` 
+            : `Knock accepted! ${data.partnerProfile.name} is waiting for you.`);
+    }));
+
+    // Listen for incoming knock (Receiver side) - OVERRIDE existing listener
+    // Note: The original listener in useEffect might conflict. We should consolidate.
+    // However, existing code has `onPendingKnocksChange`. 
+    // We will add a listener here specifically for the banner/voice.
+    cleanups.push(socketService.onKnockReceived((data) => {
+        console.log("Knock received:", data);
+        setIncomingKnock({
+            knockId: data.knockId,
+            fromUser: data.fromUser
+        });
+        playNotificationSound('knock');
+        announceNotification(language === 'ru'
+            ? `Вам стучится ${data.fromUser.name}`
+            : `New knock from ${data.fromUser.name}`);
+    }));
+
     return () => {
       // Cleanup all event listeners (NOT disconnect!)
       cleanups.forEach(cleanup => cleanup());
     };
-  }, [currentUser.id, activeSession]);
+  }, [currentUser.id, activeSession, currentUser.chatSettings]); // Added chatSettings dependency
 
   useEffect(() => {
     if (currentUser.id && currentUser.name && currentUser.age && !hasRegisteredWithServer) {
       console.log(`[AUTH] Registering with server...`);
       socketService.registerUser(currentUser, (data) => {
         setHasRegisteredWithServer(true);
-        setProfileExpiresAt(data.expiresAt);
-        console.log(`✅ Profile registered. Expires in ${Math.floor(data.ttl / 3600000)} hours`);
+        // Override server expiration to 30 days as requested
+        const thirtyDaysFromNow = Date.now() + (30 * 24 * 60 * 60 * 1000);
+        setProfileExpiresAt(thirtyDaysFromNow);
+        console.log(`✅ Profile registered. Expires in 30 days`);
         
         if (data.activeSessions && data.activeSessions.length > 0) {
           console.log(`[SESSION] Restoring ${data.activeSessions.length} sessions from server`);
@@ -1367,14 +1443,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
     const updatedUser: UserProfile = { 
       ...currentUser, 
-      name: regName.trim(), 
+      name: regName.trim() || (language === 'ru' ? 'Гость' : 'Guest'), 
       avatar: regAvatar,
       age: parseInt(regAge), 
       gender: regGender, 
       intentStatus: regIntentStatus,
       voiceIntro: regVoiceIntro,
       voiceIntroTimestamp: regVoiceIntro ? Date.now() : currentUser.voiceIntroTimestamp,
-      isAuthenticated: true,
+      // FIX: allow guest registration without auth. Auth is only needed for social actions.
+      isAuthenticated: currentUser.isAuthenticated || false, 
       hasAgreedToRules: true,
       lastSeen: Date.now(),
       registrationTimestamp: currentUser.registrationTimestamp || Date.now(),
@@ -1409,6 +1486,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       setProfileExpiresAt(data.expiresAt);
       console.log(`[USER] Profile saved/synced. ID: ${updatedUser.id}`);
       
+      // Force refresh of online users list to ensure immediate visibility
+      socketService.searchUsers({}, (results) => {
+          console.log(`[UI] Refreshed online list after registration (${results.length} users)`);
+          setSearchResults(results);
+      });
+
       // If server returned a corrected profile (e.g. from lockdown), sync it back
       if (data.profile) {
           onUpdateCurrentUser({ ...updatedUser, ...data.profile });
@@ -1427,9 +1510,44 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         });
       }
     });
-    
+
     setView('search');
   };
+
+  // Real-time Search Updates
+  useEffect(() => {
+     // Listen for global presence updates (triggers on any new registration)
+     const cleanup = socketService.onPresenceList((allUsers) => {
+         // Only auto-update if we are in search view to save performance
+         // And if we are NOT searching by name (to avoid overwriting while typing)
+         // Actually, let's just validly filter the new list using current filters
+         
+         const filtered = allUsers.filter(user => {
+            if (user.id === currentUser.id) return false;
+            
+            // Apply active filters
+            if (searchAgeFrom !== 'Any' && user.age && user.age < parseInt(searchAgeFrom)) return false;
+            if (searchAgeTo !== 'Any' && user.age && user.age > parseInt(searchAgeTo)) return false;
+            
+            // Gender
+            if (searchGender !== 'any' && user.gender !== searchGender) return false;
+            
+            // Name search (if active) - logic duplicated from server but good for optimistic UI
+            const nameSearch = (document.getElementById('search-input') as HTMLInputElement)?.value;
+            if (nameSearch && !user.name.toLowerCase().includes(nameSearch.toLowerCase())) return false;
+
+            // Ensure sufficient profile
+            return user.name && user.age && user.avatar;
+         });
+         
+         // Sort: Online first (handled by server usually, but ensure here)
+         // Server 'presence:list' sends status='online' if active
+         
+         setSearchResults(filtered);
+     });
+     
+     return cleanup;
+  }, [searchAgeFrom, searchAgeTo, searchGender, currentUser.id]);
 
   const handleAvatarSetup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1450,14 +1568,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
   const handleKnock = (targetUser: UserProfile) => {
     // Auth Check: Block if user is not authenticated
-    if (!currentUser.isAuthenticated || !currentUser.id) {
-      const message = language === 'ru' 
-        ? '⚠️ Сначала нужно создать профиль!\n\nВы будете перенаправлены на регистрацию.'
-        : '⚠️ Please create a profile first!\n\nYou will be redirected to registration.';
-      
-      alert(message);
-      setView('register'); // Redirect to registration
-      return;
+    // Auth Check: Block if user is not authenticated
+    if (!currentUser.isAuthenticated) {
+       console.log("[Knock] User not authenticated, triggering login modal");
+       if (onRequireLogin) {
+         onRequireLogin();
+       } else {
+         alert(language === 'ru' ? 'Пожалуйста, войдите в систему' : 'Please login first');
+       }
+       return;
     }
     
     // Continue with normal knock flow
@@ -2423,7 +2542,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             value={regAge} 
                                             onChange={(e) => setRegAge(e.target.value)} 
                                             disabled={isProfileLocked}
-                                            className="w-full h-full bg-transparent text-center font-black text-white outline-none appearance-none absolute inset-0 z-10"
+                                            className="w-full h-full bg-transparent text-center font-black text-transparent outline-none appearance-none absolute inset-0 z-10 cursor-pointer"
                                         >
                                             {AGES.map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
                                         </select>
@@ -2571,6 +2690,21 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             )}
 
             {view === 'search' && (
+                (currentUser.age && parseInt(currentUser.age.toString()) < 18) ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-red-500/30">
+                            <span className="text-4xl">🔞</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">
+                            {language === 'ru' ? 'Доступ ограничен' : 'Access Restricted'}
+                        </h3>
+                        <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
+                            {language === 'ru' 
+                                ? 'К сожалению, функции поиска и общения доступны только для пользователей старше 18 лет. Вы можете продолжить слушать радио.' 
+                                : 'Unfortunately, search and chat features are restricted to users 18+. You can continue listening to the radio.'}
+                        </p>
+                    </div>
+                ) : (
                 <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
                     <div className="p-6 overflow-y-auto no-scrollbar pb-20">
                             <div className="flex flex-col items-center gap-1 mb-6">
@@ -2771,6 +2905,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         </div>
                     </div>
                 </div>
+              )
             )}
 
             {view === 'inbox' && (
@@ -3205,6 +3340,82 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 </React.Suspense>
             </div>
         ) : null}
+
+        {/* Waiting for Partner Overlay */}
+        {isWaitingForPartner && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md p-8 text-center animate-in fade-in">
+                <div className="w-24 h-24 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6 relative">
+                     <span className="text-4xl animate-pulse">⏳</span>
+                     <div className="absolute inset-0 border-t-2 border-cyan-500 rounded-full animate-spin"></div>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">{language === 'ru' ? 'Ожидание собеседника...' : 'Waiting for partner...'}</h3>
+                <p className="text-sm text-slate-400 max-w-xs">{language === 'ru' ? 'Ожидаем, пока второй участник войдет в комнату.' : 'Waiting for the other user to enter the room.'}</p>
+            </div>
+        )}
+
+        {/* Knock Accepted Banner */}
+        {knockAcceptedData && (
+            <div className="absolute top-4 inset-x-4 z-[60] bg-green-500/20 border border-green-500/50 backdrop-blur-lg rounded-2xl p-4 shadow-2xl animate-in slide-in-from-top-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <img src={knockAcceptedData.partnerProfile.avatar} className="w-12 h-12 rounded-full border-2 border-green-400" />
+                    <div>
+                        <h4 className="text-sm font-bold text-white mb-0.5">{language === 'ru' ? 'Стук принят!' : 'Knock Accepted!'}</h4>
+                        <p className="text-[10px] text-green-200">{knockAcceptedData.partnerProfile.name} {language === 'ru' ? 'ждет вас' : 'is waiting for you'}</p>
+                    </div>
+                </div>
+                <button 
+                    onClick={() => {
+                        socketService.joinSession(knockAcceptedData.sessionId);
+                        setKnockAcceptedData(null);
+                        // setView handled by onSessionCreated/onSessionJoin event flow
+                    }}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl text-xs shadow-lg transition-transform hover:scale-105 active:scale-95"
+                >
+                    {language === 'ru' ? 'ВОЙТИ' : 'ENTER'}
+                </button>
+            </div>
+        )}
+
+        {/* Incoming Knock Banner - Top Right Overlay */}
+        {incomingKnock && (
+            <div className="absolute top-4 right-4 z-[70] bg-slate-900/90 border border-cyan-500/50 backdrop-blur-xl rounded-2xl p-4 shadow-[0_0_30px_rgba(6,182,212,0.3)] animate-in slide-in-from-right-full w-80">
+                <div className="flex items-start gap-4">
+                    <img src={incomingKnock.fromUser.avatar || ''} className="w-12 h-12 rounded-full border-2 border-cyan-400" />
+                    <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                            <h4 className="text-sm font-bold text-white mb-0.5">{language === 'ru' ? 'Входящий стук' : 'Incoming Knock'}</h4>
+                            <button onClick={() => setIncomingKnock(null)} className="text-white/40 hover:text-white">
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <p className="text-xs text-cyan-200 font-bold mb-1">{incomingKnock.fromUser.name}, {incomingKnock.fromUser.age}</p>
+                        <p className="text-[10px] text-slate-400 mb-3">{incomingKnock.fromUser.country}</p>
+                        
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => {
+                                    handleRejectKnock({ knockId: incomingKnock.knockId, fromUserId: incomingKnock.fromUser.id });
+                                    setIncomingKnock(null);
+                                }}
+                                className="flex-1 py-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-200 text-[10px] font-bold rounded-lg border border-white/10 transition-colors"
+                            >
+                                {language === 'ru' ? 'ОТКЛОНИТЬ' : 'REJECT'}
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    handleAcceptKnock({ knockId: incomingKnock.knockId, fromUserId: incomingKnock.fromUser.id });
+                                    setIncomingKnock(null);
+                                    // Accepted -> Waiting Logic triggers via event
+                                }}
+                                className="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg shadow-lg hover:shadow-cyan-500/25 transition-all"
+                            >
+                                {language === 'ru' ? 'ПРИНЯТЬ' : 'ACCEPT'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
 
     </aside>
   );

@@ -126,7 +126,7 @@ const ChatDemoAnimation: React.FC<{ onComplete: () => void }> = ({ onComplete })
             <div className="h-12 bg-slate-800 flex items-center px-4 border-b border-white/5 justify-between shrink-0">
                  <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                    <span className="font-bold text-white text-sm">StreamFlow Demo</span>
+                    <span className="font-bold text-white text-sm">AU RadioChat Demo</span>
                 </div>
                 <button onClick={onComplete} className="text-slate-400 hover:text-white"><span className="text-lg">×</span></button>
             </div>

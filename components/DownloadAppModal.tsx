@@ -24,7 +24,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onClose, la
 
     const t = language === 'ru' ? {
         title: "Скачайте приложение",
-        subtitle: "Слушайте StreamFlow на ходу",
+        subtitle: "Слушайте AU RadioChat на ходу",
         scan: "Сканируйте камерой телефона",
         install: "Установить App",
         android: "Android",
@@ -35,7 +35,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onClose, la
         back: "Назад"
     } : {
         title: "Get the App",
-        subtitle: "Listen to StreamFlow on the go",
+        subtitle: "Listen to AU RadioChat on the go",
         scan: "Scan with phone camera",
         install: "Install App",
         android: "Android",
@@ -135,7 +135,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onClose, la
         </div>
         
         <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-        <p className="mt-6 text-[9px] text-slate-500 uppercase font-black tracking-[0.4em] opacity-50">StreamFlow Mobile Engine</p>
+        <p className="mt-6 text-[9px] text-slate-500 uppercase font-black tracking-[0.4em] opacity-50">AU RadioChat Mobile Engine</p>
             </div>
         </div>
     );

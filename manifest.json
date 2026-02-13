@@ -1,12 +1,12 @@
 {
-  "name": "StreamFlow Radio",
-  "short_name": "StreamFlow",
+  "name": "AU RadioChat",
+  "short_name": "AU RadioChat",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#070b14",
+  "background_color": "#0f172a",
   "theme_color": "#bc6ff1",
-  "description": "Global Radio Streaming Engine",
+  "description": "Live Radio & Bridge Chat Platform",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -25,7 +25,7 @@
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "StreamFlow Player View"
+      "label": "AU RadioChat Player View"
     },
     {
       "src": "/acoustic_waves_visualizer.png",

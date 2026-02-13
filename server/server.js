@@ -1,4 +1,4 @@
-console.log("🚀 Starting StreamFlow Server...");
+console.log("🚀 Starting AU RadioChat Server...");
 
 // GLOBAL ERROR CATCHERS FOR PRODUCTION STABILITY
 process.on('uncaughtException', (err) => {
@@ -142,13 +142,51 @@ app.post('/api/moderate-avatar', upload.single('avatar'), async (req, res) => {
         const avatarUrl = `/avatars/${filename}`;
         console.log(`[MODERATION] APPROVED: ${avatarUrl}`);
 
-        res.json({
-            status: 'approved',
-            url: avatarUrl
-        });
-    } catch (error) {
-        console.error('[MODERATION] Server Error:', error);
-        res.status(500).json({ status: 'error', reason: 'Internal server error during moderation', details: error.message });
+        return res.json({ status: 'approved', labels: modResult.labels, url: avatarUrl });
+
+    } catch (err) {
+        console.error('[MODERATION] Error:', err);
+        return res.status(500).json({ status: 'error', reason: err.message });
+    }
+});
+
+/**
+ * Server-side IP Geolocation Proxy
+ * Bypasses CORS and Mixed Content issues by fetching from the server
+ */
+app.get('/api/location', async (req, res) => {
+    try {
+        // trust proxy is needed if behind Vercel/Nginx
+        // x-forwarded-for can be a list: "client, proxy1, proxy2"
+        const forwarded = req.headers['x-forwarded-for'];
+        let ip = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
+
+        // Start local dev with a known KZ IP if localhost
+        if (ip === '::1' || ip === '127.0.0.1') {
+            ip = '95.56.242.1'; // Example Almaty IP
+        }
+
+        console.log(`[GEO] Resolving location for IP: ${ip}`);
+        
+        // Use ip-api.com (free, non-commercial, 45 requests/minute)
+        // We use HTTP because the pro endpoint is HTTPS but requires key.
+        // Free endpoint handles HTTP fine.
+        const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,city,query`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+             res.json({
+                country: data.country,
+                city: data.city,
+                countryCode: data.countryCode,
+                ip: data.query
+            });
+        } else {
+             res.status(404).json({ error: 'Location not found' });
+        }
+    } catch (e) {
+        console.error('[GEO] Server lookup failed:', e);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -629,6 +667,27 @@ io.on('connection', (socket) => {
         
         persistentUsers.set(profile.id, userRecord);
         savePersistentUsers();
+    } else {
+        // Create NEW persistent user if not exists
+        const now = Date.now();
+        userRecord = {
+            ...profile,
+            id: profile.id,
+            created_at: now,
+            last_login_at: now,
+            registrationTimestamp: now,
+            accountStatus: 'active',
+            role: 'user',
+            violations: 0,
+            reportsAgainst: 0,
+            // Ensure location data is captured on creation
+            country: profile.country || 'Unknown',
+            detectedCountry: profile.detectedCountry,
+            detectedCity: profile.detectedCity
+        };
+        persistentUsers.set(profile.id, userRecord);
+        savePersistentUsers();
+        console.log(`[DB] Created NEW persistent user: ${profile.name} (${profile.id})`);
     }
 
     boundUserId = profile.id;
@@ -767,6 +826,9 @@ io.on('connection', (socket) => {
   socket.on('knock:send', ({ targetUserId }) => {
     if (!boundUserId) return;
     
+    const pairId = [boundUserId, targetUserId].sort().join(':');
+    console.log(`[DEBUG] Knock pairId: ${pairId}`);
+
     // Blocks - REMOVED for Reversion
     if (permanentBlocks.has(pairId)) {
         socket.emit('knock:error', { 
@@ -856,20 +918,55 @@ io.on('connection', (socket) => {
     };
 
     if (user1?.socketId) {
+      // Receiver (Mery) gets session immediately but UI waits
       io.to(user1.socketId).emit('session:created', {
         ...startData,
         partnerId: fromUserId,
-        partnerProfile: user2?.profile
+        partnerProfile: user2?.profile,
+        waitingForPartner: true // Flag to tell UI to show "Waiting..."
       });
     }
     
     if (user2?.socketId) {
-      io.to(user2.socketId).emit('session:created', {
-        ...startData,
+      // Sender (Meta) gets "Knock Accepted" -> Needs to confirm join
+      io.to(user2.socketId).emit('knock:accepted', {
+        knockId,
+        sessionId,
         partnerId: boundUserId,
         partnerProfile: user1?.profile
       });
     }
+  });
+
+  // SESSION JOIN (Sender confirms entry)
+  socket.on('session:join', ({ sessionId }) => {
+      if (!boundUserId) return;
+      const session = activeSessions.get(sessionId);
+      if (!session) return;
+      
+      const partnerId = session.participants.find(p => p !== boundUserId);
+      const partner = activeUsers.get(partnerId);
+      
+      // Send full session data to Sender (now they enter)
+      const startData = {
+          sessionId,
+          expiresAt: session.expiresAt,
+          participants: session.participants
+      };
+      
+      socket.emit('session:created', {
+          ...startData,
+          partnerId,
+          partnerProfile: partner?.profile
+      });
+      
+      // Notify Partner (Receiver) that Sender has joined
+      if (partner?.socketId) {
+          io.to(partner.socketId).emit('session:partner_joined', {
+              sessionId,
+              partnerId: boundUserId
+          });
+      }
   });
 
   // KNOCK REJECT
@@ -1340,11 +1437,11 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 app.get('/', (req, res) => {
-  res.status(200).send('StreamFlow Server is Running');
+  res.status(200).send('AU RadioChat Server is Running');
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 StreamFlow Server running on port ${PORT}`);
+  console.log(`🚀 AU RadioChat Server running on port ${PORT}`);
   console.log(`   - Users: 24h TTL`);
   console.log(`   - Text Msgs: 60s TTL (Newest on Top)`);
   console.log(`   - Media Msgs: 30s TTL`);

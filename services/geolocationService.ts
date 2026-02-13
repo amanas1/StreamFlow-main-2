@@ -122,7 +122,7 @@ class GeolocationService {
       
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'StreamFlow/1.0' // Required by Nominatim
+          'User-Agent': 'AU RadioChat/1.0' // Required by Nominatim
         }
       });
       
@@ -219,7 +219,7 @@ class GeolocationService {
    */
   saveLocationToCache(location: LocationData): void {
     try {
-      localStorage.setItem('streamflow_last_detected_location', JSON.stringify(location));
+      localStorage.setItem('auradiochat_last_detected_location', JSON.stringify(location));
     } catch (e) {}
   }
 
@@ -228,19 +228,47 @@ class GeolocationService {
    */
   getCachedLocation(): LocationData | null {
     try {
-      const saved = localStorage.getItem('streamflow_last_detected_location');
+      const saved = localStorage.getItem('auradiochat_last_detected_location');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
   }
   /**
+   * Get location from our own server proxy
+   * Bypasses CORS and AdBlockers
+   */
+  async getServerLocation(): Promise<LocationData | null> {
+      try {
+          // In production, use relative path. In dev, might need full URL if ports differ.
+          // Assuming relative path works with proxy setup or same origin
+          const apiUrl =  window.location.hostname === 'localhost' 
+            ? 'http://localhost:3002/api/location' // Default backend port
+            : '/api/location';
+
+          const response = await fetch(apiUrl);
+          if (!response.ok) throw new Error('Server geo-lookup failed');
+          return await response.json();
+      } catch (e) {
+          console.warn('[GEO] Server proxy failed:', e);
+          return null;
+      }
+  }
+
+  /**
    * Universal location detection
-   * Tries browser geolocation first, then IP fallback
+   * Tries Server Proxy first (most reliable), then IP fallback
    */
   async detectLocation(): Promise<LocationData | null> {
     try {
-      // Use purely silent IP-based detection to avoid triggering browser prompts
+      // 1. Try Server Proxy (Best for reliability & CORS)
+      const serverLoc = await this.getServerLocation();
+      if (serverLoc) {
+          console.log('[GEO] ✅ Server-side detection successful:', serverLoc);
+          return serverLoc;
+      }
+
+      // 2. Fallback to client-side IP APIs
       return await this.getIPLocation();
     } catch (error) {
       console.error('[GEO] Silent detect location error:', error);

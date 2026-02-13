@@ -44,7 +44,7 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         id: 'audio',
         icon: <AdjustmentsIcon className="w-6 h-6 text-emerald-500" />, 
         title: "Управление и Bluetooth", 
-        content: "StreamFlow оптимизирован для наушников и колонок. Вы можете переключать станции кнопками 'Вперед/Назад' прямо на гарнитуре. На экране блокировки телефона всегда отображается текущая станция и управление плеером." 
+        content: "AU RadioChat оптимизирован для наушников и колонок. Вы можете переключать станции кнопками 'Вперед/Назад' прямо на гарнитуре. На экране блокировки телефона всегда отображается текущая станция и управление плеером." 
     },
     { 
         id: 'ambience',
@@ -56,7 +56,7 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         id: 'timer',
         icon: <MoonIcon className="w-6 h-6 text-indigo-400" />, 
         title: "Таймер и Будильник", 
-        content: "Установите таймер сна в панели инструментов, и музыка плавно затихнет сама. Или настройте утренний будильник, чтобы просыпаться под любимую волну. StreamFlow — ваш идеальный спутник на весь день." 
+        content: "Установите таймер сна в панели инструментов, и музыка плавно затихнет сама. Или настройте утренний будильник, чтобы просыпаться под любимую волну. AU RadioChat — ваш идеальный спутник на весь день." 
     },
     { 
         id: 'visualizer',
@@ -105,7 +105,7 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         id: 'timer',
         icon: <MoonIcon className="w-6 h-6 text-indigo-400" />, 
         title: "Sleep Timer & Alarm", 
-        content: "Drift off with a sleep timer or wake up to your favorite station. Find these in the Tools Panel (clock icon). StreamFlow is your 24/7 audio companion." 
+        content: "Drift off with a sleep timer or wake up to your favorite station. Find these in the Tools Panel (clock icon). AU RadioChat is your 24/7 audio companion." 
     },
     { 
         id: 'visualizer',
@@ -175,7 +175,7 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
                         <RocketIcon className="w-6 h-6 animate-bounce" />
                         {language === 'ru' ? 'Открыть полную энциклопедию' : 'Open Full Encyclopedia'}
                     </button>
-                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">© 2025 StreamFlow Radio Engine • Administration</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">© 2025 AU RadioChat Engine • Administration</p>
                 </div>
               </>
           )}

@@ -4,7 +4,7 @@
 1. Open Xcode → File → New → Project
 2. Choose "App" template
 3. Product Name: `StreamFlow`
-4. Bundle Identifier: `com.streamflow.radio`
+4. Bundle Identifier: `com.auradiochat.radio`
 5. Interface: **Storyboard**
 6. Language: **Swift**
 7. Save to `ios-wrapper/`

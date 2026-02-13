@@ -5,8 +5,8 @@
 ```bash
 git init
 git add .
-git commit -m "Initial commit: StreamFlow chat app"
-git remote add origin https://github.com/YOUR_USERNAME/streamflow.git
+git commit -m "Initial commit: AU RadioChat chat app"
+git remote add origin https://github.com/YOUR_USERNAME/auradiochat.git
 git push -u origin main
 ```
 
@@ -16,7 +16,7 @@ git push -u origin main
 2. "New Project" → "Deploy from GitHub repo"
 3. Выбрать репозиторий
 4. Root Directory: `server`
-5. Скопировать URL: `https://streamflow-production.up.railway.app`
+5. Скопировать URL: `https://auradiochat-production.up.railway.app`
 
 ## Шаг 3: Frontend (Vercel)
 
@@ -25,7 +25,7 @@ git push -u origin main
 3. Import репозиторий
 4. **Environment Variables:**
    ```
-   VITE_SOCKET_URL = https://streamflow-production.up.railway.app
+   VITE_SOCKET_URL = https://auradiochat-production.up.railway.app
    ```
    *(Вставить ваш Railway URL)*
 5. Deploy
@@ -42,4 +42,4 @@ git push -u origin main
 
 **Проблемы?** Проверьте:
 - Socket server: `curl https://your-socket-url.com/health`
-- Browser console: должно быть "✅ Connected to StreamFlow server"
+- Browser console: должно быть "✅ Connected to AU RadioChat server"

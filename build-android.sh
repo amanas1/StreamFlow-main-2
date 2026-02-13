@@ -1,7 +1,7 @@
 #!/bin/bash
 # Android TWA Build Script
 
-echo "Building Android TWA for StreamFlow..."
+echo "Building Android TWA for AU RadioChat..."
 
 # Install Bubblewrap if not present
 if ! command -v bubblewrap &> /dev/null; then

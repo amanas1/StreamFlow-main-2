@@ -1,6 +1,6 @@
-# StreamFlow - Global Radio Engine
+# AU RadioChat - Global Radio Engine
 
-StreamFlow is a modern web application that combines global radio streaming with an encrypted private chat engine.
+AU RadioChat is a modern web application that combines global radio streaming with an encrypted private chat engine.
 
 ## Project Structure
 

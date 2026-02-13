@@ -52,7 +52,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
               <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors mb-6 text-[10px] font-black uppercase tracking-[0.2em] group">
                 <ArrowLeftIcon className="w-3 h-3 group-hover:-translate-x-1 transition-transform" /> ТЕРМИНАЛ
               </button>
-              <h1 className="text-2xl font-black text-white tracking-tight leading-none">StreamFlow<span className="text-primary">.Guide</span></h1>
+              <h1 className="text-2xl font-black text-white tracking-tight leading-none">AU RadioChat<span className="text-primary">.Guide</span></h1>
               <p className="text-xs text-slate-500 mt-2 font-mono">Интерактивное руководство v3.0</p>
           </div>
           <nav className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
@@ -79,7 +79,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
               <section id="section-intro" className="space-y-8 scroll-mt-20">
                   <div className="relative rounded-[3rem] overflow-hidden bg-gradient-to-b from-indigo-900/20 to-black border border-white/10 p-12 text-center">
                        <BookOpenIcon className="w-16 h-16 text-white/20 mx-auto mb-6" />
-                       <h2 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tighter mb-4">Архитектура<br/>StreamFlow</h2>
+                       <h2 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tighter mb-4">Архитектура<br/>AU RadioChat</h2>
                        <p className="text-lg text-slate-400 font-light max-w-2xl mx-auto leading-relaxed">
                            Добро пожаловать в центр управления. 📡<br/>
                            Это не просто плеер, а <strong>глобальный шлюз</strong> к тысячам радиостанций и живому общению. Изучите этот мануал, чтобы использовать потенциал системы на 100%.
@@ -90,7 +90,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-[#0e1016] border border-white/10 rounded-3xl p-8">
                        <div className="space-y-4">
                            <div className="inline-block px-3 py-1 rounded bg-orange-500/10 border border-orange-500/20 text-[10px] font-bold text-orange-400 uppercase tracking-widest">
-                              StreamFlow Mobile Engine
+                              AU RadioChat Mobile Engine
                            </div>
                            <h3 className="text-2xl font-bold text-white">Возьми музыку с собой</h3>
                            <p className="text-slate-400 text-sm leading-relaxed">
@@ -325,7 +325,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                       "Метаданные — это как конверт письма. Почтальон не читает, что внутри, но он видит, ОТ КОГО оно и КОМУ адресовано. В классических архитектурах это необходимо для маршрутизации и доставки уведомлений."
                                   </div>
                                   <p>
-                                      В StreamFlow мы уважаем выбор пользователей, которым нужна история переписки. Но мы создали альтернативу для тех моментов, когда вы хотите быть уверены: <strong>после закрытия вкладки не останется даже цифровой тени.</strong>
+                                      В AU RadioChat мы уважаем выбор пользователей, которым нужна история переписки. Но мы создали альтернативу для тех моментов, когда вы хотите быть уверены: <strong>после закрытия вкладки не останется даже цифровой тени.</strong>
                                   </p>
                               </div>
                           </div>
@@ -337,7 +337,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                               </h4>
                               <div className="prose prose-invert max-w-none text-slate-300 leading-8 font-light text-lg">
                                   <p>
-                                      В StreamFlow мы пошли по пути радикального цифрового аскетизма. Наша архитектурная догма звучит так: <strong>"Данные существуют только в момент передачи"</strong>.
+                                      В AU RadioChat мы пошли по пути радикального цифрового аскетизма. Наша архитектурная догма звучит так: <strong>"Данные существуют только в момент передачи"</strong>.
                                   </p>
                                   <p>
                                       Это невероятно сложно реализовать технически. Почему? Потому что мы сознательно лишили себя инструментов, которые используют обычные компании.
@@ -398,7 +398,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                                   <br/><br/>
                                   Мы выбрали трудный путь. Мы пишем код, который борется с самой природой цифрового следа. Мы не знаем, кто вы. Мы не знаем, о чем вы говорите. И мы гордимся этим незнанием.
                                   <br/><br/>
-                                  <span className="text-white font-bold">StreamFlow — это не продукт. Это убежище. 🏰</span>
+                                  <span className="text-white font-bold">AU RadioChat — это не продукт. Это убежище. 🏰</span>
                               </p>
                           </div>
                       </div>
@@ -471,7 +471,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
                        </h3>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-slate-400 leading-relaxed">
                            <p>
-                               StreamFlow превращает ваш экран в живое полотно. Если вы используете приложение в машине (через Android Automotive или iOS Web Wrapper), включите <strong>Полноэкранный режим</strong>. Визуализация будет пульсировать в такт музыке, создавая уникальную атмосферу ночной поездки.
+                               AU RadioChat превращает ваш экран в живое полотно. Если вы используете приложение в машине (через Android Automotive или iOS Web Wrapper), включите <strong>Полноэкранный режим</strong>. Визуализация будет пульсировать в такт музыке, создавая уникальную атмосферу ночной поездки.
                            </p>
                            <p>
                                <strong>Режимы рендеринга:</strong> Вы можете выбрать "персонажа" вашей визуализации. Будет ли это строгая геометрия (Bars), медитативные волны (Wave) или "Танцующая Галактика" (Galaxy) — решать вам.

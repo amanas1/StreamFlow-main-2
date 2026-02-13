@@ -1,5 +1,5 @@
-// Minimal Service Worker for StreamFlow PWA
-const CACHE_NAME = 'streamflow-v1';
+// Minimal Service Worker for AU RadioChat PWA
+const CACHE_NAME = 'auradiochat-cache-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -19,7 +19,8 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  // Pass through, no caching strategy
-  event.respondWith(fetch(event.request));
-});
+// self.addEventListener('fetch', (event) => {
+//   // Pass through, no caching strategy
+//   event.respondWith(fetch(event.request));
+// });
+

@@ -47,8 +47,10 @@ interface ToolsPanelProps {
   setAudioEnhancements: (val: React.SetStateAction<AudioProcessSettings>) => void;
   randomMode: boolean;
   setRandomMode: (val: boolean) => void;
-  danceStyle?: number;
+  danceStyle: number;
   setDanceStyle?: (style: number) => void;
+  autoDance?: boolean;
+  setAutoDance?: (b: boolean) => void;
   onGlobalReset?: () => void; // New Prop
 }
 
@@ -89,7 +91,10 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   fxSettings, setFxSettings,
   audioEnhancements, setAudioEnhancements,
   randomMode, setRandomMode,
-  danceStyle = 1, setDanceStyle,
+  danceStyle,
+  setDanceStyle,
+  autoDance,
+  setAutoDance,
   onGlobalReset
 }) => {
   const [activeTab, setActiveTab] = useState<'viz' | 'eq' | 'look' | 'ambience' | 'fx' | 'timer'>('viz');
@@ -187,23 +192,14 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                             <button 
                                 key={v.id} 
                                 onClick={() => setVisualizerVariant(v.id)}
-                                disabled={vizSettings.energySaver}
-                                className={`p-4 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all border ${visualizerVariant === v.id ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'} ${vizSettings.energySaver ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                className={`p-4 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all border ${visualizerVariant === v.id ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
                             >
                                 {t[`viz${v.name.replace(/\s/g,'')}`] || t[v.id.replace('-','')] || v.name}
                             </button>
                         ))}
                     </div>
                     
-                    <div className="space-y-4 p-4 bg-white/5 rounded-2xl">
-                        <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-white uppercase tracking-widest">{t.energySaver}</label>
-                            <button onClick={() => setVizSettings({...vizSettings, energySaver: !vizSettings.energySaver})} className={`w-14 h-7 rounded-full relative transition-colors ${vizSettings.energySaver ? 'bg-green-500' : 'bg-slate-700'}`}>
-                                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all shadow-md ${vizSettings.energySaver ? 'left-8' : 'left-1'}`}></div>
-                            </button>
-                        </div>
-                        
-                        <div className={`space-y-4 transition-opacity duration-300 ${vizSettings.energySaver ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                        <div className="space-y-4 transition-opacity duration-300">
                             <div className="w-full h-px bg-white/5 my-2"></div>
                             <div className="flex items-center gap-4">
                                 <span className="text-[10px] font-bold text-slate-500 w-16 uppercase">{t.speed}</span>
@@ -273,21 +269,34 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                                 </div>
                             </div>
                         </div>
-                    </div>
 
                     {(visualizerVariant === 'stage-dancer' || visualizerVariant === 'trio-dancers') && (
-                        <div className="space-y-4 p-4 bg-primary/10 rounded-2xl border border-primary/20 animate-in slide-in-from-top-2">
+                        <div className="hidden md:block space-y-4 p-4 bg-primary/10 rounded-2xl border border-primary/20 animate-in slide-in-from-top-2">
                             <div className="flex items-center justify-between">
                                 <div className="flex flex-col gap-1">
                                     <label className="text-sm font-bold text-primary uppercase tracking-widest">{t.danceMove || "Dance Move"}</label>
                                     <p className="text-[10px] text-slate-500 font-medium">Style {danceStyle}</p>
                                 </div>
-                                <button 
-                                    onClick={() => setDanceStyle?.(danceStyle === 3 ? 1 : danceStyle + 1)}
-                                    className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/30"
-                                >
-                                    {t.switchMove || "Switch Move"}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {/* Auto Dance Toggle */}
+                                    <button 
+                                        onClick={() => setAutoDance?.(!autoDance)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                            autoDance 
+                                            ? 'bg-secondary/20 text-secondary border-secondary/50' 
+                                            : 'bg-white/5 text-slate-500 border-white/5 hover:bg-white/10'
+                                        }`}
+                                    >
+                                        Auto {autoDance && 'ON'}
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setDanceStyle?.(danceStyle === 3 ? 1 : danceStyle + 1)}
+                                        className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/30"
+                                    >
+                                        {t.switchMove || "Switch Move"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

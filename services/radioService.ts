@@ -2,7 +2,7 @@
 import { RadioStation } from '../types';
 import { RADIO_BROWSER_MIRRORS } from '../constants';
 
-const CACHE_KEY_PREFIX = 'streamflow_station_cache_v15_strict_dedupe_'; // Strict dedupe bump
+const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v15_strict_dedupe_'; // Strict dedupe bump
 const CACHE_TTL_MINUTES = 30;
 
 interface CacheEntry {

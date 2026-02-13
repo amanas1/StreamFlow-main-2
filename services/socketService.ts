@@ -60,7 +60,7 @@ class SocketService {
     });
     
     this.socket.on('connect', () => {
-      console.log('✅ Connected to StreamFlow server');
+      console.log('✅ Connected to AU RadioChat server');
       this.reconnectAttempts = 0;
       
       // Auto-re-register if we have a profile
@@ -188,9 +188,25 @@ class SocketService {
     this.socket.on('knock:rejected', callback);
     return () => this.socket?.off('knock:rejected', callback);
   }
+  onKnockAccepted(callback: (data: { knockId: string; sessionId: string; partnerId: string; partnerProfile: UserProfile }) => void): () => void {
+    if (!this.socket) return () => {};
+    this.socket.on('knock:accepted', callback);
+    return () => this.socket?.off('knock:accepted', callback);
+  }
+
+  joinSession(sessionId: string) {
+      if (!this.socket) return;
+      this.socket.emit('session:join', { sessionId });
+  }
+
+  onPartnerJoined(callback: (data: { sessionId: string; partnerId: string }) => void): () => void {
+      if (!this.socket) return () => {};
+      this.socket.on('session:partner_joined', callback);
+      return () => this.socket?.off('session:partner_joined', callback);
+  }
   
   // Session management
-  onSessionCreated(callback: (data: { sessionId: string; partnerId: string; partnerProfile: UserProfile }) => void): () => void {
+  onSessionCreated(callback: (data: { sessionId: string; partnerId: string; partnerProfile: UserProfile; waitingForPartner?: boolean }) => void): () => void {
     if (!this.socket) return () => {};
     this.socket.on('session:created', callback);
     return () => this.socket?.off('session:created', callback);

@@ -6,7 +6,6 @@ import { curateStationList, isAiAvailable } from './services/geminiService';
 import { socketService } from './services/socketService';
 import AudioVisualizer from './components/AudioVisualizer';
 import DancingAvatar from './components/DancingAvatar';
-import CosmicBackground from './components/CosmicBackground';
 import RainEffect from './components/RainEffect';
 import NewsCarousel from './components/NewsCarousel';
 import FireEffect from './components/FireEffect';
@@ -25,6 +24,7 @@ const TutorialOverlay = React.lazy(() => import('./components/TutorialOverlay'))
 const DownloadAppModal = React.lazy(() => import('./components/DownloadAppModal'));
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
 const ShareModal = React.lazy(() => import('./components/ShareModal'));
+const LoginModal = React.lazy(() => import('./components/LoginModal'));
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAuth } from './AuthProvider';
 
@@ -147,7 +147,39 @@ function getCountryFlag(country: string): string {
 }
 
 export default function App(): React.JSX.Element {
-  const { user, isAuthorized } = useAuth();
+  const { user, isAuthorized, loading } = useAuth();
+  
+  // Storage Migration: AU RadioChat -> AU RadioChat
+  useEffect(() => {
+    const migrateStorage = () => {
+       const keysToMigrate = [
+           'user_profile', 'language', 'random_mode', 'favorites', 
+           'theme', 'base_theme', 'visualizer_variant', 'viz_settings',
+           'ambience_state', 'passport_data', 'alarm_config', 'fx_settings',
+           'audio_process_settings', 'tools_open_count'
+       ];
+       
+       let migratedCount = 0;
+       
+       keysToMigrate.forEach(key => {
+           const oldKey = `streamflow_${key}`;
+           const newKey = `auradiochat_${key}`;
+           const oldData = localStorage.getItem(oldKey);
+           
+           if (oldData && !localStorage.getItem(newKey)) {
+               localStorage.setItem(newKey, oldData);
+               localStorage.removeItem(oldKey); // Optional: keep or remove
+               migratedCount++;
+           }
+       });
+       
+       if (migratedCount > 0) {
+           console.log(`[Rebranding] Migrated ${migratedCount} keys from AU RadioChat to AU RadioChat.`);
+       }
+    };
+    
+    migrateStorage();
+  }, []);
 
   // Radio State
   const [viewMode, setViewMode] = useState<ViewMode>('genres');
@@ -212,14 +244,14 @@ export default function App(): React.JSX.Element {
   const [eqGains, setEqGains] = useState<number[]>(new Array(10).fill(0));
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('streamflow_current_theme') as ThemeName;
+      const saved = localStorage.getItem('auradiochat_current_theme') as ThemeName;
       if (saved) return saved;
     }
     return 'volcano';
   });
   const [baseTheme, setBaseTheme] = useState<BaseTheme>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('streamflow_base_theme') as BaseTheme;
+      const saved = localStorage.getItem('auradiochat_base_theme') as BaseTheme;
       if (saved) return saved;
     }
     return 'dark';
@@ -227,7 +259,7 @@ export default function App(): React.JSX.Element {
   const [customCardColor, setCustomCardColor] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('streamflow_language') as Language;
+      const saved = localStorage.getItem('auradiochat_language') as Language;
       if (saved) return saved;
       
       const cached = geolocationService.getCachedLocation();
@@ -242,12 +274,27 @@ export default function App(): React.JSX.Element {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return 'stage-dancer';
     return 'segmented';
   });
-  const [vizSettings, setVizSettings] = useState<VisualizerSettings>(DEFAULT_VIZ_SETTINGS);
+  const [vizSettings, setVizSettings] = useState<VisualizerSettings>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        return { ...DEFAULT_VIZ_SETTINGS, energySaver: true, performanceMode: false };
+    }
+    return DEFAULT_VIZ_SETTINGS;
+  });
   const [danceStyle, setDanceStyle] = useState<number>(1);
+  const [autoDance, setAutoDance] = useState(false);
+
+  useEffect(() => {
+    if (!autoDance) return;
+    const interval = setInterval(() => {
+        setDanceStyle(prev => prev >= 3 ? 1 : prev + 1);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [autoDance]);
+
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isRandomMode, setIsRandomMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('streamflow_random_mode') === 'true';
+      return localStorage.getItem('auradiochat_random_mode') === 'true';
     }
     return false;
   });
@@ -259,6 +306,7 @@ export default function App(): React.JSX.Element {
   const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
   const [countryStats, setCountryStats] = useState<Record<string, number>>({});
   const [pendingKnocksCount, setPendingKnocksCount] = useState(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   const [audioEnhancements, setAudioEnhancements] = useState<AudioProcessSettings>({
       compressorEnabled: false,
@@ -271,45 +319,54 @@ export default function App(): React.JSX.Element {
   const [detectedLocation, setDetectedLocation] = useState<LocationData | null>(null);
   const [locationStatus, setLocationStatus] = useState<'detecting' | 'ready' | 'error'>('detecting');
 
+  // User Profile
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const defaultSettings = {
-      notificationsEnabled: true,
-      notificationVolume: 0.8,
-      notificationSound: 'default' as const
-    };
-
     try {
-      const saved = localStorage.getItem('streamflow_user_profile');
-      if (saved) {
-        const profile = JSON.parse(saved);
-        
-        // Ensure chatSettings exist
-        if (!profile.chatSettings) profile.chatSettings = defaultSettings;
-        return profile;
-      }
-    } catch (e) {}
+        const saved = localStorage.getItem('auradiochat_user_profile');
+        if (saved) {
+             const parsed = JSON.parse(saved);
+             // Ensure new fields exist
+             if (!parsed.chatSettings.bannerNotificationsEnabled) {
+                 parsed.chatSettings = { 
+                     ...parsed.chatSettings, 
+                     bannerNotificationsEnabled: false,
+                     voiceNotificationsEnabled: false,
+                     notificationVoice: 'female'
+                 };
+             }
+             return parsed;
+        }
+    } catch (e) {
+        // align with lint requirements
+    }
     
     return {
-      id: '', 
-      name: '', 
+      id: "u-" + Math.random().toString(36).substr(2, 9),
+      name: "Guest",
       avatar: null,
-      age: 0,
+      age: 25,
       gender: 'other',
       status: 'online',
-      safetyLevel: 'green',
       blockedUsers: [],
-      bio: '',
       hasAgreedToRules: false,
-      isAuthenticated: false,
+      safetyLevel: 'green',
+      bio: '',
       filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true },
-      chatSettings: defaultSettings
+      chatSettings: { 
+          notificationsEnabled: true, 
+          notificationVolume: 0.8, 
+          notificationSound: 'default',
+          bannerNotificationsEnabled: true,
+          voiceNotificationsEnabled: false,
+          notificationVoice: 'female'
+      }
     };
   });
 
   const [ambience, setAmbience] = useState<AmbienceState>({ 
       rainVolume: 0, rainVariant: 'soft', fireVolume: 0, cityVolume: 0, vinylVolume: 0, is8DEnabled: false, spatialSpeed: 1 
   });
-  const [passport, setPassport] = useState<PassportData>(() => { try { return JSON.parse(localStorage.getItem('streamflow_passport') || '') } catch { return { countriesVisited: [], totalListeningMinutes: 0, nightListeningMinutes: 0, stationsFavorited: 0, unlockedAchievements: [], level: 1 } } });
+  const [passport, setPassport] = useState<PassportData>(() => { try { return JSON.parse(localStorage.getItem('auradiochat_passport') || '') } catch { return { countriesVisited: [], totalListeningMinutes: 0, nightListeningMinutes: 0, stationsFavorited: 0, unlockedAchievements: [], level: 1 } } });
   const [alarm, setAlarm] = useState<AlarmConfig>({ enabled: false, time: '08:00', days: [1,2,3,4,5] });
 
   // Derived state for visual mode based on settings
@@ -352,12 +409,17 @@ export default function App(): React.JSX.Element {
                 name: prev.name || user.displayName || '',
                 isAuthenticated: true 
             };
-            // Persist to localStorage for rapid hydration, but not sensitive token
-            localStorage.setItem('streamflow_user_profile', JSON.stringify(updated));
             return updated;
         });
     } else {
-        setCurrentUser(prev => ({ ...prev, isAuthenticated: false }));
+        // Only reset if we don't have a local authenticated session (e.g. guest)
+        setCurrentUser(prev => {
+             // If we already have a session (guest or otherwise) that is strictly authenticated, keep it.
+             // This prevents the "reset" when Google Auth is null but user registered manually as guest.
+             if (prev.isAuthenticated && prev.name && prev.id) return prev;
+             
+             return { ...prev, isAuthenticated: false };
+        });
     }
   }, [isAuthorized, user]);
 
@@ -409,9 +471,11 @@ export default function App(): React.JSX.Element {
     if (audioContextRef.current) return;
     try {
         // Optimization for Bluetooth: 'playback' latency hint reduces stuttering on wireless devices
+        const isMobile = window.innerWidth < 768;
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ 
-            sampleRate: 44100,
-            latencyHint: 'playback'
+            // Remove hardcoded sampleRate to allow native device rate (48kHz on Android/iOS)
+            // This prevents expensive resampling which causes glitches
+            latencyHint: 'playback',
         });
         audioContextRef.current = ctx;
         if (!audioRef.current) return;
@@ -511,22 +575,34 @@ export default function App(): React.JSX.Element {
     setLocationStatus('detecting');
     try {
       const loc = await geolocationService.detectLocation();
+      const cached = geolocationService.getCachedLocation();
+      
       if (loc && loc.country !== 'Unknown') {
         setDetectedLocation(loc);
+        geolocationService.saveLocationToCache(loc);
         setLocationStatus('ready');
-        
-        // Auto-switch language based on country if not set
-        if (!localStorage.getItem('streamflow_language')) {
+      } else if (cached) {
+        console.log('[GEO] Fallback to cached location');
+        setDetectedLocation(cached);
+        setLocationStatus('ready');
+      } else {
+        console.log('[GEO] Ultimate fallback to Global');
+        setDetectedLocation({ country: 'Global', city: 'Global', countryCode: 'Global' });
+        setLocationStatus('ready');
+      }
+
+      // Auto-switch language if not set
+      if (!localStorage.getItem('auradiochat_language')) {
+        const targetCountry = loc?.country || cached?.country;
+        if (targetCountry) {
           const ruCountries = ['Russia', 'Ukraine', 'Belarus', 'Kazakhstan', 'Uzbekistan', 'Kyrgyzstan', 'Tajikistan', 'Turkmenistan', 'Armenia', 'Azerbaijan', 'Georgia', 'Moldova'];
-          if (ruCountries.includes(loc.country)) setLanguage('ru');
+          if (ruCountries.includes(targetCountry)) setLanguage('ru');
           else setLanguage('en');
         }
-      } else {
-        setLocationStatus('error');
       }
     } catch (err) {
       console.error('[GEO] Silent detection error:', err);
-      setLocationStatus('error');
+      setLocationStatus('ready'); // Unblock even on error
     }
   }, []);
 
@@ -535,10 +611,6 @@ export default function App(): React.JSX.Element {
   }, [triggerLocationDetection]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
-    if (locationStatus !== 'ready') {
-        alert(language === 'ru' ? '📍 Определение местоположения необходимо для запуска радио и входа в чат.' : '📍 Location detection is required to start the radio and enter the chat.');
-        return;
-    }
     initAudioContext();
     if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
     
@@ -608,10 +680,6 @@ export default function App(): React.JSX.Element {
 
   const togglePlay = () => {
     if (!audioRef.current) return;
-    if (locationStatus !== 'ready') {
-        alert(language === 'ru' ? '📍 Определение местоположения необходимо для запуска радио.' : '📍 Location detection is required to start the radio.');
-        return;
-    }
     if (!currentStation) {
         if (stations.length) handlePlayStation(stations[0]);
         return;
@@ -626,7 +694,7 @@ export default function App(): React.JSX.Element {
 
     // Persistence and Effects
     useEffect(() => {
-        localStorage.setItem('streamflow_random_mode', isRandomMode.toString());
+        localStorage.setItem('auradiochat_random_mode', isRandomMode.toString());
     }, [isRandomMode]);
 
     const handleNextStation = useCallback(async () => {
@@ -824,19 +892,17 @@ export default function App(): React.JSX.Element {
     } else {
         root.style.removeProperty('--card-bg'); root.style.removeProperty('--panel-bg'); root.style.removeProperty('--input-bg'); root.style.removeProperty('--card-border'); root.style.removeProperty('--panel-border');
     }
-    localStorage.setItem('streamflow_current_theme', currentTheme);
-    localStorage.setItem('streamflow_base_theme', baseTheme);
+    localStorage.setItem('auradiochat_current_theme', currentTheme);
+    localStorage.setItem('auradiochat_base_theme', baseTheme);
   }, [currentTheme, baseTheme, customCardColor]);
 
   useEffect(() => {
-    localStorage.setItem('streamflow_language', language);
+    localStorage.setItem('auradiochat_language', language);
   }, [language]);
 
   // Persistent User Profile protection
   useEffect(() => {
-    if (currentUser && currentUser.id) {
-        localStorage.setItem('streamflow_user_profile', JSON.stringify(currentUser));
-    }
+    localStorage.setItem('auradiochat_user_profile', JSON.stringify(currentUser));
   }, [currentUser]);
   
   const dedupeStations = (data: RadioStation[]) => {
@@ -854,8 +920,8 @@ export default function App(): React.JSX.Element {
       if (currentStation) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentStation.name,
-          artist: currentStation.tags || 'StreamFlow Radio',
-          album: 'StreamFlow Live',
+          artist: currentStation.tags || 'AU RadioChat Radio',
+          album: 'AU RadioChat Live',
           artwork: [
             { src: currentStation.favicon || '/logo192.png', sizes: '96x96', type: 'image/png' },
             { src: currentStation.favicon || '/logo192.png', sizes: '128x128', type: 'image/png' },
@@ -869,16 +935,23 @@ export default function App(): React.JSX.Element {
       // This is crucial for Bluetooth speakers to correctly show the button state (Play vs Pause)
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-      navigator.mediaSession.setActionHandler('play', togglePlay);
-      navigator.mediaSession.setActionHandler('pause', togglePlay);
-      navigator.mediaSession.setActionHandler('previoustrack', handlePreviousStation);
-      navigator.mediaSession.setActionHandler('nexttrack', handleNextStation);
+      navigator.mediaSession.setActionHandler('play', () => { togglePlay(); });
+      navigator.mediaSession.setActionHandler('pause', () => { togglePlay(); });
+      navigator.mediaSession.setActionHandler('stop', () => { 
+          if (audioRef.current) { audioRef.current.pause(); setIsPlaying(false); }
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => { handlePreviousStation(); });
+      navigator.mediaSession.setActionHandler('nexttrack', () => { handleNextStation(); });
+      // Some headsets require seek handlers to be present even if not used
+      navigator.mediaSession.setActionHandler('seekto', () => { /* No-op for live radio */ });
 
       return () => {
         navigator.mediaSession.setActionHandler('play', null);
         navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('stop', null);
         navigator.mediaSession.setActionHandler('previoustrack', null);
         navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
       };
     }
   }, [currentStation, isPlaying, togglePlay, handleNextStation, handlePreviousStation]);
@@ -916,7 +989,7 @@ export default function App(): React.JSX.Element {
     setIsAiCurating(false); 
     try {
       if (mode === 'favorites') {
-        const savedFavs = localStorage.getItem('streamflow_favorites');
+        const savedFavs = localStorage.getItem('auradiochat_favorites');
         const favUuids = savedFavs ? JSON.parse(savedFavs) : [];
         const data = favUuids.length ? await fetchStationsByUuids(favUuids) : [];
         const dedupedPrev = dedupeStations(data);
@@ -938,7 +1011,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => { loadCategory(GENRES[0], 'genres', false); }, [loadCategory]);
 
   const toggleFavorite = useCallback((id: string) => {
-    setFavorites(p => { const n = p.includes(id) ? p.filter(fid => fid !== id) : [...p, id]; localStorage.setItem('streamflow_favorites', JSON.stringify(n)); return n; });
+    setFavorites(p => { const n = p.includes(id) ? p.filter(fid => fid !== id) : [...p, id]; localStorage.setItem('auradiochat_favorites', JSON.stringify(n)); return n; });
   }, []);
   
 
@@ -1005,7 +1078,7 @@ export default function App(): React.JSX.Element {
 
       <aside className={`fixed inset-y-0 left-0 z-[70] w-72 transform transition-all duration-500 glass-panel flex flex-col bg-[var(--panel-bg)] ${isIdleView ? '-translate-x-full opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex items-center justify-between">
-           <div className="flex items-center gap-3"><h1 className="text-2xl font-black tracking-tighter">StreamFlow</h1><DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-9 h-9" visualMode={visualMode} /></div>
+           <div className="flex items-center gap-3"><h1 className="text-2xl font-black tracking-tighter">AU RadioChat</h1><DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-9 h-9" visualMode={visualMode} /></div>
            <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-slate-400"><XMarkIcon className="w-6 h-6" /></button>
         </div>
         <div className="px-4 pb-4 space-y-2 animate-in slide-in-from-left duration-300">
@@ -1067,10 +1140,6 @@ export default function App(): React.JSX.Element {
                       {!isAiCurating && <span className="xs:hidden font-bold">AI</span>}
                   </button>
               )}
-            <div className="flex items-center gap-3" style={{ order: 2 }}>
-            <button onClick={() => setToolsOpen(!toolsOpen)} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 hover:scale-105 transition-all" title={t.tools} aria-label={t.tools}><AdjustmentsIcon /></button>
-            <button onClick={() => setChatOpen(!chatOpen)} className="p-2.5 rounded-xl bg-gradient-to-r from-purple-500/90 to-pink-500/90 hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:scale-105" title={t.chat} aria-label={t.chat}><ChatBubbleIcon /></button>
-          </div>
               {/* Online Counter - Smart Ticker Mode */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md animate-in fade-in zoom-in duration-500 shadow-lg ml-1">
                   {/* Green Dot - Desktop Only now */}
@@ -1112,9 +1181,42 @@ export default function App(): React.JSX.Element {
           </div>
           
           <div className="flex items-center shrink-0 gap-1 md:gap-4">
+            {/* Language Switcher */}
+            <div className="hidden sm:flex items-center bg-white/5 rounded-lg p-0.5 mr-2 border border-white/5">
+                <button 
+                    onClick={() => setLanguage('en')} 
+                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${language === 'en' ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    EN
+                </button>
+                <div className="w-px h-3 bg-white/10 mx-0.5"></div>
+                <button 
+                    onClick={() => setLanguage('ru')} 
+                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${language === 'ru' ? 'bg-primary text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    RU
+                </button>
+            </div>
+
             {/* Online Counter moved elsewhere */}
 
             {/* Super-chat label with arrow */}
+            <button 
+                onClick={() => setToolsOpen(!toolsOpen)} 
+                className={`p-2 rounded-full relative hover:scale-110 transition-transform shrink-0 z-50 ${toolsOpen ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`}
+                title={t.tools}
+            >
+                <RocketIcon className="w-6 h-6" />
+            </button>
+
+            <button 
+                onClick={() => setFeedbackOpen(true)} 
+                className={`p-2 rounded-full relative hover:scale-110 transition-transform shrink-0 z-50 ${feedbackOpen ? 'text-primary' : 'text-slate-400 hover:text-white'}`}
+                title={t.feedback}
+            >
+                <EnvelopeIcon className="w-6 h-6" />
+            </button>
+
             {!chatOpen && (
                 <div className="flex items-center gap-1 animate-pulse mr-1 md:mr-2">
                     <span className="text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest whitespace-nowrap">Super-chat</span>
@@ -1260,29 +1362,23 @@ export default function App(): React.JSX.Element {
                         
                         <button 
                             ref={playButtonRef} 
-                            onClick={locationStatus === 'error' ? triggerLocationDetection : togglePlay} 
-                            className={`w-14 h-14 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center text-black shadow-xl hover:scale-105 transition-all mx-1 duration-75 relative overflow-hidden group ${locationStatus === 'ready' ? 'bg-white' : 'bg-slate-800 border border-white/10'}`}
+                            onClick={togglePlay} 
+                            className={`w-14 h-14 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center text-black shadow-xl hover:scale-105 transition-all mx-1 duration-75 relative overflow-hidden group ${isPlaying ? 'bg-white' : 'bg-white/90'}`}
                         >
-                            {locationStatus === 'detecting' ? (
-                                <>
-                                    <LoadingIcon className="animate-spin w-5 h-5 text-primary mb-0.5" />
-                                    <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter">Loc...</span>
-                                </>
-                            ) : locationStatus === 'error' ? (
-                                <>
-                                    <XMarkIcon className="w-5 h-5 text-red-500 mb-0.5" />
-                                    <span className="text-[6px] font-black text-red-400 uppercase tracking-tighter">Retry</span>
-                                </>
-                            ) : isBuffering ? (
-                                <LoadingIcon className="animate-spin w-6 h-6" />
+                            {isBuffering || locationStatus === 'detecting' ? (
+                                <LoadingIcon className="animate-spin w-6 h-6 text-primary" />
                             ) : isPlaying ? (
                                 <PauseIcon className="w-6 h-6" />
                             ) : (
                                 <PlayIcon className="w-6 h-6 ml-1" />
                             )}
-                            {/* Visual cue for silent location detection */}
+                            
+                            {/* Location Status Indicator */}
                             {locationStatus === 'detecting' && (
-                                <div className="absolute top-0 right-1 text-[8px] animate-pulse">🛰️</div>
+                                <div className="absolute top-1 right-2 text-[8px] animate-pulse">🛰️</div>
+                            )}
+                            {locationStatus === 'error' && (
+                                <div className="absolute top-1 right-2 text-[8px] text-red-500" title="Location detection failed - using fallback">⚠️</div>
                             )}
                         </button>
                         
@@ -1360,6 +1456,7 @@ export default function App(): React.JSX.Element {
                 visualizerVariant={visualizerVariant} setVisualizerVariant={setVisualizerVariant} 
               vizSettings={vizSettings} setVizSettings={setVizSettings}
               danceStyle={danceStyle} setDanceStyle={setDanceStyle}
+              autoDance={autoDance} setAutoDance={setAutoDance}
               randomMode={isRandomMode} setRandomMode={setIsRandomMode}
               onStartTutorial={() => { setToolsOpen(false); setTutorialOpen(true); }} 
               onOpenManual={() => { setToolsOpen(false); setManualOpen(true); }} 
@@ -1383,6 +1480,7 @@ export default function App(): React.JSX.Element {
         <Suspense fallback={null}><ManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} language={language} onShowFeature={handleShowFeature} /><TutorialOverlay isOpen={tutorialOpen || !!highlightFeature} onClose={() => { setTutorialOpen(false); setHighlightFeature(null); }} language={language} highlightFeature={highlightFeature} /></Suspense>
         <Suspense fallback={null}><DownloadAppModal isOpen={downloadModalOpen} onClose={() => setDownloadModalOpen(false)} language={language} installPrompt={installPrompt} /></Suspense>
         <Suspense fallback={null}><FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} language={language} currentUserId={currentUser.id} /></Suspense>
+        <Suspense fallback={null}><LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} language={language} /></Suspense>
 
       </main>
       <Suspense fallback={null}>
@@ -1409,6 +1507,7 @@ export default function App(): React.JSX.Element {
             onShare={() => setShareOpen(true)}
             onPendingKnocksChange={setPendingKnocksCount}
             detectedLocation={detectedLocation}
+            onRequireLogin={() => setShowLoginModal(true)}
         />
       </Suspense>
 
