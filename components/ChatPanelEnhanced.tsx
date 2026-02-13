@@ -1324,12 +1324,26 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             return newMap;
           });
           
-          // AUTO-RESUME: Keep this for reconnection recovery
+          // AUTO-RESUME / REPLAY: 
+          // If we have sessions but aren't in chat, show the "Knock Accepted" modal again
+          // This ensures Mata sees the invite even if she missed the real-time event due to disconnect
           const latestSession = data.activeSessions[data.activeSessions.length - 1];
-          if (latestSession) {
-              console.log("[SESSION] Auto-resuming latest session:", latestSession.sessionId);
-              setActiveSession(latestSession);
-              setView('chat'); 
+          if (latestSession && view !== 'chat') {
+              console.log("[SESSION] Found active session on reconnect. Replaying Knock Accepted modal:", latestSession.sessionId);
+              
+              // Construct specific partner profile from session data
+              // We need to find the partner ID (not us)
+              const partnerId = latestSession.partnerId; // registerUser returns processed sessions with partnerId
+              const partnerProfile = latestSession.partnerProfile || { name: 'User', avatar: '/avatars/default.png' }; 
+
+              setKnockAcceptedData({
+                  sessionId: latestSession.sessionId,
+                  partnerProfile: partnerProfile
+              });
+              
+              announceNotification(language === 'ru' 
+                ? `Стук принят! ${partnerProfile.name} ждет вас.` 
+                : `Knock accepted! ${partnerProfile.name} is waiting for you.`);
           }
         }
       });
