@@ -1709,7 +1709,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     if (searchGender !== 'any') filters.gender = searchGender;
     
     socketService.searchUsers(filters, (results) => {
-      setSearchResults(results);
+      // Filter out self from search results
+      setSearchResults(results.filter(u => u.id !== currentUser.id));
     });
   };
 
@@ -2984,7 +2985,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 </div>
                             </div>
                         <div className="space-y-3">
-                            {((searchResults?.length > 0 ? searchResults : onlineUsers) || []).map(user => (
+                            {((searchResults?.length > 0 ? searchResults : onlineUsers) || []).filter(u => u.id !== currentUser.id).map(user => (
                                 <div key={user.id} className={`p-4 rounded-3xl flex flex-col gap-3 transition-all animate-in slide-in-from-bottom-2 duration-300 border ${user.status === 'online' ? 'bg-white/5 border-white/5 hover:bg-white/[0.08]' : 'bg-white/[0.02] border-white/[0.02] opacity-80'}`}>
                                     
                                     {/* Header: Identity & Status */}
