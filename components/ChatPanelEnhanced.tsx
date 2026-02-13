@@ -1085,8 +1085,42 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         currentSession: currentActiveSession?.sessionId
       });
       
-      if (!currentActiveSession || message.sessionId !== currentActiveSession.sessionId) {
-        console.log(`[CLIENT] ⚠️ Message ignored: session mismatch or no active session`);
+      // If no active session at all, ignore
+      if (!currentActiveSession) {
+        console.log(`[CLIENT] ⚠️ Message ignored: no active session`);
+        return;
+      }
+      
+      // If message is for a different session, show notification but don't add to current messages
+      if (message.sessionId !== currentActiveSession.sessionId) {
+        console.log(`[CLIENT] ⚠️ Message from different session, showing notification only`);
+        
+        // Still play sound and show toast for messages from other sessions
+        if (message.senderId !== currentUser.id) {
+            playNotificationSound('knock');
+            
+            // Find the session this message belongs to
+            const otherSession = activeSessions.get(message.sessionId);
+            const senderName = otherSession?.partnerProfile?.name || (language === 'ru' ? 'Собеседник' : 'Partner');
+            const senderAvatar = otherSession?.partnerProfile?.avatar;
+            
+            if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+            setNotificationToast({
+                senderName,
+                text: message.messageType === 'text' ? '[message]' : (language === 'ru' ? '📷 Фото' : '📷 Photo'),
+                senderId: message.senderId,
+                avatar: senderAvatar
+            });
+            toastTimeoutRef.current = setTimeout(() => setNotificationToast(null), 5000);
+            
+            // Banner notification
+            if (currentUser.chatSettings?.bannerNotificationsEnabled && document.visibilityState === 'hidden') {
+                showBannerNotification(
+                    language === 'ru' ? 'Новое сообщение' : 'New Message',
+                    `${senderName}: ${language === 'ru' ? 'новое сообщение' : 'New message'}`
+                );
+            }
+        }
         return;
       }
       
@@ -1166,8 +1200,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
              toastTimeoutRef.current = setTimeout(() => setNotificationToast(null), 5000);
           }
 
-          // Voice Mode (Reading content) - Only if Voice Notification is OFF to avoid double speaking overrides
-          if (decrypted.text && voiceModeRef.current && !currentUser.chatSettings?.voiceNotificationsEnabled) {
+          // Voice Mode (Reading chat text aloud) - works independently of voice notification setting
+          if (decrypted.text && voiceModeRef.current) {
               // Get partner gender
               let partnerGender = 'other';
               if (currentActiveSession) {
