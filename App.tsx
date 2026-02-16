@@ -207,6 +207,7 @@ export default function App(): React.JSX.Element {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
 
 
   const handleApplyPreset = (presetId: string) => {
@@ -682,7 +683,7 @@ export default function App(): React.JSX.Element {
   }, [triggerLocationDetection]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (mainContentRef.current) mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     initAudioContext();
     if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
     
@@ -1066,7 +1067,14 @@ export default function App(): React.JSX.Element {
   }, [currentUser.id, detectedLocation]);
 
   const loadCategory = useCallback(async (category: CategoryInfo | null, mode: ViewMode, autoPlay: boolean = false) => { 
-    if (typeof window !== 'undefined' && window.innerWidth < 768) setSidebarOpen(false);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setSidebarOpen(false);
+        // Scroll to top after sidebar closes
+        setTimeout(() => {
+            if (mainContentRef.current) mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 300);
+    }
     const requestId = Date.now();
     loadRequestIdRef.current = requestId;
     setViewMode(mode); setSelectedCategory(category); setIsLoading(true); setVisibleCount(INITIAL_CHUNK); setStations([]);
@@ -1309,7 +1317,16 @@ export default function App(): React.JSX.Element {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto px-6 md:px-10 no-scrollbar transition-all duration-500 ${isIdleView ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // ... (inside handlePlayStation)
+  const handlePlayStation = useCallback((station: RadioStation) => {
+    if (mainContentRef.current) mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    initAudioContext();
+    // ...
+
+  // ... (JSX)
+  <div ref={mainContentRef} className={`flex-1 overflow-y-auto px-6 md:px-10 no-scrollbar transition-all duration-500 ${isIdleView ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
             <>
             {selectedCategory && viewMode !== 'favorites' && (
                 <div className="mb-8">
