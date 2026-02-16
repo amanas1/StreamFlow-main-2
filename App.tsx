@@ -1026,6 +1026,9 @@ export default function App(): React.JSX.Element {
       });
       navigator.mediaSession.setActionHandler('previoustrack', () => { handlePreviousStation(); });
       navigator.mediaSession.setActionHandler('nexttrack', () => { handleNextStation(); });
+      // Some headsets use seek commands for track changes
+      navigator.mediaSession.setActionHandler('seekbackward', () => { handlePreviousStation(); });
+      navigator.mediaSession.setActionHandler('seekforward', () => { handleNextStation(); });
       // Some headsets require seek handlers to be present even if not used
       navigator.mediaSession.setActionHandler('seekto', () => { /* No-op for live radio */ });
 
@@ -1035,6 +1038,8 @@ export default function App(): React.JSX.Element {
         navigator.mediaSession.setActionHandler('stop', null);
         navigator.mediaSession.setActionHandler('previoustrack', null);
         navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekbackward', null);
+        navigator.mediaSession.setActionHandler('seekforward', null);
         navigator.mediaSession.setActionHandler('seekto', null);
       };
     }
