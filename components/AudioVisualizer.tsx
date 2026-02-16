@@ -401,7 +401,10 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       // Determine visualizer type
       if (variant === 'stage-dancer') {
         // Light Show - Dynamic Spotlights (Enabled for Mobile/Low too, but optimized)
-        if (isPlaying) {
+        // User Request: Remove spotlights on mobile for performance
+        const isMobile = window.innerWidth < 768;
+
+        if (isPlaying && !isMobile) {
             // Left Spotlight (Chaotic & Active)
             drawSpotlight(
                 width * 0.2, 
