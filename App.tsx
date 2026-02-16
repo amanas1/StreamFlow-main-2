@@ -682,6 +682,7 @@ export default function App(): React.JSX.Element {
   }, [triggerLocationDetection]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     initAudioContext();
     if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
     
@@ -1065,6 +1066,7 @@ export default function App(): React.JSX.Element {
   }, [currentUser.id, detectedLocation]);
 
   const loadCategory = useCallback(async (category: CategoryInfo | null, mode: ViewMode, autoPlay: boolean = false) => { 
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setSidebarOpen(false);
     const requestId = Date.now();
     loadRequestIdRef.current = requestId;
     setViewMode(mode); setSelectedCategory(category); setIsLoading(true); setVisibleCount(INITIAL_CHUNK); setStations([]);
