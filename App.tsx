@@ -1017,65 +1017,63 @@ export default function App(): React.JSX.Element {
   useEffect(() => { handlePlayStationRef.current = handlePlayStation; }, [handlePlayStation]);
   useEffect(() => { togglePlayRef.current = togglePlay; }, [togglePlay]);
 
-  // Reactive Metadata & Playback State
+  // Consolidate Media Session Logic for maximum cross-device compatibility
   useEffect(() => {
-    if ('mediaSession' in navigator) {
-      if (currentStation) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: currentStation.name,
-          artist: currentStation.tags || 'AU RadioChat Radio',
-          album: 'AU RadioChat Live',
-          artwork: [
-            { src: currentStation.favicon || '/logo192.png', sizes: '96x96', type: 'image/png' },
-            { src: currentStation.favicon || '/logo192.png', sizes: '128x128', type: 'image/png' },
-            { src: currentStation.favicon || '/logo192.png', sizes: '192x192', type: 'image/png' },
-            { src: currentStation.favicon || '/logo512.png', sizes: '512x512', type: 'image/png' },
-          ]
-        });
-      }
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    }
-  }, [currentStation, isPlaying]);
+    if (!('mediaSession' in navigator)) return;
 
-  // STABLE Action Handlers (Registered ONLY once)
-  useEffect(() => {
-    if ('mediaSession' in navigator) {
-      const handleNext = () => {
-          if (isRandomModeRef.current) {
-               handleNextStationRef.current(); 
-          } else {
-               const s = stationsRef.current;
-               const c = currentStationRef.current;
-               if (!s.length) return;
-               const idx = c ? s.findIndex(st => st.stationuuid === c.stationuuid) : -1;
-               const next = idx === -1 ? 0 : (idx + 1) % s.length;
-               handlePlayStationRef.current(s[next]);
-          }
-      };
-
-      const handlePrev = () => {
-          const s = stationsRef.current;
-          const c = currentStationRef.current;
-          if (!s.length) return;
-          const idx = c ? s.findIndex(st => st.stationuuid === c.stationuuid) : -1;
-          const prev = idx === -1 ? s.length - 1 : (idx - 1 + s.length) % s.length;
-          handlePlayStationRef.current(s[prev]);
-      };
-
-      navigator.mediaSession.setActionHandler('play', () => togglePlayRef.current());
-      navigator.mediaSession.setActionHandler('pause', () => togglePlayRef.current());
-      navigator.mediaSession.setActionHandler('stop', () => { 
-          if (audioRef.current) { audioRef.current.pause(); setIsPlaying(false); }
+    // 1. Update Metadata
+    if (currentStation) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentStation.name,
+        artist: currentStation.tags || 'AU RadioChat Radio',
+        album: 'AU RadioChat Live',
+        artwork: [
+          { src: currentStation.favicon || '/logo192.png', sizes: '96x96', type: 'image/png' },
+          { src: currentStation.favicon || '/logo128.png', sizes: '128x128', type: 'image/png' },
+          { src: currentStation.favicon || '/logo192.png', sizes: '192x192', type: 'image/png' },
+          { src: currentStation.favicon || '/logo512.png', sizes: '512x512', type: 'image/png' },
+        ]
       });
-      navigator.mediaSession.setActionHandler('previoustrack', handlePrev);
-      navigator.mediaSession.setActionHandler('nexttrack', handleNext);
-      navigator.mediaSession.setActionHandler('seekbackward', handlePrev);
-      navigator.mediaSession.setActionHandler('seekforward', handleNext);
-      navigator.mediaSession.setActionHandler('seekto', () => {});
     }
-  }, []); // Truly stable registration
-  // Note: These handlers are now much more stable since dependencies change less often.
-  // togglePlay is memoized, handlePlayStation depends on fxSettings.speed.
+
+    // 2. Set Playback State
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    // 3. Register Action Handlers (Re-asserting helps on mobile OS switches)
+    const handleNext = () => {
+        if (isRandomModeRef.current) handleNextStationRef.current();
+        else {
+            const s = stationsRef.current;
+            const c = currentStationRef.current;
+            if (!s.length) return;
+            const idx = c ? s.findIndex(st => st.stationuuid === c.stationuuid) : -1;
+            const next = (idx + 1) % s.length;
+            handlePlayStationRef.current(s[next]);
+        }
+    };
+
+    const handlePrev = () => {
+        const s = stationsRef.current;
+        const c = currentStationRef.current;
+        if (!s.length) return;
+        const idx = c ? s.findIndex(st => st.stationuuid === c.stationuuid) : -1;
+        const prev = (idx - 1 + s.length) % s.length;
+        handlePlayStationRef.current(s[prev]);
+    };
+
+    navigator.mediaSession.setActionHandler('play', () => togglePlayRef.current());
+    navigator.mediaSession.setActionHandler('pause', () => togglePlayRef.current());
+    navigator.mediaSession.setActionHandler('stop', () => {
+        if (audioRef.current) { audioRef.current.pause(); setIsPlaying(false); }
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', handlePrev);
+    navigator.mediaSession.setActionHandler('nexttrack', handleNext);
+    // Explicitly handle seek for headsets that use it for track changes
+    navigator.mediaSession.setActionHandler('seekbackward', handlePrev);
+    navigator.mediaSession.setActionHandler('seekforward', handleNext);
+    navigator.mediaSession.setActionHandler('seekto', null);
+
+  }, [currentStation, isPlaying]); // Re-register on any major state change for stability
 
   useEffect(() => {
     // Subscribe to presence updates (only active if socket is connected via initAuth)
@@ -1204,14 +1202,19 @@ export default function App(): React.JSX.Element {
         ref={audioRef} 
         crossOrigin="anonymous"
         preload="auto"
+        onPlay={() => {
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+        }}
         onPlaying={() => { 
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsBuffering(false); 
             setIsPlaying(true); 
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         }} 
         onPause={() => {
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsPlaying(false);
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         }} 
         onWaiting={() => setIsBuffering(true)} 
         onEnded={() => { 
