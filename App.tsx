@@ -761,7 +761,7 @@ export default function App(): React.JSX.Element {
     setIsIdleView(false);
   }, []);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
     if (!currentStation) {
         if (stations.length) handlePlayStation(stations[0]);
@@ -774,7 +774,7 @@ export default function App(): React.JSX.Element {
       if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
       audioRef.current.play().catch(() => {});
     }
-  };
+  }, [currentStation, isPlaying, handlePlayStation, stations]);
 
     // Persistence and Effects
     useEffect(() => {
@@ -1015,33 +1015,21 @@ export default function App(): React.JSX.Element {
         });
       }
 
-      // Explicitly tell the system if we are playing or paused
-      // This is crucial for Bluetooth speakers to correctly show the button state (Play vs Pause)
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-      navigator.mediaSession.setActionHandler('play', () => { togglePlay(); });
-      navigator.mediaSession.setActionHandler('pause', () => { togglePlay(); });
+      navigator.mediaSession.setActionHandler('play', togglePlay);
+      navigator.mediaSession.setActionHandler('pause', togglePlay);
       navigator.mediaSession.setActionHandler('stop', () => { 
           if (audioRef.current) { audioRef.current.pause(); setIsPlaying(false); }
       });
-      navigator.mediaSession.setActionHandler('previoustrack', () => { handlePreviousStation(); });
-      navigator.mediaSession.setActionHandler('nexttrack', () => { handleNextStation(); });
-      // Some headsets use seek commands for track changes
-      navigator.mediaSession.setActionHandler('seekbackward', () => { handlePreviousStation(); });
-      navigator.mediaSession.setActionHandler('seekforward', () => { handleNextStation(); });
-      // Some headsets require seek handlers to be present even if not used
+      navigator.mediaSession.setActionHandler('previoustrack', handlePreviousStation);
+      navigator.mediaSession.setActionHandler('nexttrack', handleNextStation);
+      navigator.mediaSession.setActionHandler('seekbackward', handlePreviousStation);
+      navigator.mediaSession.setActionHandler('seekforward', handleNextStation);
       navigator.mediaSession.setActionHandler('seekto', () => { /* No-op for live radio */ });
 
-      return () => {
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('stop', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('seekbackward', null);
-        navigator.mediaSession.setActionHandler('seekforward', null);
-        navigator.mediaSession.setActionHandler('seekto', null);
-      };
+      // No cleanup on every small change, only when component unmounts
+      // Actually, we SHOULD keep handlers as long as the session is active.
     }
   }, [currentStation, isPlaying, togglePlay, handleNextStation, handlePreviousStation]);
 
@@ -1170,6 +1158,8 @@ export default function App(): React.JSX.Element {
       <div className={`absolute inset-0 bg-black/80 z-[80] transition-opacity duration-1000 pointer-events-none ${isGlobalLightsOn ? 'opacity-100' : 'opacity-0'}`} />
       <audio 
         ref={audioRef} 
+        crossOrigin="anonymous"
+        preload="auto"
         onPlaying={() => { 
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsBuffering(false); 
@@ -1187,7 +1177,6 @@ export default function App(): React.JSX.Element {
         onError={() => {
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
         }}
-        crossOrigin="anonymous" 
       />
       
 
