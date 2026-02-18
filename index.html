@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0f172a" />
-    <meta name="description" content="AU Radio — Global Online Radio Streaming. Listen to 24/7 live broadcasts worldwide. Discover music genres, cultures, and real-time stations in one modern platform. No installation required.">
+    <meta name="description" content="AU RadioChat – Global Online Radio Streaming Platform. Listen to jazz, rock, electronic, hip-hop and world radio stations live. Free international internet radio player with smart chat.">
+    <meta name="keywords" content="online radio, internet radio, global radio streaming, jazz radio, electronic music radio, hip hop radio, world radio stations, live radio player">
+    <link rel="canonical" href="https://auradiochat.com/" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AU Radio">
@@ -12,21 +14,22 @@
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://auradiochat.com/">
-    <meta property="og:title" content="AU Radio — Global Online Radio Streaming">
-    <meta property="og:description" content="Stream live radio stations worldwide. Discover global music genres in one modern streaming platform.">
+    <meta property="og:title" content="AU RadioChat – Global Online Radio Streaming Player">
+    <meta property="og:description" content="Stream live radio stations worldwide. Discover global music genres in one modern streaming platform with community chat.">
     <meta property="og:image" content="https://auradiochat.com/og-image.jpg">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://auradiochat.com/">
-    <meta property="twitter:title" content="AU Radio — Global Online Radio Streaming">
-    <meta property="twitter:description" content="Stream live radio stations worldwide. Discover global music genres in one modern streaming platform.">
+    <meta property="twitter:title" content="AU RadioChat – Global Online Radio Streaming Player">
+    <meta property="twitter:description" content="Stream live radio stations worldwide. Discover global music genres in one modern streaming platform with community chat.">
     <meta property="twitter:image" content="https://auradiochat.com/og-image.jpg">
 
-    <title>AU Radio — Global Online Radio Streaming</title>
+    <title>AU RadioChat – Global Online Radio Streaming Player</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" as="style">
     <link rel="preconnect" href="https://de1.api.radio-browser.info">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -152,8 +155,96 @@
         border: 1.5px solid var(--card-border);
         box-shadow: 0 4px 15px var(--shadow-color);
       }
+
+      @keyframes player-border-animate {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+
+      /* Animated border only for Desktop */
+      @media (min-width: 768px) {
+        .animated-player-border {
+          border: 1.2px solid transparent !important;
+          background-image: linear-gradient(var(--player-bar-bg), var(--player-bar-bg)), 
+                            linear-gradient(90deg, #ff007c, #bc6ff1, #00d2ff, #22c55e, #eab308, #ff007c);
+          background-origin: border-box;
+          background-clip: padding-box, border-box;
+          background-size: 100% 100%, 200% 100%;
+          animation: player-border-animate 8s ease infinite;
+          box-shadow: 0 0 15px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.03);
+        }
+      }
+
+      /* Simple border for Mobile */
+      @media (max-width: 767px) {
+        .animated-player-border {
+          border: 1.5px solid var(--panel-border) !important;
+          background: var(--panel-bg);
+          box-shadow: 0 4px 15px var(--shadow-color);
+        }
+      }
+
+      @keyframes text-shimmer {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+      }
+
+      .shimmering-text {
+        background: linear-gradient(
+          90deg, 
+          #ffffff 0%, 
+          #ffffff 45%, 
+          #ffb3d9 48%, 
+          #e0b3ff 50%, 
+          #b3f0ff 52%, 
+          #ffffff 55%, 
+          #ffffff 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: text-shimmer 6s linear infinite;
+        text-shadow: 0 0 4px rgba(255,255,255,0.15);
+      }
+
+      .shimmering-text-active {
+        background: linear-gradient(
+          90deg, 
+          #000000 0%, 
+          #1a1a1a 45%, 
+          #ff007c 48%, 
+          #bc6ff1 50%, 
+          #00d2ff 52%, 
+          #1a1a1a 55%, 
+          #000000 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: text-shimmer 5s linear infinite;
+        text-shadow: 0 0 2px rgba(var(--primary-rgb), 0.2);
+      }
     </style>
 <link rel="stylesheet" href="/index.css">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicStreamingService",
+      "name": "AU RadioChat",
+      "url": "https://auradiochat.com/",
+      "description": "Global Online Radio Streaming Platform with smart community chat. Listen to jazz, rock, electronic, hip-hop and world radio stations live.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
 </head>
   <body>
     <div id="root"></div>

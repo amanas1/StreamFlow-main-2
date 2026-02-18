@@ -51,7 +51,7 @@ interface ToolsPanelProps {
   setDanceStyle?: (style: number) => void;
   autoDance?: boolean;
   setAutoDance?: (b: boolean) => void;
-  onGlobalReset?: () => void; // New Prop
+  onGlobalReset?: () => void;
 }
 
 const VISUALIZERS: { id: VisualizerVariant; name: string }[] = [
@@ -64,8 +64,6 @@ const VISUALIZERS: { id: VisualizerVariant; name: string }[] = [
 ];
 
 const THEMES: ThemeName[] = ['default', 'emerald', 'midnight', 'cyber', 'volcano', 'ocean', 'sakura', 'gold', 'frost', 'forest'];
-
-
 
 const EQ_PRESETS = [
     { id: 'flat', name: 'Flat', ru: 'Сброс', values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
@@ -168,20 +166,21 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
           </div>
 
           <div className="flex-1 p-6 md:p-8 overflow-y-auto no-scrollbar bg-gradient-to-br from-white/[0.02] to-transparent">
-             <div className="flex justify-between items-center mb-8">
-                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{tabs.find(t => t.id === activeTab)?.label}</h2>
-                 <div className="flex items-center gap-4">
-                    <div className="auth-lang-switcher">
-                        <button 
-                        className={`lang-btn ${language === 'ru' ? 'active' : ''}`}
-                        onClick={() => setLanguage('ru')}
-                        >RU</button>
-                        <button 
-                        className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-                        onClick={() => setLanguage('en')}
-                        >EN</button>
+             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+                 <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter w-full lg:w-auto">{tabs.find(t => t.id === activeTab)?.label}</h2>
+                 <div className="flex items-center justify-between w-full lg:w-auto gap-4">
+                    <div className="flex items-center bg-white/5 rounded-full p-1 border border-white/5 gap-0.5 sm:gap-1 overflow-x-auto no-scrollbar max-w-[calc(100%-48px)] lg:max-w-none">
+                        {(['ru', 'en', 'es', 'fr', 'zh', 'de'] as Language[]).map((lang) => (
+                            <button 
+                                key={lang}
+                                onClick={() => setLanguage(lang)}
+                                className={`w-8 h-8 flex items-center justify-center text-[10px] font-black rounded-full shrink-0 transition-all ${language === lang ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            >
+                                {lang.toUpperCase()}
+                            </button>
+                        ))}
                     </div>
-                    <button onClick={onClose} className="md:hidden"><XMarkIcon className="w-6 h-6 text-slate-400" /></button>
+                    <button onClick={onClose} className="lg:hidden shrink-0 p-2"><XMarkIcon className="w-6 h-6 text-slate-400" /></button>
                  </div>
              </div>
 
@@ -409,7 +408,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                               {t.editProfile}
                           </button>
                            <button onClick={onStartTutorial} className="py-3 bg-white/5 rounded-xl text-xs font-bold text-slate-300 hover:bg-white/10 transition-all">{t.manual}</button>
-                      </div>
+                       </div>
 
                      {/* GLOBAL RESET BUTTON */}
                      {onGlobalReset && (

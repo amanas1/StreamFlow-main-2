@@ -29,7 +29,6 @@ console.log('[INIT] ✓ path loaded');
 const cookieParser = require('cookie-parser');
 console.log('[INIT] ✓ cookie-parser loaded');
 console.log('[INIT] ✓ devices NOT loaded (Legacy)');
-
 // Load environment variables (Railway provides these automatically)
 require('dotenv').config();
 console.log('[INIT] ✓ dotenv configured');

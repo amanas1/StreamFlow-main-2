@@ -145,7 +145,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete, language, initi
                     className="w-48 h-48 rounded-[2.5rem] bg-white/5 border-2 border-dashed border-white/10 hover:border-primary/50 transition-all cursor-pointer overflow-hidden flex items-center justify-center relative group shadow-2xl"
                 >
                     {avatar ? (
-                        <img src={avatar} className="w-full h-full object-cover" />
+                        <img src={avatar} alt="User Avatar" className="w-full h-full object-cover" />
                     ) : (
                         <div className="flex flex-col items-center text-slate-500 group-hover:text-primary transition-colors">
                             <PhotoIcon className="w-12 h-12 mb-3" />

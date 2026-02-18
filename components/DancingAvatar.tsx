@@ -18,7 +18,7 @@ const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = ''
   const effectiveVariant = (visualMode === 'low' || !shouldAnimate) ? 'simple' : variant;
 
   return (
-    <div className={`relative overflow-hidden rounded-full ${className}`}>
+    <div className={`relative ${className}`}>
       {/* Conditionally inject styles only if animating to save parsing time */}
       {shouldAnimate && (
         <style>
@@ -62,12 +62,12 @@ const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = ''
               transform-origin: 5px 5px; 
             }
 
-            /* Head Bob Animation */
+            /* Head Bob Animation - Intense edition */
             @keyframes headBob {
               0% { transform: rotate(0deg) translateY(0); }
-              25% { transform: rotate(-3deg) translateY(1px); }
-              50% { transform: rotate(0deg) translateY(2px); }
-              75% { transform: rotate(3deg) translateY(1px); }
+              25% { transform: rotate(-8deg) translateY(2px); }
+              50% { transform: rotate(0deg) translateY(5px); }
+              75% { transform: rotate(8deg) translateY(2px); }
               100% { transform: rotate(0deg) translateY(0); }
             }
             .animate-head-bob {
@@ -102,15 +102,8 @@ const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = ''
         </style>
       )}
       
-      {shouldAnimate && (
-        <>
-          <div className="absolute top-2 right-2 z-10">
-            <svg width="10" height="10" viewBox="0 0 24 24" className="text-secondary animate-note-inner">
-              <path fill="currentColor" d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-            </svg>
-          </div>
-        </>
-      )}
+      
+      {/* Musical note removed as requested */}
 
       <svg 
         viewBox="0 0 100 150" 
@@ -129,10 +122,10 @@ const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = ''
         </defs>
 
         <g className={shouldAnimate ? 'animate-head-bob' : ''}>
-           {/* Headphone Band - Lighter color as requested */}
-           <path d="M 8,65 C 8,20 92,20 92,65" fill="none" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+           {/* Headphone Band - Solid Red as requested */}
+           <path d="M 8,65 C 8,20 92,20 92,65" fill="none" stroke="#ee1111" strokeWidth="6" strokeLinecap="round" />
 
-          <circle cx="50" cy="65" r="45" fill="url(#faceGradient)" /> 
+          <circle cx="50" cy="65" r="45" fill="url(#faceGradient)" stroke="#ee1111" strokeWidth="3" /> 
 
           <ellipse cx="35" cy="45" rx="15" ry="8" fill="white" opacity="0.3" transform="rotate(-45, 35, 45)" />
 
@@ -157,9 +150,17 @@ const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = ''
             )}
           </g>
 
-          {/* Ear Cups */}
-          <rect x="2" y="55" width="12" height="25" rx="4" fill="#334155" />
-          <rect x="86" y="55" width="12" height="25" rx="4" fill="#334155" />
+          {/* Ear Cups - Vivid Pink/Red */}
+          <rect x="2" y="55" width="12" height="25" rx="4" fill="#ff2a6d" />
+          <rect x="86" y="55" width="12" height="25" rx="4" fill="#ff2a6d" />
+
+          {/* Silver Connectors */}
+          <rect x="5" y="52" width="6" height="6" fill="#e2e8f0" />
+          <rect x="89" y="52" width="6" height="6" fill="#e2e8f0" />
+
+          {/* Small Microphone */}
+          <path d="M 86,75 Q 95,95 70,105" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="68" cy="105" r="4" fill="#1e293b" />
         </g>
       </svg>
     </div>

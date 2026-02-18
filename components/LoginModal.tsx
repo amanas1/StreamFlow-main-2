@@ -3,6 +3,7 @@ import {
     signInWithGoogle 
 } from '../auth';
 import { Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, language }) => {
+    const t = TRANSLATIONS[language] || TRANSLATIONS.en;
     // Stage: 'choice', 'success'
     const [stage, setStage] = useState<'choice' | 'success'>('choice');
     const [loading, setLoading] = useState(false);

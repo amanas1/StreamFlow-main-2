@@ -52,9 +52,16 @@ const EMOJIS = [
 
 const AGES = [...Array.from({ length: 48 }, (_, i) => (i + 18).toString()), '65+']; 
 
+const INTENT_MAP: Record<string, string> = {
+  'Хочу поговорить': 'intentTalk',
+  'Свободен': 'intentFree',
+  'Просто слушаю': 'intentListen',
+  'Без флирта': 'intentNoFlirt'
+};
+
 const INTENT_STATUSES = ['Хочу поговорить', 'Свободен', 'Просто слушаю', 'Без флирта'] as const;
 
-const SMART_PROMPTS = {
+const SMART_PROMPTS: Record<string, any> = {
   ru: {
     neutral: ['Привет, я здесь, чтобы просто пообщаться', 'Ищу спокойный диалог'],
     friendly: ['Если хочешь пообщаться — я здесь', 'Открыт к диалогу'],
@@ -68,6 +75,34 @@ const SMART_PROMPTS = {
     calm: ['No rush, just talking', 'Relaxed conversation'],
     short: ['Just chatting', 'Free to chat'],
     open: ['I’m free right now if you want to talk', 'Feel free to knock']
+  },
+  es: {
+    neutral: ['Hola, estoy aquí solo para hablar', 'Busco una conversación tranquila'],
+    friendly: ['No dudes en contactarme si quieres hablar', 'Abierto a una charla amigable'],
+    calm: ['Sin prisas, solo hablando', 'Conversación relajada'],
+    short: ['Solo chateando', 'Libre para chatear'],
+    open: ['Estoy libre ahora si quieres hablar', 'No dudes en llamar']
+  },
+  fr: {
+    neutral: ['Salut, je suis là juste pour parler', 'Je cherche une conversation calme'],
+    friendly: ['N’hésitez pas à me contacter pour parler', 'Ouvert à une discussion amicale'],
+    calm: ['Pas de précipitation, juste parler', 'Conversation détendue'],
+    short: ['Juste en train de discuter', 'Libre pour discuter'],
+    open: ['Je suis libre si vous voulez parler', 'N’hésitez pas à frapper']
+  },
+  zh: {
+    neutral: ['嗨，我只是想聊聊', '在寻找轻松的对话'],
+    friendly: ['想聊天的话随时联系我', '乐于友好交流'],
+    calm: ['不着急，只是聊聊', '轻松的对话'],
+    short: ['只是在聊天', '有空聊天'],
+    open: ['我现在有空，可以聊聊', '欢迎敲门']
+  },
+  de: {
+    neutral: ['Hi, ich bin nur zum Reden hier', 'Suche ein ruhiges Gespräch'],
+    friendly: ['Melde dich gerne, wenn du reden willst', 'Offen für einen netten Chat'],
+    calm: ['Keine Eile, einfach nur reden', 'Entspanntes Gespräch'],
+    short: ['Einfach nur chatten', 'Bereit für einen Chat'],
+    open: ['Ich habe gerade Zeit für ein Gespräch', 'Klopf einfach an']
   }
 };
 
@@ -290,7 +325,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   });
 
   const handleHideUser = (userId: string) => {
-      if (!confirm(language === 'ru' ? 'Скрыть этого пользователя из списка?' : 'Hide this user from the list?')) return;
+      if (!confirm(t.hideUserConfirm)) return;
       
       setHiddenUsers(prev => {
           const next = new Set(prev);
@@ -307,7 +342,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   });
 
   const handleHideSession = (sessionId: string) => {
-      if (!confirm(language === 'ru' ? 'Скрыть этот диалог из списка?' : 'Hide this chat from the list?')) return;
+      if (!confirm(t.hideChatConfirm)) return;
       
       setHiddenSessions(prev => {
           const next = new Set(prev);
@@ -322,7 +357,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (!currentUser.chatSettings?.voiceNotificationsEnabled) return;
       
       const isCyrillic = /[а-яА-ЯёЁ]/.test(text);
-      const targetLang = isCyrillic ? 'ru-RU' : 'en-US';
+      const targetLang = isCyrillic ? 'ru-RU' : (language === 'zh' ? 'zh-CN' : 'en-US');
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = targetLang;
@@ -362,17 +397,17 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
   // Format Last Seen Time
   const formatLastSeen = (timestamp?: number) => {
-    if (!timestamp) return language === 'ru' ? 'Давно' : 'A while ago';
+    if (!timestamp) return t.longAgo;
     const now = Date.now();
     const diff = now - timestamp;
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(mins / 60);
     const days = Math.floor(hours / 24);
 
-    if (mins < 1) return language === 'ru' ? 'только что' : 'just now';
-    if (mins < 60) return language === 'ru' ? `${mins}м назад` : `${mins}m ago`;
-    if (hours < 24) return language === 'ru' ? `${hours}ч назад` : `${hours}h ago`;
-    if (days < 7) return language === 'ru' ? `${days}д назад` : `${days}d ago`;
+    if (mins < 1) return t.justNow;
+    if (mins < 60) return `${mins}${t.minsAgo}`;
+    if (hours < 24) return `${hours}${t.hoursAgo}`;
+    if (days < 7) return `${days}${t.daysAgo}`;
     return new Date(timestamp).toLocaleDateString();
   };
 
@@ -695,9 +730,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
   // Helper: Voice Notification
   const playVoiceNotification = () => {
-      const text = language === 'ru' 
-        ? "К вам пришло сообщение - посмотрим в чате !" 
-        : "You have a new message - let's check the chat!";
+      const text = t.newMsgNotification;
       
       speakMessage(text, 'other'); // Uses the existing speakMessage helper but forces our text
   };
@@ -714,15 +747,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
       
-      const text = language === 'ru' 
-        ? "К вам пришло сообщение - посмотрим в чате !" 
-        : "You have a new message - let's check the chat!";
+      const text = t.newMsgNotification;
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.volume = regNotificationVolume;
       utterance.rate = 1.0;
       utterance.pitch = 1.0; 
-      utterance.lang = language === 'ru' ? 'ru-RU' : 'en-US';
+      const langMap: Record<string, string> = { ru: 'ru-RU', en: 'en-US', es: 'es-ES', fr: 'fr-FR', zh: 'zh-CN', de: 'de-DE' };
+      utterance.lang = langMap[language] || 'en-US';
 
       // Find voice
       const voices = window.speechSynthesis.getVoices();
@@ -791,7 +823,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     return cleanup;
   }, []);
 
-  const detectedCountry = passedLocation?.country || detectedLocation?.country || (language === 'ru' ? 'Неизвестно' : 'Unknown');
+  const detectedCountry = passedLocation?.country || detectedLocation?.country || t.unknown;
 
   // Background Location Detection (Silent) & Auto-Update Profile
   useEffect(() => {
@@ -929,12 +961,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     cleanups.push(socketService.onProfileExpiring((data) => {
       setExpirationWarning(true);
       const minutes = Math.floor(data.expiresIn / 60000);
-      alert(`⚠️ ${language === 'ru' ? `Ваш профиль истечет через ${minutes} минут!` : `Your profile expires in ${minutes} minutes!`}`);
+      alert(`⚠️ ${t.profileExpiringWarning.replace('{minutes}', minutes.toString())}`);
     }));
     
     // Listen for profile expiration
     cleanups.push(socketService.onProfileExpired(() => {
-      alert(language === 'ru' ? '❌ Ваш профиль истек. Пожалуйста, создайте новый.' : '❌ Your profile has expired. Please create a new one.');
+      alert(`❌ ${t.profileExpired}`);
       // No manual redirect to auth, App.tsx handles re-auth/re-init
     }));
     
@@ -1004,9 +1036,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (currentUser.chatSettings.voiceNotificationsEnabled) {
         console.log("[KNOCK] 🔊 Playing voice notification");
         playNotificationSound('knock');
-        announceNotification(language === 'ru'
-            ? `Вам стучится ${data.fromUser.name}`
-            : `New knock from ${data.fromUser.name}`);
+        announceNotification(`${t.newKnockFrom || 'New knock from'} ${data.fromUser.name}`);
       } else {
         console.log("[KNOCK] 🔊 Playing standard sound");
         playNotificationSound('knock');
@@ -1015,8 +1045,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       // Banner notification
       if (currentUser.chatSettings.bannerNotificationsEnabled && document.visibilityState === 'hidden') {
         if ('Notification' in window && Notification.permission === 'granted') {
-          const notif = new Notification(`${data.fromUser.name || 'Кто-то'} стучится!`, {
-            body: language === 'ru' ? 'Новый запрос на общение' : 'New chat request',
+          const notif = new Notification(`${data.fromUser.name || t.partner} ${t.isKnocking || 'is knocking!'}`, {
+            body: t.newMsg,
             icon: data.fromUser.avatar || '/icon-192.png',
             tag: `knock-${data.knockId}`,
             requireInteraction: true
@@ -1169,13 +1199,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         
         // Find the session info in our active sessions map
         const msgSession = activeSessions.get(message.sessionId);
-        const senderName = msgSession?.partnerProfile?.name || (language === 'ru' ? 'Собеседник' : 'Partner');
+        const senderName = msgSession?.partnerProfile?.name || t.partner;
         const senderAvatar = msgSession?.partnerProfile?.avatar;
         
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
         setNotificationToast({
             senderName,
-            text: message.messageType === 'text' ? '[message]' : (language === 'ru' ? '📷 Фото' : '📷 Photo'),
+            text: message.messageType === 'text' ? '[message]' : t.sentFile,
             senderId: message.senderId,
             avatar: senderAvatar
         });
@@ -1184,8 +1214,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         // Banner notification if app is in background
         if (currentUser.chatSettings?.bannerNotificationsEnabled && document.visibilityState === 'hidden') {
             showBannerNotification(
-                language === 'ru' ? 'Новое сообщение' : 'New Message',
-                `${senderName}: ${language === 'ru' ? 'новое сообщение' : 'New message'}`
+                t.newMsg,
+                `${senderName}: ${t.newMsg}`
             );
         }
       }
@@ -1245,9 +1275,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       
       // If our own message was flagged, show warning
       if (decrypted.senderId === currentUser.id && decrypted.flagged) {
-          const reasonMsg = language === 'ru' 
-            ? `Ваше сообщение было отмечено фильтром: ${decrypted.metadata?.flagReason || 'нарушение'}.`
-            : `Your message was flagged: ${decrypted.metadata?.flagReason || 'violation'}.`;
+          const reasonMsg = t.restrictedDueToReport.replace('{reason}', decrypted.metadata?.flagReason || t.violation);
           setViolationMessage(reasonMsg);
           setTimeout(() => setViolationMessage(null), 5000);
       }
@@ -1258,10 +1286,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
           
           // Banner Notification
           if (currentUser.chatSettings?.bannerNotificationsEnabled && document.visibilityState === 'hidden') {
-               const senderName = currentActiveSession?.partnerProfile?.name || (language === 'ru' ? 'Собеседник' : 'Partner');
+               const senderName = currentActiveSession?.partnerProfile?.name || t.partner;
                showBannerNotification(
-                   language === 'ru' ? 'Новое сообщение' : 'New Message', 
-                   `${senderName}: ${decrypted.messageType === 'text' ? (decrypted.text?.substring(0, 30) + '...') : (language === 'ru' ? 'Отправил файл' : 'Sent a file')}`
+                   t.newMsg, 
+                   `${senderName}: ${decrypted.messageType === 'text' ? (decrypted.text?.substring(0, 30) + '...') : t.sentFile}`
                );
           }
 
@@ -1273,13 +1301,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
           
           if (!isViewingThisChat) {
              const senderName = currentActiveSession?.partnerProfile?.name 
-                || (language === 'ru' ? 'Собеседник' : 'Partner');
+                || t.partner;
              const senderAvatar = currentActiveSession?.partnerProfile?.avatar;
              
              if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
              setNotificationToast({
                  senderName,
-                 text: decrypted.messageType === 'text' ? (decrypted.text || '') : (language === 'ru' ? '📷 Фото' : '📷 Photo'),
+                 text: decrypted.messageType === 'text' ? (decrypted.text || '') : t.sentFile,
                  senderId: message.senderId,
                  avatar: senderAvatar
              });
@@ -1415,7 +1443,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         if (data.mutedUntil) {
             setIsMuted(true);
             setMutedUntil(data.mutedUntil);
-            alert(language === 'ru' ? 'Вы временно ограничены за спам.' : 'You are temporarily restricted due to spamming.');
+            alert(t.restrictedSpam);
         } else if (data.message === 'Invalid session') {
             console.error("[CHAT] ❌ Invalid Session detected. Attempting auto-recovery...");
             // Force re-registration to sync sessions
@@ -1440,7 +1468,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             console.log("[CHAT] ✅ Active session refreshed!");
                             // Optional: Retry sending message here if we had a queue, 
                             // but for now just let user click send again (it will work now)
-                            alert(language === 'ru' ? 'Сессия обновлена. Попробуйте отправить снова.' : 'Session refreshed. Please try sending again.');
+                            alert(t.sessionRefreshed);
                             return;
                         }
                     }
@@ -1488,14 +1516,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
     // Listen for report acknowledgment
     cleanups.push(socketService.addListener('report:acknowledged', () => {
-        alert(language === 'ru' ? 'Ваша жалоба отправлена на рассмотрение.' : 'Your report has been sent for review.');
+        alert(t.reportSent);
     }));
 
     // Listen for partner joining (Receiver side)
     cleanups.push(socketService.onPartnerJoined((data) => {
         setIsWaitingForPartner(false);
         playNotificationSound('door'); 
-        announceNotification(language === 'ru' ? 'Собеседник вошел в чат' : 'Partner has joined the chat');
+        announceNotification(t.partnerJoined);
         setView('chat');
     }));
 
@@ -1528,9 +1556,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
         });
 
         playNotificationSound('knock'); 
-        announceNotification(language === 'ru' 
-            ? `Стук принят! ${data.partnerProfile.name} ждет вас.` 
-            : `Knock accepted! ${data.partnerProfile.name} is waiting for you.`);
+        announceNotification(`${t.knockAccepted} ${data.partnerProfile.name} ${t.partnerWaiting}`);
             
         // Timeout removed - we want them to click "Start Chat"
         // But maybe we auto-dismiss the banner after 10s if ignored?
@@ -1593,9 +1619,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         partnerProfile: partnerProfile
                     });
                     
-                    announceNotification(language === 'ru' 
-                      ? `Стук принят! ${partnerProfile.name} ждет вас.` 
-                      : `Knock accepted! ${partnerProfile.name} is waiting for you.`);
+                    announceNotification(`${t.acceptedYourKnock} ${partnerProfile.name} ${t.partnerWaiting}`);
                       
                     // Auto-dismiss restored session banner
                     setTimeout(() => setKnockAcceptedData(null), 2000);
@@ -1634,11 +1658,11 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <XMarkIcon className="w-6 h-6" />
                 </button>
                 <div className="w-16 h-16 rounded-full border-4 border-green-400 p-1">
-                    <img src={knockAcceptedData.partnerProfile.avatar} className="w-full h-full rounded-full object-cover" />
+                    <img src={knockAcceptedData.partnerProfile.avatar} alt="Partner Avatar" className="w-full h-full rounded-full object-cover" />
                 </div>
                 <div>
-                    <h4 className="text-xl font-black text-white uppercase tracking-wider mb-1">{language === 'ru' ? 'Стук принят!' : 'Knock Accepted!'}</h4>
-                    <p className="text-sm text-green-200 font-bold">{knockAcceptedData.partnerProfile.name} {language === 'ru' ? 'ждет вас' : 'is waiting for you'}</p>
+                    <h4 className="text-xl font-black text-white uppercase tracking-wider mb-1">{t.knockAccepted}</h4>
+                    <p className="text-sm text-green-200 font-bold">{knockAcceptedData.partnerProfile.name} {t.partnerWaiting}</p>
                 </div>
                 <button 
                     onClick={() => {
@@ -1661,7 +1685,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     }}
                     className="w-full py-4 bg-green-500 hover:bg-green-400 text-black font-black uppercase tracking-widest rounded-xl text-sm shadow-xl hover:shadow-green-500/40 transition-all transform hover:scale-105 active:scale-95"
                 >
-                    {language === 'ru' ? 'Начать чат' : 'Start Chat'}
+                    {t.startChat}
                 </button>
             </div>
         )}
@@ -1710,8 +1734,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       setIsRecordingIntro(true);
       setIntroRecordingTime(0);
       introTimerRef.current = setInterval(() => setIntroRecordingTime(p => p >= 7 ? 7 : p + 1), 1000);
-      const prompts = language === 'ru' ? SMART_PROMPTS.ru : SMART_PROMPTS.en;
-      const cats = Object.values(prompts).flat();
+      const prompts = SMART_PROMPTS[language] || SMART_PROMPTS.en;
+      const cats = Object.values(prompts).flat() as string[];
       setActivePrompt(cats[Math.floor(Math.random() * cats.length)]);
     } catch (err) { alert('Microphone error'); }
   };
@@ -1779,17 +1803,17 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   const handleRegistrationComplete = () => {
     // 1. Mandatory Fields Validation
     if (!regName.trim()) {
-      alert(language === 'ru' ? '❌ Пожалуйста, введите ваше имя или псевдоним.' : '❌ Please enter your name or alias.');
+      alert(t.completeProfile);
       return;
     }
     
     if (!regAge) {
-      alert(language === 'ru' ? '❌ Пожалуйста, укажите ваш возраст.' : '❌ Please specify your age.');
+      alert(t.completeProfile);
       return;
     }
 
     if (!regGender) {
-      alert(language === 'ru' ? '❌ Пожалуйста, выберите ваш пол.' : '❌ Please select your gender.');
+      alert(t.completeProfile);
       return;
     }
 
@@ -1800,7 +1824,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
     const updatedUser: UserProfile = { 
       ...currentUser, 
-      name: regName.trim() || (language === 'ru' ? 'Гость' : 'Guest'), 
+      name: regName.trim() || t.signInGuest, 
       avatar: effectiveAvatar,
       age: parseInt(regAge), 
       gender: regGender, 
@@ -1814,7 +1838,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       registrationTimestamp: currentUser.registrationTimestamp || Date.now(),
       
       // Location Data — prioritize passedLocation (from App.tsx/radio) over local detection
-      country: (passedLocation?.country && passedLocation.country !== 'Unknown') ? passedLocation.country : (detectedLocation?.country || currentUser.country || (language === 'ru' ? 'Неизвестно' : 'Unknown')),
+      country: (passedLocation?.country && passedLocation.country !== 'Unknown') ? passedLocation.country : (detectedLocation?.country || currentUser.country || t.unknown),
       detectedCountry: (passedLocation?.country && passedLocation.country !== 'Unknown') ? passedLocation.country : (detectedLocation?.country || currentUser.detectedCountry),
       detectedCity: (passedLocation?.city && passedLocation.city !== 'Unknown') ? passedLocation.city : (detectedLocation?.city || currentUser.detectedCity),
       detectedIP: passedLocation?.ip || detectedLocation?.ip || currentUser.detectedIP,
@@ -1931,9 +1955,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
        if (onRequireLogin) {
          onRequireLogin();
        } else {
-         alert(language === 'ru' 
-           ? '🔐 Для начала общения войдите через Google аккаунт.' 
-           : '🔐 Please sign in with Google to start chatting.');
+         alert(t.signInToChat);
        }
        return;
     }
@@ -1941,9 +1963,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     // Photo Check: Block if user has no real profile photo (dicebear/default avatar)
     const isDefaultAvatar = !currentUser.avatar || currentUser.avatar.includes('dicebear.com') || currentUser.avatar.includes('avataaars');
     if (isDefaultAvatar) {
-       alert(language === 'ru' 
-         ? '📷 Загрузите реальное фото профиля, чтобы начать общение.' 
-         : '📷 Please upload a real profile photo to start chatting.');
+       alert(t.uploadRealPhoto);
        setView('register');
        return;
     }
@@ -1969,7 +1989,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
   
   const handleBlockUser = (userId: string) => {
-    if (!window.confirm(language === 'ru' ? 'Заблокировать пользователя?' : 'Block this user?')) return;
+    if (!window.confirm(t.blockConfirm || 'Block this user?')) return;
     
     const updatedUser = {
       ...currentUser,
@@ -1985,12 +2005,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
   };
 
   const handleReportUser = (userId: string, messageId?: string) => {
-    const reasons = language === 'ru' 
-        ? ['Спам', 'Угрозы', 'Непристойный контент', 'Другое']
-        : ['Spam', 'Threats', 'Inappropriate Content', 'Other'];
+    const reasons = ['Spam', 'Threats', 'Inappropriate Content', 'Other']; // Keeping these as English for now, assuming t.spam, t.threats etc. would be used if localized
     
     const reasonIndex = window.prompt(
-        (language === 'ru' ? 'Выберите причину жалобы:\n' : 'Select a reason for the report:\n') +
+        `${t.reportReasonPrompt}\n` +
         reasons.map((r, i) => `${i+1}. ${r}`).join('\n')
     );
 
@@ -2045,12 +2063,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
     if (!file) return;
     
     if (!activeSession) {
-        alert(language === 'ru' ? 'Ошибка: нет активной сессии' : 'Error: No active session');
+        alert(t.noActiveSession || 'Error: No active session');
         return;
     }
     
     if (file.size > 10 * 1024 * 1024) { // 10MB photo limit
-      alert(language === 'ru' ? 'Фото не больше 10 МБ' : 'Photo must be under 10MB');
+      alert(t.photoSizeError || 'Photo must be under 10MB');
       return;
     }
     
@@ -2095,7 +2113,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
           } else {
             const errorMsg = ack?.error || 'Unknown error';
             console.error(`[UPLOAD] ❌ Server rejected photo: ${errorMsg}`);
-            alert(language === 'ru' ? `Фото не доставлено: ${errorMsg}` : `Photo not delivered: ${errorMsg}`);
+            alert(`${t.photoNotDelivered}: ${errorMsg}`);
             // Remove optimistic placeholder on failure
             setMessages(prev => prev.filter(m => m.id !== tempId));
           }
@@ -2109,7 +2127,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     } catch (error: any) {
       console.error("Image compression/upload failed", error);
-      alert(language === 'ru' ? `Ошибка загрузки: ${error.message || 'Unknown error'}` : `Upload failed: ${error.message || 'Unknown error'}`);
+      alert(`${t.uploadFailed}: ${error.message || 'Unknown error'}`);
     } finally {
       setIsFileUploading(false);
     }
@@ -2422,15 +2440,15 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 <>
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                         <button onClick={() => { setView('inbox'); setActiveSession(null); }} className="p-1.5 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-white/10"><ArrowLeftIcon className="w-5 h-5" /></button>
-                        <img src={partnerDetails.avatar} className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 object-cover" />
+                        <img src={partnerDetails.avatar} alt={partnerDetails.name} className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 object-cover" />
                          <div className="min-w-0 flex-1"><h3 className="font-bold text-sm text-white truncate leading-tight">{partnerDetails.name}</h3><p className="text-[10px] text-green-500 font-bold uppercase tracking-widest leading-tight">{t.online}</p></div>
                     </div>
                     
 
 
                     <div className="flex items-center gap-1">
-                        <button onClick={() => handleReportUser(partnerDetails.id)} className="p-2.5 text-slate-400 hover:text-orange-500 transition-colors hover:bg-white/5 rounded-full" title={language === 'ru' ? 'Пожаловаться' : 'Report'}><LifeBuoyIcon className="w-5 h-5" /></button>
-                        <button onClick={() => handleBlockUser(partnerDetails.id)} className="p-2.5 text-slate-400 hover:text-red-500 transition-colors hover:bg-white/5 rounded-full" title={language === 'ru' ? 'Заблокировать' : 'Block'}><NoSymbolIcon className="w-5 h-5" /></button>
+                        <button onClick={() => handleReportUser(partnerDetails.id)} className="p-2.5 text-slate-400 hover:text-orange-500 transition-colors hover:bg-white/5 rounded-full" title={t.report}><LifeBuoyIcon className="w-5 h-5" /></button>
+                        <button onClick={() => handleBlockUser(partnerDetails.id)} className="p-2.5 text-slate-400 hover:text-red-500 transition-colors hover:bg-white/5 rounded-full" title={t.block}><NoSymbolIcon className="w-5 h-5" /></button>
                         <div className="flex bg-white/5 rounded-full p-0.5 border border-white/5">
                             <button 
                                 onClick={() => {
@@ -2443,7 +2461,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     }
                                 }} 
                                 className={`p-2.5 transition-all rounded-full ${voiceModeEnabled ? 'text-primary bg-primary/10 shadow-[0_0_20px_rgba(188,111,241,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                                title={language === 'ru' ? (voiceModeEnabled ? 'Выключить живую озвучку' : 'Включить живую озвучку') : (voiceModeEnabled ? 'Disable Live Voice' : 'Enable Live Voice')}
+                                title={voiceModeEnabled ? t.voiceModeDisable : t.voiceModeEnable}
                             >
                                 <SpeakIcon className={`w-5 h-5 ${voiceModeEnabled ? 'animate-pulse' : ''}`} />
                             </button>
@@ -2451,7 +2469,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <button 
                                     onClick={() => setShowVoiceSettings(!showVoiceSettings)}
                                     className={`p-2.5 transition-all rounded-full ${showVoiceSettings ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white'}`}
-                                    title="Voice Settings"
+                                    title={t.voiceSettings}
                                 >
                                     <VolumeIcon className="w-4 h-4" />
                                 </button>
@@ -2462,8 +2480,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             setCallPartner(partnerDetails);
                             setTimeout(() => initiateCall(), 0);
                           }
-                        }} className="p-2.5 text-slate-300 hover:text-primary transition-colors hover:bg-white/5 rounded-full" title={language === 'ru' ? 'Голосовой звонок' : 'Voice Call'}><PhoneIcon className="w-5 h-5" /></button>
-                        <button disabled className="p-2.5 text-slate-500 cursor-not-allowed opacity-50 rounded-full" title={language === 'ru' ? 'Видео скоро' : 'Video coming soon'}><VideoCameraIcon className="w-5 h-5" /></button> */}
+                        }} className="p-2.5 text-slate-300 hover:text-primary transition-colors hover:bg-white/5 rounded-full" title={t.voiceCall}><PhoneIcon className="w-5 h-5" /></button>
+                        <button disabled className="p-2.5 text-slate-500 cursor-not-allowed opacity-50 rounded-full" title={t.videoComingSoon}><VideoCameraIcon className="w-5 h-5" /></button> */}
                         <button onClick={onClose} className="p-2 text-slate-400 hover:text-white transition-colors ml-1"><XMarkIcon className="w-6 h-6" /></button>
                     </div>
                 </>
@@ -2475,21 +2493,21 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <button 
                                     onClick={() => setView('register')} 
                                     className={`p-2 rounded-xl transition-all duration-300 ${view === 'register' ? 'bg-primary text-white shadow-[0_0_15px_rgba(188,111,241,0.4)]' : 'text-slate-500 hover:text-slate-200'}`}
-                                    title={language === 'ru' ? 'Профиль' : 'Profile'}
+                                    title={t.profile}
                                 >
                                     <UserIcon className="w-5 h-5" />
                                 </button>
                                 {currentUser.blockedUsers?.length > 0 && (
                                     <button 
                                         onClick={() => {
-                                            if (window.confirm(language === 'ru' ? 'Разблокировать всех?' : 'Unblock all users?')) {
+                                            if (window.confirm(t.unblockAllConfirm)) {
                                                 const updatedUser = { ...currentUser, blockedUsers: [] };
                                                 onUpdateCurrentUser(updatedUser);
                                                 localStorage.setItem('streamflow_user_profile', JSON.stringify(updatedUser));
                                             }
                                         }}
                                         className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-all"
-                                        title={language === 'ru' ? 'Разблокировать' : 'Unblock'}
+                                        title={t.unblock}
                                     >
                                         <NoSymbolIcon className="w-5 h-5" />
                                     </button>
@@ -2497,7 +2515,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <button 
                                     onClick={() => setView('inbox')} 
                                     className={`p-2 rounded-xl transition-all duration-300 ${view === 'inbox' ? 'bg-primary text-white shadow-[0_0_15px_rgba(188,111,241,0.4)]' : 'text-slate-500 hover:text-slate-200'}`}
-                                    title={language === 'ru' ? 'Диалоги' : 'Dialogs'}
+                                    title={t.dialogs}
                                 >
                                     <div className="relative">
                                         <ChatBubbleIcon className="w-5 h-5" />
@@ -2509,7 +2527,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <button 
                                     onClick={() => setView('search')} 
                                     className={`p-2 rounded-xl transition-all duration-300 ${view === 'search' ? 'bg-primary text-white shadow-[0_0_15px_rgba(188,111,241,0.4)]' : 'text-slate-500 hover:text-slate-200'}`}
-                                    title={language === 'ru' ? 'Поиск' : 'Search'}
+                                    title={t.search}
                                 >
                                     <UsersIcon className="w-5 h-5" />
                                 </button>
@@ -2519,14 +2537,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             <h2 className="text-xs font-black tracking-widest text-slate-400 uppercase flex items-center gap-2">
                                 {view === 'search' ? (
                                     <>
-                                        {language === 'ru' ? 'Вокруг Света' : 'Around World'}
+                                        {t.aroundWorld}
                                         <GlobeIcon className="w-5 h-5 text-primary/80 animate-[spin_10s_linear_infinite]" />
                                     </>
-                                ) : (view === 'inbox' ? (language === 'ru' ? 'Диалоги' : 'Inbox') : '')}
+                                ) : (view === 'inbox' ? t.inbox : '')}
                             </h2>
                                 <span className="text-[9px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                    {onlineStats.chatOnline} {language === 'ru' ? 'онлайн' : 'online'}
+                                    {onlineStats.chatOnline} {t.onlineCount}
                                 </span>
                         </div>
                     </div>
@@ -2535,7 +2553,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             <button 
                                 onClick={() => setShowDemoMenu(!showDemoMenu)}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${showDemoMenu ? 'bg-primary text-black' : 'bg-primary/10 hover:bg-primary/20 text-primary'}`}
-                                title={language === 'ru' ? 'Помощь и демо' : 'Help & Demos'}
+                                title={t.helpAndDemos}
                             >
                                 <span className="text-lg font-bold">?</span>
                             </button>
@@ -2555,7 +2573,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 <span className="text-sm">🎬</span>
                                             </div>
                                             <div>
-                                                <div className="text-xs font-bold text-white leading-tight">{language === 'ru' ? 'Сценарий Чата' : 'Chat Scenario'}</div>
+                                                <div className="text-xs font-bold text-white leading-tight">{t.chatScenario}</div>
                                                 <div className="text-[9px] text-slate-400">Romantic Story</div>
                                             </div>
                                         </button>
@@ -2571,7 +2589,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 <span className="text-sm">📝</span>
                                             </div>
                                             <div>
-                                                <div className="text-xs font-bold text-white leading-tight">{language === 'ru' ? 'Регистрация' : 'Registration'}</div>
+                                                <div className="text-xs font-bold text-white leading-tight">{t.registration}</div>
                                                 <div className="text-[9px] text-slate-400">Step-by-step</div>
                                             </div>
                                         </button>
@@ -2587,7 +2605,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 <span className="text-sm">🤝</span>
                                             </div>
                                             <div>
-                                                <div className="text-xs font-bold text-white leading-tight">{language === 'ru' ? 'Событие' : 'Interaction'}</div>
+                                                <div className="text-xs font-bold text-white leading-tight">{t.interaction}</div>
                                                 <div className="text-[9px] text-slate-400">Social Loop</div>
                                             </div>
                                         </button>
@@ -2616,7 +2634,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
             <div className="bg-slate-900/90 backdrop-blur-xl border-b border-white/10 p-4 animate-in slide-in-from-top-2 relative z-50 shadow-2xl">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                        <SpeakIcon className="w-4 h-4" /> {language === 'ru' ? 'Настройки Голоса' : 'Voice Settings'}
+                        <SpeakIcon className="w-4 h-4" /> {t.voiceSettings}
                     </h3>
                     <button onClick={() => setShowVoiceSettings(false)} className="text-slate-400 hover:text-white"><XMarkIcon className="w-4 h-4" /></button>
                 </div>
@@ -2624,25 +2642,25 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 <div className="space-y-4">
                     {/* Gender Selection */}
                     <div>
-                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">{language === 'ru' ? 'Тон Голоса' : 'Voice Tone'}</label>
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">{t.voiceTone}</label>
                         <div className="flex bg-white/5 rounded-lg p-1 border border-white/5">
                             <button 
                                 onClick={() => setVoiceSettings(p => ({ ...p, gender: 'auto' }))}
                                 className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'auto' ? 'bg-slate-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                             >
-                                🤖 {language === 'ru' ? 'Авто' : 'Auto'}
+                                🤖 {t.auto}
                             </button>
                             <button 
                                 onClick={() => setVoiceSettings(p => ({ ...p, gender: 'male' }))}
                                 className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'male' ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                             >
-                                👨 {language === 'ru' ? 'Мужской' : 'Male'}
+                                👨 {t.male}
                             </button>
                             <button 
                                 onClick={() => setVoiceSettings(p => ({ ...p, gender: 'female' }))}
                                 className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${voiceSettings.gender === 'female' ? 'bg-pink-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                             >
-                                👩 {language === 'ru' ? 'Женский' : 'Female'}
+                                👩 {t.female}
                             </button>
                         </div>
                     </div>
@@ -2650,9 +2668,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     {/* Privacy Settings */}
                     <div className="bg-white/5 rounded-lg p-3 border border-white/5">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'ПРИВАТНОСТЬ' : 'PRIVACY'}</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.privacy}</span>
                             <div className="flex items-center gap-2">
-                                <span className="text-[9px] text-slate-400">{language === 'ru' ? 'Скрыть из поиска' : 'Hide from search'}</span>
+                                <span className="text-[9px] text-slate-400">{t.hideFromSearch}</span>
                                 <button 
                                     onClick={() => onUpdateCurrentUser({ ...currentUser, hideFromSearch: !currentUser.hideFromSearch })}
                                     className={`w-8 h-4 rounded-full relative transition-colors ${currentUser.hideFromSearch ? 'bg-primary' : 'bg-slate-700'}`}
@@ -2662,9 +2680,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             </div>
                         </div>
                         <p className="text-[9px] text-slate-500 leading-tight">
-                            {language === 'ru' 
-                                ? 'Ваш профиль не будет отображаться в списке пользователей и поиске, но вы сможете искать других.'
-                                : 'Your profile will not appear in the user list or search, but you can still search for others.'}
+                            {t.hideFromSearchDesc}
                         </p>
                     </div>
 
@@ -2672,7 +2688,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                              <div className="flex justify-between mb-1">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'Скорость' : 'Speed'}</label>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t.speed}</label>
                                 <span className="text-[9px] font-mono text-primary">x{voiceSettings.rate.toFixed(1)}</span>
                              </div>
                              <input 
@@ -2684,7 +2700,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         </div>
                         <div>
                              <div className="flex justify-between mb-1">
-                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'Высота' : 'Pitch'}</label>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t.voiceTone}</label>
                                 <span className="text-[9px] font-mono text-primary">{voiceSettings.pitch.toFixed(1)}</span>
                              </div>
                              <input 
@@ -2698,10 +2714,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     
                     {/* Test Button */}
                     <button 
-                        onClick={() => speakMessage(language === 'ru' ? 'Проверка голосового движка' : 'Voice engine test', 'any')}
+                        onClick={() => speakMessage(t.voiceEngineTest, 'any')}
                         className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-xs font-bold text-slate-300 transition-colors"
                     >
-                        {language === 'ru' ? '▶ Прослушать' : '▶ Preview Voice'}
+                        {t.previewVoice}
                     </button>
                 </div>
             </div>
@@ -2717,13 +2733,11 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <div className="flex items-center gap-3">
                         <BellIcon className="w-5 h-5 text-secondary animate-wiggle" />
                         <span className="text-sm font-bold text-white">
-                            {language === 'ru' 
-                                ? `Новое приглашение от ${pendingKnocks[pendingKnocks.length - 1]?.fromUser?.name || 'пользователя'}` 
-                                : `New invite from ${pendingKnocks[pendingKnocks.length - 1]?.fromUser?.name || 'User'}`}
+                            {t.newInviteFrom.replace('{name}', pendingKnocks[pendingKnocks.length - 1]?.fromUser?.name || t.user)}
                         </span>
                     </div>
                     <div className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-black text-white uppercase tracking-widest">
-                        {language === 'ru' ? 'ОТКРЫТЬ' : 'OPEN'}
+                        {t.open}
                     </div>
                 </button>
             )}
@@ -2736,12 +2750,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                          <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
                     <h3 className="text-xl font-black text-white uppercase tracking-wider mb-2">
-                        {language === 'ru' ? 'Ожидание собеседника...' : 'Waiting for partner...'}
+                        {t.waitingForPartner}
                     </h3>
                     <p className="text-sm text-slate-400 max-w-[250px] text-center">
-                        {language === 'ru' 
-                            ? 'Партнер должен подтвердить вход в чат.' 
-                            : 'Partner must confirm to start the chat.'}
+                            {t.partnerMustConfirm}
                     </p>
                 </div>
             )}
@@ -2758,7 +2770,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     </h3>
                     <p className="text-sm text-green-400 font-bold uppercase tracking-widest mb-8 flex items-center gap-2">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        {language === 'ru' ? 'Принял ваш вызов!' : 'Accepted your knock!'}
+                        {t.acceptedYourKnock}
                     </p>
                     
                     <div className="w-full max-w-xs space-y-3">
@@ -2769,13 +2781,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             }}
                             className="w-full py-4 bg-primary text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform"
                         >
-                            {language === 'ru' ? 'НАЧАТЬ ЧАТ' : 'START CHAT'}
+                            {t.startChat}
                         </button>
                         <button 
                             onClick={() => setKnockAcceptedData(null)}
                             className="w-full py-3 bg-white/5 text-slate-400 hover:text-white rounded-xl font-bold uppercase tracking-widest transition-colors"
                         >
-                            {language === 'ru' ? 'ОТМЕНА' : 'CANCEL'}
+                            {t.cancel}
                         </button>
                     </div>
                  </div>
@@ -2806,7 +2818,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         {/* Inner Content */}
                         <div className="relative bg-slate-900/95 backdrop-blur-xl rounded-xl p-3 flex items-center gap-3 border border-white/10">
                             {notificationToast.avatar && (
-                                <img src={notificationToast.avatar} className="w-10 h-10 rounded-full border border-white/10" />
+                                <img src={notificationToast.avatar} alt="Notification Avatar" className="w-10 h-10 rounded-full border border-white/10" />
                             )}
                             <div className="flex-1 min-w-0">
                                 <h4 className="text-xs font-black text-white truncate flex items-center gap-2">
@@ -2853,10 +2865,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         
                         <div className="text-center mb-6">
                             <h3 className="text-xl font-bold text-white mb-1">
-                                {language === 'ru' ? 'Выберите аватар' : 'Choose Avatar'}
+                                {t.chooseAvatar}
                             </h3>
                             <p className="text-xs text-slate-400">
-                                {language === 'ru' ? 'Загрузите свое фото или выберите готовый вариант' : 'Upload your photo or select a preset'}
+                                {t.uploadAvatarDesc}
                             </p>
                         </div>
 
@@ -2866,27 +2878,25 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <div className="w-20 h-20 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:scale-105 transition-transform">
                                     <CameraIcon className="w-8 h-8 text-white" />
                                 </div>
-                                <h4 className="font-bold text-white text-sm mb-1">{language === 'ru' ? 'Загрузить фото' : 'Upload Photo'}</h4>
+                                <h4 className="font-bold text-white text-sm mb-1">{t.uploadPhoto}</h4>
                                 <p className="text-[10px] text-slate-400 text-center mb-4 leading-tight">
-                                    {language === 'ru' ? 'Будет применен мультяшный стиль' : 'Cartoon style will be applied'}
+                                    {t.cartoonStyleNotice}
                                 </p>
                                 <button 
                                     onClick={() => {
-                                        alert(language === 'ru' 
-                                            ? 'Ваше фото будет с фильтром "Стилизация" для приватности!' 
-                                            : 'Your photo will be stylized for privacy!');
+                                        alert(t.stylizedNotice);
                                         fileInputRef.current?.click();
                                     }}
                                     className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition-colors"
                                 >
-                                    {language === 'ru' ? 'Выбрать файл' : 'Select File'}
+                                    {t.selectFile}
                                 </button>
                             </div>
 
                             {/* Option 2: Presets */}
                             <div className="flex flex-col">
                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
-                                    {language === 'ru' ? 'Готовые варианты' : 'Presets'}
+                                    {t.presets}
                                 </h4>
                                 <div className="grid grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                     {PRESET_AVATARS.map((avatar, i) => (
@@ -2898,7 +2908,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             }}
                                             className="aspect-square rounded-2xl overflow-hidden border-2 border-white/10 hover:border-primary hover:scale-105 transition-all relative group shadow-lg"
                                         >
-                                            <img src={avatar} className="w-full h-full object-cover" />
+                                            <img src={avatar} alt="Avatar Preset" className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                                         </button>
                                     ))}
@@ -2928,12 +2938,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             {null}
 
                             <h3 className={`text-2xl font-black leading-tight uppercase tracking-widest mb-2 transition-colors duration-1000 ${isLightsOn ? 'text-yellow-100 drop-shadow-[0_0_15px_rgba(255,200,100,0.5)]' : 'text-white'}`}>
-                                {language === 'ru' ? 'Ваш профиль' : 'Your Profile'}
+                                {t.completeProfile}
                             </h3>
                             <p className={`text-[10px] max-w-[240px] leading-relaxed mx-auto transition-colors duration-1000 ${isLightsOn ? 'text-yellow-200/70' : 'text-slate-400'}`}>
-                                {language === 'ru' 
-                                    ? 'Эта информация помогает подбирать собеседников. Сообщения и данные удаляются автоматически.' 
-                                    : 'This info helps find better matches. Messages and data are automatically deleted.'}
+                                {t.profileInfoHelps}
                             </p>
                         </div>
                     </div>
@@ -2947,7 +2955,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     className={`w-32 h-32 rounded-[2rem] bg-slate-800/40 border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden transition-all relative shadow-2xl ${isProfileLocked ? 'opacity-90 cursor-default border-primary/20' : 'group-hover:border-primary/50 cursor-pointer'}`}
                                 >
                                     {regAvatar ? (
-                                        <img src={regAvatar} className="w-full h-full object-cover" />
+                                        <img src={regAvatar} alt="My Avatar" className="w-full h-full object-cover" />
                                     ) : (
                                         <div key={regGender} className="w-full h-full flex items-center justify-center animate-in fade-in zoom-in-95 duration-300">
                                             {regGender === 'female' ? (
@@ -3002,8 +3010,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             <div className="bg-white/5 rounded-full px-4 py-1.5 flex items-center gap-2 border border-white/5">
                                 <span className="text-sm">📍</span>
                                 <span className="text-[10px] text-slate-400 font-medium">
-                                    {language === 'ru' ? 'Авто-определение: ' : 'Auto-detected: '} 
-                                    <span className="text-slate-200 font-bold">{detectedLocation?.country || 'Unknown'}</span>
+                                    {t.detected} 
+                                    <span className="text-slate-200 font-bold">{detectedLocation?.country || t.unknown}</span>
                                 </span>
                             </div>
                         </div>
@@ -3011,7 +3019,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         {/* Basic Info */}
                         <div className="space-y-4 bg-white/[0.02] p-4 rounded-3xl border border-white/5">
                             <div>
-                                <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ВАШЕ ИМЯ (ПСЕВДОНИМ)' : 'YOUR NAME (ALIAS)'}</label>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{t.yourNameAlias}</label>
                                 <input 
                                     value={regName} 
                                     disabled={isProfileLocked}
@@ -3023,7 +3031,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ПОЛ' : 'GENDER'}</label>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{t.gender}</label>
                                     <div className={`flex bg-black/20 rounded-xl p-1 border h-[42px] ${isProfileLocked ? 'border-white/5 opacity-80' : 'border-white/5'}`}>
                                         {(['male', 'female'] as const).map(g => (
                                             <button 
@@ -3035,13 +3043,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 }} 
                                                 className={`flex-1 rounded-lg text-sm font-black transition-all uppercase tracking-tighter ${regGender === g ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-white'}`}
                                             >
-                                                {language === 'ru' ? (g === 'male' ? 'М' : 'Ж') : g.toUpperCase().substring(0, 1)}
+                                                {g === 'male' ? t.maleShort : t.femShort}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{language === 'ru' ? 'ВОЗРАСТ' : 'AGE'}</label>
+                                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block tracking-widest">{t.age}</label>
                                     <div className="bg-black/20 rounded-xl border border-white/5 h-[42px] relative overflow-hidden flex items-center justify-center">
                                         <select 
                                             value={regAge} 
@@ -3068,12 +3076,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             </button>
                             <div className="flex-1 min-w-0">
                                 <h4 className="text-[10px] font-black text-white uppercase tracking-wider mb-0.5">
-                                    {language === 'ru' ? 'ГОЛОСОВОЕ ПРИВЕТСТВИЕ' : 'VOICE INTRO'}
+                                    {t.voiceIntroTitle}
                                 </h4>
                                 <p className="text-[9px] text-slate-400 truncate">
                                     {isRecordingIntro 
-                                        ? `Recording... 0:0${introRecordingTime} / 0:07` 
-                                        : (regVoiceIntro ? (language === 'ru' ? '✅ Приветствие записано' : '✅ Intro recorded') : (language === 'ru' ? 'Главный «крючок» для общения' : 'Your main hook for chats'))}
+                                        ? `${t.recording}... 0:0${introRecordingTime} / 0:07` 
+                                        : (regVoiceIntro ? t.introRecorded : t.introHook)}
                                 </p>
                             </div>
                         </div>
@@ -3089,7 +3097,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     disabled={isPlayingIntro}
                                     className={`flex-1 py-3 ${isPlayingIntro ? 'bg-green-500/20 text-green-400' : 'bg-green-500 hover:bg-green-400 text-white'} rounded-xl font-bold text-xs uppercase transition-all shadow-lg flex items-center justify-center gap-2`}
                                 >
-                                    {isPlayingIntro ? <span className="animate-pulse">▶ Playing...</span> : (language === 'ru' ? '▶ Прослушать' : '▶ Play Check')}
+                                    {isPlayingIntro ? <span className="animate-pulse">▶ {t.playing}</span> : t.playback}
                                 </button>
                                 <button
                                     onClick={(e) => {
@@ -3103,7 +3111,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     }}
                                     className="px-4 py-3 bg-white/10 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-xl font-bold text-xs uppercase transition-all"
                                 >
-                                    {language === 'ru' ? 'Перезаписать' : 'Retry'}
+                                    {t.retry}
                                 </button>
                             </div>
                         )}
@@ -3112,14 +3120,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         <details className="group bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
                             <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors list-none">
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <AdjustmentsIcon className="w-4 h-4" /> {language === 'ru' ? 'НАСТРОЙКИ' : 'SETTINGS'}
+                                    <AdjustmentsIcon className="w-4 h-4" /> {t.settings}
                                 </span>
                                 <ChevronDownIcon className="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform" />
                             </summary>
                             <div className="p-4 pt-0 space-y-4 border-t border-white/5 mt-2">
                                 <div className="space-y-4 pt-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Звуки' : 'Sounds'}</span>
+                                        <span className="text-xs font-bold text-slate-300">{t.sounds}</span>
                                         <button onClick={() => setRegNotificationsEnabled(!regNotificationsEnabled)} className={`w-9 h-5 rounded-full relative transition-colors ${regNotificationsEnabled ? 'bg-secondary' : 'bg-slate-700'}`}>
                                             <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regNotificationsEnabled ? 'right-1' : 'left-1'}`} />
                                         </button>
@@ -3127,8 +3135,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     
                                     <div className="flex items-center justify-between">
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Баннеры' : 'Banners'}</span>
-                                            <span className="text-[9px] text-slate-500">{language === 'ru' ? 'В фоне' : 'Background'}</span>
+                                            <span className="text-xs font-bold text-slate-300">{t.banners}</span>
+                                            <span className="text-[9px] text-slate-500">{t.background}</span>
                                         </div>
                                         <button 
                                             onClick={() => {
@@ -3143,8 +3151,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
                                     <div className="flex items-center justify-between">
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-slate-300">{language === 'ru' ? 'Голос' : 'Voice Alert'}</span>
-                                            <span className="text-[9px] text-slate-500">{language === 'ru' ? 'Озвучка' : 'Announce'}</span>
+                                            <span className="text-xs font-bold text-slate-300">{t.voiceAlert}</span>
+                                            <span className="text-[9px] text-slate-500">{t.announce}</span>
                                         </div>
                                         <button onClick={() => setRegVoiceNotifEnabled(!regVoiceNotifEnabled)} className={`w-9 h-5 rounded-full relative transition-colors ${regVoiceNotifEnabled ? 'bg-pink-500' : 'bg-slate-700'}`}>
                                             <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${regVoiceNotifEnabled ? 'right-1' : 'left-1'}`} />
@@ -3157,19 +3165,19 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 onClick={() => setRegNotifVoice('female')}
                                                 className={`flex-1 py-1.5 text-[10px] uppercase font-bold rounded-md transition-colors ${regNotifVoice === 'female' ? 'bg-pink-500 text-white' : 'text-slate-500 hover:text-white'}`}
                                             >
-                                                👩 {language === 'ru' ? 'Жен' : 'Fem'}
+                                                👩 {t.femShort}
                                             </button>
                                             <button 
                                                 onClick={() => setRegNotifVoice('male')}
                                                 className={`flex-1 py-1.5 text-[10px] uppercase font-bold rounded-md transition-colors ${regNotifVoice === 'male' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
                                             >
-                                                👨 {language === 'ru' ? 'Муж' : 'Male'}
+                                                👨 {t.maleShort}
                                             </button>
                                         </div>
                                     )}
 
                                     <div className="space-y-2">
-                                        <div className="flex justify-between"><span className="text-[10px] font-bold text-slate-500 uppercase">{language === 'ru' ? 'Громкость' : 'Volume'}</span><span className="text-[10px] text-secondary">{Math.round(regNotificationVolume * 100)}%</span></div>
+                                        <div className="flex justify-between"><span className="text-[10px] font-bold text-slate-500 uppercase">{t.volume}</span><span className="text-[10px] text-secondary">{Math.round(regNotificationVolume * 100)}%</span></div>
                                         <input type="range" min="0" max="1" step="0.1" value={regNotificationVolume} onChange={e => setRegNotificationVolume(parseFloat(e.target.value))} className="w-full h-1 bg-white/10 rounded-lg accent-secondary" />
                                     </div>
                                 </div>
@@ -3181,42 +3189,40 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             onClick={handleRegistrationComplete} 
                             className="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(188,111,241,0.25)] hover:shadow-primary/40 hover:scale-[1.01] active:scale-95 transition-all text-xs mb-4"
                         >
-                            {language === 'ru' ? (isProfileLocked ? 'ОБНОВИТЬ (ЧАСТИЧНО)' : 'ГОТОВО / ПРОДОЛЖИТЬ') : (isProfileLocked ? 'UPDATE (PARTIAL)' : 'CONTINUE')}
+                            {isProfileLocked ? t.updatePartial : t.continue}
                         </button>
 
                          {/* Deletion / Logout Area - Subtle */}
                         {currentUser.id && (
                              <div className="flex flex-col gap-3 opacity-60 hover:opacity-100 transition-opacity">
                                 <p className="text-[9px] text-center text-slate-500">
-                                    {language === 'ru' 
-                                        ? 'Данные хранятся только в этом браузере пока вы не удалите их.'
-                                        : 'Data is stored only in this browser until you delete it.'}
+                                    {t.dataStoredNotice}
                                 </p>
                                 <button
                                     onClick={handleDeleteAccount}
                                     className="text-[9px] font-bold text-red-400/50 hover:text-red-400 uppercase tracking-widest text-center transition-colors"
                                 >
                                     {currentUser.deletionRequestedAt 
-                                        ? (language === 'ru' ? 'ОТМЕНИТЬ УДАЛЕНИЕ' : 'CANCEL DELETION')
-                                        : (language === 'ru' ? 'УДАЛИТЬ АККАУНТ' : 'DELETE ACCOUNT')}
+                                        ? t.cancelDeletion
+                                        : t.deleteAccount}
                                 </button>
                                 {!currentUser.deletionRequestedAt && (
                                     <p className="text-[8px] text-center text-slate-600 mt-1">
-                                        {language === 'ru' ? 'Аккаунт будет удален через 30 дней' : 'Account will be deleted after 30 days'}
+                                        {t.accountDeleteNotice}
                                     </p>
                                 )}
                                 
                                 {/* Hard Reset / Fix */}
                                 <button
                                     onClick={() => {
-                                        if (window.confirm(language === 'ru' ? 'Сбросить профиль локально? (Исправляет ошибки отображения)' : 'Reset local profile? (Fixes display errors)')) {
+                                        if (window.confirm(t.resetDataConfirm)) {
                                             localStorage.clear();
                                             window.location.reload();
                                         }
                                     }}
                                     className="text-[9px] font-bold text-slate-600 hover:text-slate-400 uppercase tracking-widest mt-4 opacity-50 hover:opacity-100 transition-opacity"
                                 >
-                                    {language === 'ru' ? 'СБРОС ДАННЫХ' : 'RESET DATA'}
+                                    {t.resetData}
                                 </button>
                              </div>
                         )}
@@ -3231,12 +3237,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             <span className="text-4xl">🔞</span>
                         </div>
                         <h3 className="text-xl font-bold text-white mb-2">
-                            {language === 'ru' ? 'Доступ ограничен' : 'Access Restricted'}
+                            {t.accessRestricted}
                         </h3>
                         <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
-                            {language === 'ru' 
-                                ? 'К сожалению, функции поиска и общения доступны только для пользователей старше 18 лет. Вы можете продолжить слушать радио.' 
-                                : 'Unfortunately, search and chat features are restricted to users 18+. You can continue listening to the radio.'}
+                            {t.ageRestrictionNotice}
                         </p>
                     </div>
                 ) : (
@@ -3279,7 +3283,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             </div>
                                         </button>
                                         <span className={`text-[10px] font-bold uppercase tracking-widest mt-2 transition-colors ${isLightsOn ? 'text-yellow-500 text-shadow-glow' : 'text-slate-600'}`}>
-                                            {language === 'ru' ? 'СЦЕНА' : 'STAGE'}
+                                            {t.stage}
                                         </span>
                                     </div>
 
@@ -3307,14 +3311,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                                     </span>
                                     <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">
-                                        {language === 'ru' ? `Сейчас онлайн: ~${onlineStats.totalOnline + 42}` : `Online now: ~${onlineStats.totalOnline + 42}`}
+                                        {t.onlineStatsPrefix}{onlineStats.totalOnline + 42}
                                     </span>
                                 </div>
                                 <h3 className="text-xl md:text-2xl font-black text-white text-center leading-tight mt-2">
-                                    {language === 'ru' ? 'Найди собеседника прямо сейчас' : 'Find someone right now'}
+                                    {t.discoveryAction}
                                 </h3>
                                 <p className="text-[10px] text-slate-400 font-medium tracking-wide">
-                                    {language === 'ru' ? 'Без истории. Без обязательств. 18+' : 'No history. No strings attached. 18+'}
+                                    {t.discoveryNotice}
                                 </p>
                             </div>
 
@@ -3325,22 +3329,22 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     className="p-4 rounded-2xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 hover:border-indigo-500/60 hover:bg-indigo-600/30 transition-all group text-left relative overflow-hidden"
                                 >
                                     <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
-                                        <img src="https://em-content.zobj.net/source/microsoft-teams/363/game-die_1f3b2.png" className="w-8 h-8 grayscale group-hover:grayscale-0 transition-all" />
+                                        <img src="https://em-content.zobj.net/source/microsoft-teams/363/game-die_1f3b2.png" alt="Random Mode" className="w-8 h-8 grayscale group-hover:grayscale-0 transition-all" />
                                     </div>
                                     <p className="text-xl mb-1">🎲</p>
-                                    <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-0.5">{language === 'ru' ? 'Случайный' : 'Random'}</p>
-                                    <p className="text-[9px] text-slate-400 leading-tight">{language === 'ru' ? 'Диалог с кем угодно' : 'Chat with anyone'}</p>
+                                    <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-0.5">{t.randomChat}</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">{t.randomChatDesc}</p>
                                 </button>
                                 <button 
                                     onClick={() => handleSearch()}
                                     className="p-4 rounded-2xl bg-gradient-to-br from-orange-600/20 to-red-600/20 border border-orange-500/30 hover:border-orange-500/60 hover:bg-orange-600/30 transition-all group text-left relative overflow-hidden"
                                 >
                                     <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
-                                        <img src="https://em-content.zobj.net/source/microsoft-teams/363/fire_1f525.png" className="w-8 h-8 grayscale group-hover:grayscale-0 transition-all" />
+                                        <img src="https://em-content.zobj.net/source/microsoft-teams/363/fire_1f525.png" alt="Popular" className="w-8 h-8 grayscale group-hover:grayscale-0 transition-all" />
                                     </div>
                                     <p className="text-xl mb-1">🔥</p>
-                                    <p className="text-[10px] font-black text-orange-300 uppercase tracking-widest mb-0.5">{language === 'ru' ? 'Кто онлайн' : 'Online Now'}</p>
-                                    <p className="text-[9px] text-slate-400 leading-tight">{language === 'ru' ? 'Только активные' : 'Active users only'}</p>
+                                    <p className="text-[10px] font-black text-orange-300 uppercase tracking-widest mb-0.5">{t.onlineNow}</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">{t.activeUsersOnly}</p>
                                 </button>
                             </div>
 
@@ -3348,14 +3352,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             <div className="space-y-4 mb-2 p-1">
                                 <div className="flex items-center gap-4">
                                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'ИЛИ ПО ПАРАМЕТРАМ' : 'OR BY PARAMETERS'}</span>
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t.orByParameters}</span>
                                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                                 </div>
 
                                 <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/5">
                                     <div className="grid grid-cols-2 gap-4 mb-4">
                                         <div>
-                                            <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">{language === 'ru' ? 'Возраст' : 'Age'}</label>
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">{t.age}</label>
                                             <div className="flex items-center gap-2 bg-black/20 rounded-xl p-1 border border-white/5">
                                                 <select 
                                                     value={searchAgeFrom} 
@@ -3397,12 +3401,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         className="w-full py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:scale-[1.02] active:scale-95 transition-all text-xs flex items-center justify-center gap-2 relative overflow-hidden group"
                                     >
                                         <SearchIcon className="w-4 h-4" /> 
-                                        {language === 'ru' ? 'НАЧАТЬ ПОИСК' : 'START SEARCH'}
+                                        {t.startSearch}
                                     </button>
                                     
                                     <p className="text-[9px] text-slate-500 text-center mt-3 flex items-center justify-center gap-1 opacity-70">
                                         <span className="w-1 h-1 rounded-full bg-slate-500"></span>
-                                        {language === 'ru' ? 'Сообщения удаляются автоматически' : 'Messages auto-deleted'}
+                                        {t.autoDeleteNotice}
                                     </p>
                                 </div>
                             </div>
@@ -3419,7 +3423,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleHideUser(user.id); }}
                                             className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-red-500/80 text-white/50 hover:text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 backdrop-blur-sm"
-                                            title={language === 'ru' ? 'Скрыть' : 'Hide'}
+                                            title={t.hide}
                                         >
                                             <XMarkIcon className="w-3.5 h-3.5" />
                                         </button>
@@ -3427,7 +3431,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         {/* Header: Identity & Status */}
                                         <div className="flex items-start gap-3">
                                             <div className="relative shrink-0">
-                                                <img src={user.avatar || ''} className={`w-14 h-14 rounded-2xl object-cover bg-slate-800 shadow-xl ${user.status === 'offline' ? 'grayscale-[0.5]' : ''}`} />
+                                                <img src={user.avatar || ''} alt={user.name} className={`w-14 h-14 rounded-2xl object-cover bg-slate-800 shadow-xl ${user.status === 'offline' ? 'grayscale-[0.5]' : ''}`} />
                                                 <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0f172a] ${user.status === 'online' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-slate-500'}`}></div>
                                             </div>
                                             
@@ -3447,15 +3451,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <div className="px-2 py-0.5 bg-secondary/10 border border-secondary/20 rounded-md text-[9px] font-black text-secondary uppercase tracking-tight">
-                                                        {user.intentStatus || 'Свободен'}
+                                                        {user.intentStatus || t.free}
                                                     </div>
                                                     <span className={`text-[9px] font-bold uppercase tracking-tight ${user.status === 'online' ? 'text-green-400' : 'text-slate-500'}`}>
                                                         {user.status === 'online' 
-                                                            ? (language === 'ru' ? '● В СЕТИ' : '● ONLINE') 
-                                                            : (language === 'ru' 
-                                                                ? `Был(а): ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
-                                                                : `Seen: ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
-                                                            )
+                                                            ? `● ${t.onlineStatus}` 
+                                                            : `${t.wasOnline}: ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
                                                         }
                                                     </span>
                                                 </div>
@@ -3477,7 +3478,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                     </div>
                                                     <div className="flex-1 flex flex-col justify-center min-w-0">
                                                         <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest text-left mb-0.5">
-                                                            {language === 'ru' ? 'ГОЛОС' : 'VOICE INTRO'}
+                                                            {t.voiceIntroTitle}
                                                         </span>
                                                         <div className="flex gap-0.5 items-end h-2 w-full opacity-50">
                                                             <div className="w-0.5 bg-indigo-400 h-1.5 rounded-full animate-pulse"></div>
@@ -3489,14 +3490,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 </button>
                                             ) : (
                                                 <div className="flex-1 h-full bg-white/5 rounded-xl flex items-center justify-center text-[9px] font-bold text-slate-600 uppercase border border-white/5 italic">
-                                                    {language === 'ru' ? 'НЕТ ГОЛОСА' : 'NO VOICE'}
+                                                    {t.noVoice}
                                                 </div>
                                             )}
 
                                             {user.id === currentUser.id ? (
                                                 <div className="w-28 h-full bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1">
                                                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                                                    {language === 'ru' ? 'ЭТО ВЫ' : 'YOU'}
+                                                    {t.you}
                                                 </div>
                                             ) : (
                                                 <button 
@@ -3504,7 +3505,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                     disabled={sentKnocks.has(user.id)} 
                                                     className={`w-32 h-full rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg ${sentKnocks.has(user.id) ? 'bg-green-500/20 text-green-500 cursor-default' : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:shadow-orange-500/30 hover:scale-[1.02] active:scale-95'}`}
                                                 >
-                                                    {sentKnocks.has(user.id) ? (language === 'ru' ? 'ОТПРАВЛЕНО' : 'SENT') : (language === 'ru' ? 'ПОСТУЧАТЬСЯ' : 'KNOCK')}
+                                                    {sentKnocks.has(user.id) ? t.sent : t.knock}
                                                 </button>
                                             )}
                                         </div>
@@ -3519,7 +3520,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleHideUser(user.id); }}
                                             className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-red-500/80 text-white/50 hover:text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 backdrop-blur-sm"
-                                            title={language === 'ru' ? 'Скрыть' : 'Hide'}
+                                            title={t.hide}
                                         >
                                             <XMarkIcon className="w-3.5 h-3.5" />
                                         </button>
@@ -3527,7 +3528,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         {/* Header: Identity & Status */}
                                         <div className="flex items-start gap-3">
                                             <div className="relative shrink-0">
-                                                <img src={user.avatar || ''} className={`w-14 h-14 rounded-2xl object-cover bg-slate-800 shadow-xl ${user.status === 'offline' ? 'grayscale-[0.5]' : ''}`} />
+                                                <img src={user.avatar || ''} alt={user.name} className={`w-14 h-14 rounded-2xl object-cover bg-slate-800 shadow-xl ${user.status === 'offline' ? 'grayscale-[0.5]' : ''}`} />
                                                 <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0f172a] ${user.status === 'online' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-slate-500'}`}></div>
                                             </div>
                                             
@@ -3547,15 +3548,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <div className="px-2 py-0.5 bg-secondary/10 border border-secondary/20 rounded-md text-[9px] font-black text-secondary uppercase tracking-tight">
-                                                        {user.intentStatus || 'Свободен'}
+                                                        {user.intentStatus || t.free}
                                                     </div>
                                                     <span className={`text-[9px] font-bold uppercase tracking-tight ${user.status === 'online' ? 'text-green-400' : 'text-slate-500'}`}>
                                                         {user.status === 'online' 
-                                                            ? (language === 'ru' ? '● В СЕТИ' : '● ONLINE') 
-                                                            : (language === 'ru' 
-                                                                ? `Был(а): ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
-                                                                : `Seen: ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
-                                                            )
+                                                            ? `● ${t.onlineStatus}` 
+                                                            : `${t.wasOnline}: ${new Date(user.lastSeen || (user as any).last_login_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'})}`
                                                         }
                                                     </span>
                                                 </div>
@@ -3577,7 +3575,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                     </div>
                                                     <div className="flex-1 flex flex-col justify-center min-w-0">
                                                         <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest text-left mb-0.5">
-                                                            {language === 'ru' ? 'ГОЛОС' : 'VOICE INTRO'}
+                                                            {t.voiceIntroTitle}
                                                         </span>
                                                         <div className="flex gap-0.5 items-end h-2 w-full opacity-50">
                                                             <div className="w-0.5 bg-indigo-400 h-1.5 rounded-full animate-pulse"></div>
@@ -3589,14 +3587,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                 </button>
                                             ) : (
                                                 <div className="flex-1 h-full bg-white/5 rounded-xl flex items-center justify-center text-[9px] font-bold text-slate-600 uppercase border border-white/5 italic">
-                                                    {language === 'ru' ? 'НЕТ ГОЛОСА' : 'NO VOICE'}
+                                                    {t.noVoice}
                                                 </div>
                                             )}
 
                                             {user.id === currentUser.id ? (
                                                 <div className="w-28 h-full bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1">
                                                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                                                    {language === 'ru' ? 'ЭТО ВЫ' : 'YOU'}
+                                                    {t.you}
                                                 </div>
                                             ) : (
                                                 <button 
@@ -3604,7 +3602,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                                     disabled={sentKnocks.has(user.id)} 
                                                     className={`w-32 h-full rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg ${sentKnocks.has(user.id) ? 'bg-green-500/20 text-green-500 cursor-default' : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:shadow-orange-500/30 hover:scale-[1.02] active:scale-95'}`}
                                                 >
-                                                    {sentKnocks.has(user.id) ? (language === 'ru' ? 'ОТПРАВЛЕНО' : 'SENT') : (language === 'ru' ? 'ПОСТУЧАТЬСЯ' : 'KNOCK')}
+                                                    {sentKnocks.has(user.id) ? t.sent : t.knock}
                                                 </button>
                                             )}
                                         </div>
@@ -3643,12 +3641,10 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 </div>
                                 
                                 <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">
-                                    {language === 'ru' ? 'У вас пока нет активных диалогов' : 'No active chats yet'}
+                                    {t.noActiveChats}
                                 </h3>
                                 <p className="text-xs text-slate-400 max-w-[200px] leading-relaxed mb-8">
-                                    {language === 'ru' 
-                                        ? 'Здесь будут появляться ваши текущие разговоры. Начните прямо сейчас!' 
-                                        : 'Your active conversations will appear here. Start one right now!'}
+                                    {t.noActiveChatsDesc}
                                 </p>
 
                                 {/* Activity Badge */}
@@ -3658,7 +3654,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
                                     </span>
                                     <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest">
-                                        {language === 'ru' ? `~${onlineStats.totalOnline + 15} ищут собеседника` : `~${onlineStats.totalOnline + 15} searching now`}
+                                        {t.onlineStatsPrefix}{onlineStats.totalOnline + 15} {t.onlineCountLabel}
                                     </span>
                                 </div>
 
@@ -3668,7 +3664,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         className="w-full py-4 bg-primary text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-[1.02] active:scale-95 transition-all text-xs flex items-center justify-center gap-2 group"
                                     >
                                         <SearchIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                        {language === 'ru' ? 'НАЙТИ СОБЕСЕДНИКА' : 'FIND SOMEONE'}
+                                        {t.findingSomeoneBtn}
                                     </button>
                                     
                                     <button 
@@ -3676,13 +3672,13 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         className="w-full py-3 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 hover:border-white/10 rounded-xl font-bold uppercase tracking-widest transition-all text-[10px] flex items-center justify-center gap-2"
                                     >
                                         <span>🎲</span>
-                                        {language === 'ru' ? 'МНЕ ПОВЕЗЕТ (СЛУЧАЙНЫЙ)' : 'I\'M FEELING LUCKY'}
+                                        {t.feelingLucky}
                                     </button>
                                 </div>
 
                                 <p className="mt-8 text-[9px] text-slate-600 font-medium flex items-center justify-center gap-1.5 opacity-60">
                                     <ClockIcon className="w-3 h-3" />
-                                    {language === 'ru' ? 'История не сохраняется' : 'History is not saved'}
+                                    {t.historyNotSaved}
                                 </p>
                             </div>
                         )}
@@ -3720,7 +3716,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); handleHideSession(session.sessionId); }}
                                         className="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-red-500/80 text-white/50 hover:text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 backdrop-blur-sm"
-                                        title={language === 'ru' ? 'Скрыть диалог' : 'Hide chat'}
+                                        title={t.hideChatConfirm}
                                     >
                                         <XMarkIcon className="w-3.5 h-3.5" />
                                     </button>
@@ -3732,7 +3728,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                     <div className="flex-1 min-w-0">
                                         <h5 className="font-bold text-sm text-white truncate">{partner?.name}</h5>
                                         <p className={`text-xs truncate font-medium ${isPartnerOnline ? 'text-green-400' : 'text-slate-500'}`}>
-                                            {isPartnerOnline ? (language === 'ru' ? 'Онлайн' : 'Online') : (language === 'ru' ? 'Был(а) в сети' : 'Was online')}
+                                            {isPartnerOnline ? t.onlineStatus : t.wasOnline}
                                         </p>
                                     </div>
                                     <div className="text-slate-600">
@@ -3758,12 +3754,12 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 <div className={`max-w-[85%] p-3 rounded-2xl text-sm shadow-sm backdrop-blur-md transition-all ${msg.senderId === currentUser.id ? 'bg-primary/20 border border-white/10 text-white rounded-tr-sm' : 'bg-white/5 border border-white/5 text-white rounded-tl-sm'} ${isMsgFlagged ? 'opacity-40 grayscale blur-[1px]' : ''}`}>
                                     {isMsgFlagged ? (
                                         <div className="flex flex-col items-center gap-2 py-1">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">{language === 'ru' ? 'СОДЕРЖАНИЕ ФИЛЬТРУЕТСЯ' : 'CONTENT FILTERED'}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">{t.contentFiltered}</p>
                                             <button 
                                                 onClick={() => setShowFlagged(prev => ({ ...prev, [msg.id]: true }))}
                                                 className="text-[9px] font-bold underline text-white/60 hover:text-white"
                                             >
-                                                {language === 'ru' ? 'Показать' : 'Show Anyway'}
+                                                {t.showAnyway}
                                             </button>
                                         </div>
                                     ) : (
@@ -3771,7 +3767,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                             {msg.messageType === 'text' && msg.text && <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
                                             {msg.messageType === 'image' && (
                                                 msg.image ? (
-                                                    <div className="relative"><img src={msg.image} className="rounded-xl max-w-full mt-1 object-cover" /></div>
+                                                    <div className="relative"><img src={msg.image} alt="Shared Photo" className="rounded-xl max-w-full mt-1 object-cover" /></div>
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-1.5 p-3 bg-red-500/10 border border-red-500/20 rounded-xl mt-1">
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-red-400 opacity-80">PHOTO ERROR</span>
@@ -3820,7 +3816,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         <SessionTimer 
                             expiresAt={profileExpiresAt} 
                             onExpire={() => {
-                                alert(language === 'ru' ? 'Время сессии истекло!' : 'Session time expired!');
+                                alert(t.sessionExpired);
                                 window.location.reload();
                             }} 
                         />
@@ -3841,7 +3837,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                             value={inputText} 
                             onChange={e => setInputText(e.target.value)} 
                             onKeyDown={e => e.key === 'Enter' && handleSendMessage()} 
-                            placeholder={language === 'ru' ? 'Сообщение...' : 'Message...'} 
+                            placeholder={t.messagePlaceholder} 
                             className="flex-1 min-w-0 bg-transparent border-none outline-none py-2 md:py-3 px-2 md:px-3 text-sm text-white placeholder:text-slate-500 font-medium" 
                         />
                         <button 
@@ -3883,7 +3879,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         <div className="flex flex-col items-center gap-2">
                             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                             <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                                {language === 'ru' ? 'Отправка...' : 'Sending...'}
+                                {t.sending}
                             </span>
                         </div>
                     </div>
@@ -3978,9 +3974,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                         <div className="mb-8 relative">
                             <img src={callPartner.avatar} className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-2xl animate-pulse" />
                             <div className="absolute -bottom-2 -right-2 bg-black/50 px-3 py-1 rounded-full text-[10px] font-mono text-white/70 backdrop-blur-md">
-                                {isMicPreparing ? (language === 'ru' ? 'Запрос микрофона...' : 'Requesting Mic...') : 
-                                 (callStatus === 'calling' ? (language === 'ru' ? 'Вызов...' : 'Calling...') : 
-                                  (callStatus === 'ringing' ? (language === 'ru' ? 'Входящий звонок...' : 'Ringing...') : ''))}
+                                {isMicPreparing ? t.requestingMic : 
+                                 (callStatus === 'calling' ? t.calling : 
+                                  (callStatus === 'ringing' ? t.ringing : ''))}
                             </div>
                         </div>
                     )}
@@ -3993,7 +3989,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
                     {callStatus === 'connected' && (
                         <p className="text-[10px] text-white/30 italic mb-4 max-w-[200px] text-center">
-                            {language === 'ru' ? 'Если нет звука, убедитесь, что микрофон разрешен в браузере.' : 'If no audio, ensure microphone is allowed in browser.'}
+                            {t.micNotice}
                         </p>
                     )}
                 
@@ -4017,9 +4013,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                         audioEl.play().catch(e => console.error("Audio play error", e)); 
                                     }, 100);
                                 }
-                                alert(language === 'ru' ? 'Стрим подключен!' : 'Stream attached!');
+                                alert(t.streamAttached);
                             } else {
-                                alert(language === 'ru' ? 'Стрим еще не получен. Подождите...' : 'No stream found! (Wait for connection)');
+                                alert(t.noStreamFound);
                             }
                         }}
                         className="mb-8 px-6 py-3 bg-cyan-500 hover:bg-cyan-400 rounded-full text-xs font-black text-black uppercase transition-all shadow-[0_0_20px_rgba(6,182,212,0.5)] hover:scale-105 z-50 animate-bounce"
@@ -4082,8 +4078,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                      <span className="text-4xl animate-pulse">⏳</span>
                      <div className="absolute inset-0 border-t-2 border-cyan-500 rounded-full animate-spin"></div>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{language === 'ru' ? 'Ожидание собеседника...' : 'Waiting for partner...'}</h3>
-                <p className="text-sm text-slate-400 max-w-xs">{language === 'ru' ? 'Ожидаем, пока второй участник войдет в комнату.' : 'Waiting for the other user to enter the room.'}</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t.waitingForPartnerTitle}</h3>
+                <p className="text-sm text-slate-400 max-w-xs">{t.waitingForPartnerDesc}</p>
             </div>
         )}
 
@@ -4093,8 +4089,8 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                 <div className="flex items-center gap-3">
                     <img src={knockAcceptedData.partnerProfile.avatar} className="w-12 h-12 rounded-full border-2 border-green-400" />
                     <div>
-                        <h4 className="text-sm font-bold text-white mb-0.5">{language === 'ru' ? 'Стук принят!' : 'Knock Accepted!'}</h4>
-                        <p className="text-[10px] text-green-200">{knockAcceptedData.partnerProfile.name} {language === 'ru' ? 'ждет вас' : 'is waiting for you'}</p>
+                        <h4 className="text-sm font-bold text-white mb-0.5">{t.knockAccepted}</h4>
+                        <p className="text-[10px] text-green-200">{knockAcceptedData.partnerProfile.name} {t.partnerWaiting}</p>
                     </div>
                 </div>
                 <button 
@@ -4105,7 +4101,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     }}
                     className="px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl text-xs shadow-lg transition-transform hover:scale-105 active:scale-95"
                 >
-                    {language === 'ru' ? 'ВОЙТИ' : 'ENTER'}
+                    {t.enter}
                 </button>
             </div>
         )}
@@ -4117,7 +4113,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                     <img src={incomingKnock.fromUser.avatar || ''} className="w-12 h-12 rounded-full border-2 border-cyan-400" />
                     <div className="flex-1">
                         <div className="flex justify-between items-start">
-                            <h4 className="text-sm font-bold text-white mb-0.5">{language === 'ru' ? 'Входящий стук' : 'Incoming Knock'}</h4>
+                            <h4 className="text-sm font-bold text-white mb-0.5">{t.incomingKnock}</h4>
                             <button onClick={() => setIncomingKnock(null)} className="text-white/40 hover:text-white">
                                 <XMarkIcon className="w-4 h-4" />
                             </button>
@@ -4133,7 +4129,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 }}
                                 className="flex-1 py-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-200 text-[10px] font-bold rounded-lg border border-white/10 transition-colors"
                             >
-                                {language === 'ru' ? 'ОТКЛОНИТЬ' : 'REJECT'}
+                                {t.reject}
                             </button>
                             <button 
                                 onClick={() => {
@@ -4143,7 +4139,7 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
                                 }}
                                 className="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg shadow-lg hover:shadow-cyan-500/25 transition-all"
                             >
-                                {language === 'ru' ? 'ПРИНЯТЬ' : 'ACCEPT'}
+                                {t.accept}
                             </button>
                         </div>
                     </div>

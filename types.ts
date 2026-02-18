@@ -79,7 +79,7 @@ export type ThemeName =
   | 'forest';
 
 export type BaseTheme = 'dark' | 'light' | 'auto';
-export type Language = 'en' | 'ru';
+export type Language = 'en' | 'ru' | 'es' | 'fr' | 'zh' | 'de';
 
 export interface ChatSettings {
   notificationsEnabled: boolean;

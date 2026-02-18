@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 import { 
     ArrowLeftIcon, GlobeIcon, MusicNoteIcon, AdjustmentsIcon, 
     ChatBubbleIcon, ShieldCheckIcon, CpuChipIcon, BookOpenIcon,
@@ -17,6 +18,7 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
   const [activeSection, setActiveSection] = useState('intro');
   const [scrollProgress, setScrollProgress] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
   const sections = [
     { id: 'intro', title: 'Введение', icon: <BookOpenIcon className="w-5 h-5" /> },
@@ -40,7 +42,30 @@ const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({ onBack, language })
   };
 
   const isRu = language === 'ru';
-  if (!isRu) return <div className="p-8 text-white">Only Russian supported for Encyclopedia v2.0.</div>;
+  if (!isRu) return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#070b14]">
+      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
+        <BookOpenIcon className="w-10 h-10 text-slate-500" />
+      </div>
+      <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">
+        {language === 'es' ? 'Enciclopedia en preparación' : 
+         language === 'fr' ? 'Encyclopédie en préparation' : 
+         language === 'zh' ? '百科全书筹备中' : 
+         language === 'de' ? 'Enzyklopädie in Vorbereitung' : 
+         'Encyclopedia Coming Soon'}
+      </h2>
+      <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
+        {language === 'es' ? 'La versión completa de la enciclopedia estará disponible pronto en tu idioma.' : 
+         language === 'fr' ? 'La version complète de l\'encyclopédie sera bientôt disponible dans votre langue.' : 
+         language === 'zh' ? '该百科全书的完整版本即将以您的语言提供。' : 
+         language === 'de' ? 'Die vollständige Version der Enzyklopädie wird in Kürze in Ihrer Sprache verfügbar sein.' : 
+         'The full version of the encyclopedia will be available in your language soon.'}
+      </p>
+      <button onClick={onBack} className="mt-8 px-6 py-2 bg-white/5 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white rounded-full transition-all">
+        {t.next || 'Back'}
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex flex-1 min-h-0 bg-[#070b14] overflow-hidden relative font-sans">

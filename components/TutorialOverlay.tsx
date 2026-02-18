@@ -41,27 +41,42 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ isOpen, onClose, lang
       'radio': { 
           title: t.manualSection2?.split(':')[0] || 'Radio', 
           content: t.tutorialStep1, 
-          pos: 'top-24 left-20 md:left-80', // Moved slightly right to make room for arrow
-          arrowClass: '-left-20 top-8 animate-bounce-left', // Points to sidebar
+          pos: 'top-24 left-20 md:left-80', 
+          arrowClass: '-left-20 top-8 animate-bounce-left', 
           arrowRot: '0deg'
       },
       'timer': { 
           title: t.sleepTimer, 
-          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с часами.' : 'Open Tools and go to the Clock tab.', 
+          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с часами.' : 
+                   language === 'es' ? 'Abre las herramientas y ve a la pestaña del reloj.' :
+                   language === 'fr' ? 'Ouvrez les outils et allez à l\'onglet horloge.' :
+                   language === 'zh' ? '打开工具并转到时钟选项卡。' :
+                   language === 'de' ? 'Öffnen Sie die Tools und gehen Sie zum Uhr-Tab.' :
+                   'Open Tools and go to the Clock tab.', 
           pos: 'bottom-32 right-6 md:right-12',
-          arrowClass: '-bottom-16 -right-4 animate-bounce', // Points to tools button
+          arrowClass: '-bottom-16 -right-4 animate-bounce', 
           arrowRot: '-90deg'
       },
       'alarm': { 
           title: t.alarm, 
-          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с часами.' : 'Open Tools and go to the Clock tab.', 
+          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с часами.' : 
+                   language === 'es' ? 'Abre las herramientas y ve a la pestaña del reloj.' :
+                   language === 'fr' ? 'Ouvrez les outils et allez à l\'onglet horloge.' :
+                   language === 'zh' ? '打开工具并转到时钟选项卡。' :
+                   language === 'de' ? 'Öffnen Sie die Tools und gehen Sie zum Uhr-Tab.' :
+                   'Open Tools and go to the Clock tab.', 
           pos: 'bottom-32 right-6 md:right-12',
           arrowClass: '-bottom-16 -right-4 animate-bounce',
           arrowRot: '-90deg'
       },
       'ambience': { 
           title: t.ambience, 
-          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с облаком.' : 'Open Tools and go to the Cloud tab.', 
+          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с облаком.' : 
+                   language === 'es' ? 'Abre las herramientas y ve a la pestaña de la nube.' :
+                   language === 'fr' ? 'Ouvrez les outils et allez à l\'onglet nuage.' :
+                   language === 'zh' ? '打开工具并转到云选项卡。' :
+                   language === 'de' ? 'Öffnen Sie die Tools und gehen Sie zum Wolken-Tab.' :
+                   'Open Tools and go to the Cloud tab.', 
           pos: 'bottom-32 right-6 md:right-12',
           arrowClass: '-bottom-16 -right-4 animate-bounce',
           arrowRot: '-90deg'
@@ -70,26 +85,41 @@ const TutorialOverlay: React.FC<TutorialOverlayProps> = ({ isOpen, onClose, lang
           title: t.privateChat, 
           content: t.tutorialStep5, 
           pos: 'top-24 right-16',
-          arrowClass: '-top-12 -right-6 animate-bounce', // Points to chat button
+          arrowClass: '-top-12 -right-6 animate-bounce', 
           arrowRot: '90deg'
       },
       'visualizer': { 
           title: t.visualizer, 
-          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с кисточкой.' : 'Open Tools and go to the Swatch tab.', 
+          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с кисточкой.' : 
+                   language === 'es' ? 'Abre las herramientas y ve a la pestaña de visualización.' :
+                   language === 'fr' ? 'Ouvrez les outils et allez à l\'onglet visuel.' :
+                   language === 'zh' ? '打开工具并转到可视化选项卡。' :
+                   language === 'de' ? 'Öffnen Sie die Tools und gehen Sie zum Visualisierungs-Tab.' :
+                   'Open Tools and go to the Swatch tab.', 
           pos: 'bottom-32 right-6 md:right-12',
           arrowClass: '-bottom-16 -right-4 animate-bounce',
           arrowRot: '-90deg'
       },
       'eq': { 
           title: t.eq, 
-          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с настройками.' : 'Open Tools and go to the Sliders tab.', 
+          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с настройками.' : 
+                   language === 'es' ? 'Abre las herramientas y ve a la pestaña del ecualizador.' :
+                   language === 'fr' ? 'Ouvrez les outils et allez à l\'onglet égaliseur.' :
+                   language === 'zh' ? '打开工具并转到均衡器选项卡。' :
+                   language === 'de' ? 'Öffnen Sie die Tools und gehen Sie zum Equalizer-Tab.' :
+                   'Open Tools and go to the Sliders tab.', 
           pos: 'bottom-32 right-6 md:right-12',
           arrowClass: '-bottom-16 -right-4 animate-bounce',
           arrowRot: '-90deg'
       },
       'appearance': { 
           title: t.look, 
-          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с палитрой.' : 'Open Tools and go to the Palette tab.', 
+          content: language === 'ru' ? 'Откройте инструменты и перейдите во вкладку с палитрой.' : 
+                   language === 'es' ? 'Abre las herramientas y ve a la pestaña de apariencia.' :
+                   language === 'fr' ? 'Ouvrez les outils et allez à l\'onglet apparence.' :
+                   language === 'zh' ? '打开工具并转到外观选项卡。' :
+                   language === 'de' ? 'Öffnen Sie die Tools und gehen Sie zum Design-Tab.' :
+                   'Open Tools and go to the Palette tab.', 
           pos: 'bottom-32 right-6 md:right-12',
           arrowClass: '-bottom-16 -right-4 animate-bounce',
           arrowRot: '-90deg'

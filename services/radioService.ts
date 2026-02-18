@@ -13,82 +13,7 @@ interface CacheEntry {
 // HQ Hardcoded Fallback (128k+)
 const HARDCODED_STATIONS: RadioStation[] = [];
 
-// Islamic Stations (Checked for 128k quality)
-const HARDCODED_ISLAMIC: RadioStation[] = [
-    {
-        changeuuid: 'mohammed-ayyub-001',
-        stationuuid: 'mohammed-ayyub-001',
-        name: '..mohammed_ayyub',
-        url: 'https://backup.qurango.net/radio/mohammed_ayyub',
-        url_resolved: 'https://backup.qurango.net/radio/mohammed_ayyub',
-        homepage: '',
-        favicon: '',
-        tags: 'islamic,quran',
-        country: 'Saudi Arabia',
-        state: '',
-        language: 'Arabic',
-        votes: 85000,
-        codec: 'MP3',
-        bitrate: 128
-    },
-    {
-        changeuuid: 'tarateel-quran-001',
-        stationuuid: 'tarateel-quran-001',
-        name: '. quran',
-        url: 'https://backup.qurango.net/radio/tarateel',
-        url_resolved: 'https://backup.qurango.net/radio/tarateel',
-        homepage: '',
-        favicon: '',
-        tags: 'islamic,quran',
-        country: 'Saudi Arabia',
-        state: '',
-        language: 'Arabic',
-        votes: 80000,
-        codec: 'MP3',
-        bitrate: 128
-    },
-    {
-        changeuuid: 'maher-al-muaiqly-001',
-        stationuuid: 'maher-al-muaiqly-001',
-        name: 'إذاعة ماهر المعيقلي .',
-        url: 'https://backup.qurango.net/radio/maher',
-        url_resolved: 'https://backup.qurango.net/radio/maher',
-        homepage: '',
-        favicon: '',
-        tags: 'islamic,quran',
-        country: 'Saudi Arabia',
-        state: '',
-        language: 'Arabic',
-        votes: 88000,
-        codec: 'MP3',
-        bitrate: 128
-    },
-    {
-        changeuuid: 'beautiful-recitation-001',
-        stationuuid: 'beautiful-recitation-001',
-        name: 'beautiful recitation',
-        url: 'https://backup.qurango.net/radio/mix',
-        url_resolved: 'https://backup.qurango.net/radio/mix',
-        homepage: '',
-        favicon: '',
-        tags: 'islamic,quran',
-        country: 'Global',
-        state: '',
-        language: 'Arabic',
-        votes: 70000,
-        codec: 'MP3',
-        bitrate: 128
-    }
-];
-
-const MOVED_TO_ISLAMIC_NAMES = [
-    "..mohammed_ayyub",
-    ". quran",
-    "إذاعة ماهر المعيقلي .",
-    "beautiful recitation"
-];
-
-const WORLD_MUSIC_TAGS = ['vietnamese', 'vietnam', 'japanese', 'russian', 'spanish', 'italian', 'french', 'kazakh', 'kyrgyz', 'kavkaz', 'oriental', 'chinese'];
+const WORLD_MUSIC_TAGS = ['vietnamese', 'vietnam', 'japanese', 'russian', 'spanish', 'italian', 'french', 'kazakh', 'kyrgyz', 'oriental', 'chinese'];
 
 const getFromCache = (key: string): RadioStation[] | null => {
     try {
@@ -181,50 +106,20 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
     const uniqueStations = new Map();
     const len = data.length;
 
-    // Blocklist based on user request to remove specific stations
     const BLOCKED_NAMES = [
-        "تفسير بن عثيمين رحمه الله",
-        "صور из жизни сподвижников",
-        "Classic Vinyl HD",
-        "Adroit Jazz Underground",
-        "Спокойное радио",
-        "PerfectMoods",
-        "Easy FM",
-        "106.5 Kiss FM",
-        "Pure Ibiza Radio",
-        "HappyHardcore.com",
-        "Test",
-        "Stream",
-        "My Radio",
-        "Radio Marca",
-        "Abdulbasit",
-        "Test Stream",
-        "Generic Radio",
-        ".977 Smooth Jazz",
-        "Exclusively Led Zeppelin",
-        "Sunshine Live - Die 90er",
-        "Sunshine Live - Techno",
-        "Mixadance FM",
-        "90s90s HipHop & Rap",
-        "Comedy Radio new link",
-        "RTL2",
-        "Mix (Medellín) 89.9 FM",
-        "the wave - relaxing radio",
-        "Islom.uz",
-        "Radio Felicidad",
-        "80s80s",
-        "90s90s Hits",
-        "90s90s Dance HQ",
-        "MIX Ciudad de México",
-        "Sunshine Live - Classics",
-        "KISS FM",
-        "Kiss FM",
-        "Sunshine Live - Focus",
-        "Bons Tempos FM",
-        "Technolovers - PSYTRANCE",
-        "Radio Caprice - Dark Psytrance",
-        "DrGnu - Metallica",
-        "80s80s Dark Wave"
+        "تفسير بن عثيمين رحمه الله", "صور из жизни сподвижников", "Classic Vinyl HD",
+        "Adroit Jazz Underground", "Спокойное радио", "PerfectMoods", "Easy FM",
+        "106.5 Kiss FM", "Pure Ibiza Radio", "HappyHardcore.com", "Test", "Stream",
+        "My Radio", "Radio Marca", "Abdulbasit", "Test Stream", "Generic Radio",
+        ".977 Smooth Jazz", "Exclusively Led Zeppelin", "Sunshine Live - Die 90er",
+        "Sunshine Live - Techno", "Mixadance FM", "90s90s HipHop & Rap",
+        "Comedy Radio new link", "RTL2", "Mix (Medellín) 89.9 FM",
+        "the wave - relaxing radio", "Islom.uz", "Radio Felicidad", "80s80s",
+        "90s90s Hits", "90s90s Dance HQ", "MIX Ciudad de México", "Sunshine Live - Classics",
+        "KISS FM", "Kiss FM", "Sunshine Live - Focus", "Bons Tempos FM",
+        "Technolovers - PSYTRANCE", "Radio Caprice - Dark Psytrance",
+        "DrGnu - Metallica", "80s80s Dark Wave", "Radio RECORD", "Deeper Radio",
+        "Deep Vibes Radio", "Radio ZAYCEV", "Zaycev.FM"
     ];
 
     const ARABIC_CHAR_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
@@ -236,10 +131,13 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
       const station = data[i];
       if (!station || !station.url_resolved) continue;
 
-      // 1. HIGH QUALITY CHECK: Bitrate
-      // Strict filter: Reject anything below 128kbps to ensure "Studio Quality" or at least standard HQ.
-      // We prioritize 192kbps+ in sorting later.
-      if (station.bitrate > 0 && station.bitrate < 128) continue;
+      // 1. HQ CHECK: Bitrate & Stability
+      // Optimized for Mobile: Allow 64kbps+ if AAC, 128kbps+ for others.
+      // High bitrates (320k) are prone to buffering in background.
+      const codec = (station.codec || '').toLowerCase();
+      const isAAC = codec.includes('aac');
+      const minBitrate = isAAC ? 64 : 128;
+      if (station.bitrate > 0 && station.bitrate < minBitrate) continue;
 
       // 2. QUALITY CHECK: Test Streams & Bad Names
       const nameLower = station.name.toLowerCase();
@@ -255,15 +153,46 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
       // Extended Religious Keyword List - blocks all religious content
       const RELIGIOUS_KEYWORDS = [
           'islam', 'quran', 'koran', 'muslim', 'sheikh', 'imam', 'allah', 'prophet', 'hadith', 'sunnah', 'mecca', 'medina', // Islamic
-          'religio', 'catholic', 'christian', 'church', 'bible', 'vatican', 'gospel', 'jesus', 'christ', 'pastor', // Christian
-          'worship', 'prayer', 'spirit', 'orthodox', 'chant', 'sermon', 'messianic', 'torah', 'synagogue', 'buddhist', 'hindu', // Other religious
-          'radio maria', 'esperance', 'ewtn', 'благовест', 'радонеж', 'вера', 'православ' // Specific stations
+          'religio', 'catholic', 'christian', 'church', 'bible', 'vatican', 'gospel', 'jesus', 'christ', 'pastor', 'shrine', // Christian
+          'worship', 'prayer', 'spirit', 'orthodox', 'chant', 'sermon', 'messianic', 'torah', 'synagogue', 'buddhist', 'hindu', 'krishna', // Other religious
+          'radio maria', 'esperance', 'ewtn', 'благовест', 'радонеж', 'вера', 'православ', 'ислам', 'коран', 'мечеть', 'церковь', 'евангелие', 'библия', // Specific & RU
+          '佛教', '道教', '基督教', '伊斯兰教', '传教', '法会', '佛', '经', '福音', // Chinese Religious
+          'phật giáo', 'công giáo', 'tin lành', 'hòa hảo', 'cao đài', 'nhà thờ', 'chùa', 'niệm phật', 'pháp sư', // Vietnamese Religious
+          'diyanet', 'ilahiler', 'cami', 'hoca', 'müslüman', 'namaz', 'ezan', // Turkish Religious
+          'قرآن', 'إسلام', 'صلاة', 'دين', 'دعاء', 'خطبة', 'شيخ', 'إمام', // Arabic Religious
+          'พุทธ', 'วัด', 'ธรรมะ', 'บทสวด', 'ฟังธรรม', // Thai Religious
+          'եկեղեցի', 'աստվածաշունչ', 'քրիստոնեական', 'ეკლესია', 'მართლმადიდებლური', 'məscid', 'минарет', 'проповедь', 'шариат' // Caucasian Religious
+      ];
+
+      // Propaganda and Politics Keyword List
+      const PROPAGANDA_KEYWORDS = [
+          'propaganda', 'politics', 'political', 'government', 'gov', 'parliament', 'election', 'voter', 'activist',
+          'пропаганда', 'политика', 'политик', 'правительство', 'выборы', 'агитация', 'патриот', 'patriot', 'military', 'army', 'война', 'war',
+          'sputnik', 'rt radio', 'vesti fm', 'вести фм', 'голос америки', 'радио свобода',
+          '宣传', '政治', '政府', '共产党', '军队', // Chinese Propaganda
+          'tuyên truyền', 'chính trị', 'đảng', 'nhà nước', 'quốc hội', 'vtv', 'vov' // Vietnamese Propaganda/State
+      ];
+
+      const ADULT_KEYWORDS = [
+          'sex', 'porn', 'xxx', 'adult', 'erotic', 'ero', 'naked', 'nudity', 'hardcore', 'hentai', 'fetish',
+          'секс', 'порно', 'эротика', 'постель'
       ];
 
       if (RELIGIOUS_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) {
           console.log(`[FILTER] Blocking religious content in '${currentTag}': ${station.name}`);
           continue;
-      }     // Strict Arabic Character Check for non-Oriental categories
+      }
+
+      if (PROPAGANDA_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) {
+          console.log(`[FILTER] Blocking propaganda/political content in '${currentTag}': ${station.name}`);
+          continue;
+      }
+
+      if (ADULT_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) {
+          console.log(`[FILTER] Blocking adult content: ${station.name}`);
+          continue;
+      }
+     // Strict Arabic Character Check for non-Oriental categories
           if (currentTag !== 'oriental' && ARABIC_CHAR_REGEX.test(station.name)) {
               console.log(`[FILTER] Skipping Arabic name in musical category '${currentTag}': ${station.name}`);
               continue;
@@ -276,7 +205,7 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
 
           // Vietnamese Exception
           if (isVietnamese) {
-              if (t.includes('tin tức') || n.includes('tin tức') || t.includes('news')) continue;
+              if (t.includes('tin tức') || n.includes('tin tức') || t.includes('news') || t.includes('talk') || t.includes('thời sự') || t.includes('phát thanh')) continue;
           } 
           // Kyrgyz Exception
           else if (isKyrgyz) {
@@ -284,7 +213,13 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
           }
           else {
               // General cleanup for other world music
-              if (t.includes('news') || t.includes('talk') || t.includes('politics') || t.includes('sport')) continue;
+              if (t.includes('news') || t.includes('talk') || t.includes('politics') || t.includes('sport') ||
+                  t.includes('新闻') || t.includes('访谈') || t.includes('财经') || t.includes('体育') ||
+                  t.includes('tin tức') || t.includes('thời sự') || t.includes('pháp luật') || t.includes('quân sự') ||
+                  t.includes('haber') || t.includes('siyaset') || t.includes('konuşma') || // Turkish
+                  t.includes('أخبار') || t.includes('سياسة') || t.includes('ثقافة') || // Arabic
+                  t.includes('ข่าว') || t.includes('คุย') || t.includes('การเมือง') // Thai
+                  ) continue;
           }
       }
 
@@ -293,17 +228,29 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
           const t = (station.tags || '').toLowerCase();
           if (t.includes('news') || t.includes('talk') || t.includes('speech') || t.includes('conversation') || t.includes('politics')) continue;
       }
+
+      // Cleanup for "Love Songs" (No talk/news/podcasts)
+      if (currentTag === 'love') {
+          const t = (station.tags || '').toLowerCase();
+          if (t.includes('news') || t.includes('talk') || t.includes('podcast') || t.includes('drama') || t.includes('story')) continue;
+      }
+
+      // Cleanup for "Slow/Soft" (Aggressive talk/news block)
+      if (currentTag === 'slow') {
+          const t = (station.tags || '').toLowerCase();
+          if (t.includes('news') || t.includes('talk') || t.includes('politics') || t.includes('conversation') || t.includes('radio drama')) continue;
+      }
       
       const url = station.url_resolved;
       if (url.charCodeAt(4) !== 115) continue; // Must be https
       
-      const codec = (station.codec || '').toLowerCase();
+      const stationCodec = (station.codec || '').toLowerCase();
       const isBrowserCompatible = 
-        codec.includes('mp3') || 
-        codec.includes('aac') || 
+        stationCodec.includes('mp3') || 
+        stationCodec.includes('aac') || 
         url.includes('.mp3') || 
         url.includes('.aac') ||
-        codec === '';
+        stationCodec === '';
 
       if (isBrowserCompatible) {
         // 5. LOW QUALITY NOISE CHECK: No favicon + low votes (in popular categories)
@@ -312,41 +259,35 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
         }
 
         // AGGRESSIVE DEDUPLICATION
-        // 1. Normalize URL: remove protocol, www, trailing slashes, and common extensions/params
+        // 1. Normalize URL: remove protocol, www, port, trailing slashes, and common stream markers
         const normalizedUrl = url.toLowerCase()
             .replace(/^https?:\/\/(www\.)?/, '')
+            .replace(/:[0-9]+/, '')
             .split('?')[0].split('#')[0]
             .replace(/\/$/, '')
+            .replace(/\/(stream|listen|high|low|mobile|radio|play|live)$/, '')
             .replace(/\.(mp3|aac|m3u8|pls|m3u)$/, '');
             
-        // 2. Normalize Name: lowercase, alphanumeric only to catch "Radio One" vs "Radio 1" vs "Radio-1"
+        // 2. Normalize Name: lowercase, alphanumeric only
         const normalizedName = station.name.toLowerCase().replace(/[^a-z0-9]/g, '');
         
-        // Use normalized URL as primary dedupe key because it's more reliable than name
         const dedupeKey = `${normalizedUrl}`;
 
-        const existingDedupe = uniqueStations.get(dedupeKey);
+        const existingByUrl = uniqueStations.get(dedupeKey);
+        const existingByName = Array.from(uniqueStations.values()).find(s => s.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName);
         
-        // Secondary check by normalized name to catch same station on different stream providers
-        let isDuplicateByName = false;
-        if (!existingDedupe) {
-            for (const s of uniqueStations.values()) {
-                const sNormName = s.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (sNormName === normalizedName && normalizedName.length > 3) {
-                    // It's likely a duplicate by name. Keep the one with better bitrate or votes.
-                    if (station.votes > s.votes || (station.bitrate > s.bitrate && station.votes > s.votes / 2)) {
-                        // Current one is better, replace the old one (we need to find its key though)
-                        // For simplicity in Map logic, we'll mark it to be skipped if we find a better one later
-                    } else {
-                        isDuplicateByName = true;
-                    }
-                    break;
-                }
-            }
-        }
+        const existing = existingByUrl || existingByName;
 
-        if (!isDuplicateByName) {
-            if (!existingDedupe || station.votes > existingDedupe.votes) {
+        if (!existing) {
+            uniqueStations.set(dedupeKey, station);
+        } else {
+            // Keep the better quality/popularity version
+            if (station.votes > existing.votes || (station.bitrate > existing.bitrate && station.votes > existing.votes * 0.5) || (!!station.favicon && !existing.favicon)) {
+                if (existingByUrl) uniqueStations.delete(dedupeKey);
+                // If it was found by name, we need to find its URL key to delete it
+                const oldKey = Array.from(uniqueStations.keys()).find(k => uniqueStations.get(k) === existing);
+                if (oldKey) uniqueStations.delete(oldKey);
+                
                 uniqueStations.set(dedupeKey, station);
             }
         }
@@ -355,22 +296,34 @@ const filterStations = (data: RadioStation[], currentTag?: string) => {
 
     return Array.from(uniqueStations.values())
         .sort((a: any, b: any) => {
-            // PRIMARY SORT: Bitrate (Higher is better) - "Studio Quality" preference
+            // PRIMARY SORT: Codec Stability (AAC/AAC+ is better for mobile)
+            const aCodec = (a.codec || '').toLowerCase();
+            const bCodec = (b.codec || '').toLowerCase();
+            const aIsAAC = aCodec.includes('aac');
+            const bIsAAC = bCodec.includes('aac');
+            
+            if (aIsAAC && !bIsAAC) return -1;
+            if (!aIsAAC && bIsAAC) return 1;
+
+            // SECONDARY SORT: Bitrate Sweet-spot (64-128k for stability)
+            const aInSweetSpot = a.bitrate >= 64 && a.bitrate <= 128;
+            const bInSweetSpot = b.bitrate >= 64 && b.bitrate <= 128;
+            
+            if (aInSweetSpot && !bInSweetSpot) return -1;
+            if (!aInSweetSpot && bInSweetSpot) return 1;
+            
+            // TERTIARY SORT: Absolute Bitrate
             const bitrateDiff = b.bitrate - a.bitrate;
             if (bitrateDiff !== 0) return bitrateDiff;
             
-            // SECONDARY SORT: Popularity
+            // FINAL SORT: Popularity
             return b.votes - a.votes;
         }) as RadioStation[];
 };
 
-export const fetchStationsByTag = async (tag: string, limit: number = 30): Promise<RadioStation[]> => {
+export const fetchStationsByTag = async (tag: string, limit: number = 100): Promise<RadioStation[]> => {
   let lowerTag = tag.toLowerCase();
   
-  if (lowerTag === 'islamic' || lowerTag === 'muslim') {
-      return HARDCODED_ISLAMIC;
-  }
-
   if (lowerTag === 'vietnamese') {
       lowerTag = 'vietnam';
   }
@@ -387,12 +340,14 @@ export const fetchStationsByTag = async (tag: string, limit: number = 30): Promi
     const urlParams = `limit=${fetchLimit}&order=votes&reverse=true&hidebroken=true&bitrateMin=128&lastcheckok=1`;
 
     if (lowerTag === 'vietnam') {
-        const [countryData, musicData, radioData] = await Promise.all([
+        const [countryData, musicData, radioData, vpopData, boleroData] = await Promise.all([
             fetchAcrossMirrorsFast(`bycountry/vietnam`, urlParams),
             fetchAcrossMirrorsFast(`byname/âm nhạc`, urlParams), 
-            fetchAcrossMirrorsFast(`byname/đài`, urlParams)      
+            fetchAcrossMirrorsFast(`bytag/v-pop`, urlParams),      
+            fetchAcrossMirrorsFast(`bytag/vpop`, urlParams),      
+            fetchAcrossMirrorsFast(`bytag/bolero`, urlParams)      
         ]);
-        data = [...countryData, ...musicData, ...radioData];
+        data = [...countryData, ...musicData, ...radioData, ...vpopData, ...boleroData];
     } 
     else if (lowerTag === 'kyrgyz') {
         const [countryData, nameData, bishkekData, obonData] = await Promise.all([
@@ -402,6 +357,46 @@ export const fetchStationsByTag = async (tag: string, limit: number = 30): Promi
             fetchAcrossMirrorsFast(`byname/obon`, urlParams)
         ]);
         data = [...countryData, ...nameData, ...bishkekData, ...obonData];
+    }
+    else if (lowerTag === 'oriental') {
+        const [orientalData, turkishData, arabicData, thaiData, meData, tpopData, arabesqueData] = await Promise.all([
+            fetchAcrossMirrorsFast(`bytag/oriental`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/turkish`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/arabic`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/thai`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/middle east`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/t-pop`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/arabesque`, urlParams)
+        ]);
+        data = [...orientalData, ...turkishData, ...arabicData, ...thaiData, ...meData, ...tpopData, ...arabesqueData];
+    }
+    else if (lowerTag === 'chinese') {
+        const [tagData, cpopData, countryData, mandoData, cantoData] = await Promise.all([
+            fetchAcrossMirrorsFast(`bytag/chinese`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/c-pop`, urlParams),
+            fetchAcrossMirrorsFast(`bycountry/china`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/mandopop`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/cantopop`, urlParams)
+        ]);
+        data = [...tagData, ...cpopData, ...countryData, ...mandoData, ...cantoData];
+    }
+    else if (lowerTag === 'love') {
+        const [loveData, balladData, softData, romanticData] = await Promise.all([
+            fetchAcrossMirrorsFast(`bytag/love`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/ballads`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/soft`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/romantic`, urlParams)
+        ]);
+        data = [...loveData, ...balladData, ...softData, ...romanticData];
+    }
+    else if (lowerTag === 'slow') {
+        const [slowData, chillData, calmData, acousticsData] = await Promise.all([
+            fetchAcrossMirrorsFast(`bytag/slow`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/chill`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/calm`, urlParams),
+            fetchAcrossMirrorsFast(`bytag/acoustic`, urlParams)
+        ]);
+        data = [...slowData, ...chillData, ...calmData, ...acousticsData];
     }
     else {
         data = await fetchAcrossMirrorsFast(`bytag/${lowerTag}`, urlParams);
@@ -440,7 +435,7 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
         const results = await Promise.all(fetchPromises);
         const result = filterStations(results.flat());
         
-        const allHardcoded = [...HARDCODED_STATIONS, ...HARDCODED_ISLAMIC];
+        const allHardcoded = [...HARDCODED_STATIONS];
         const hardcodedFavs = allHardcoded.filter(s => uuids.includes(s.stationuuid));
         
         if (hardcodedFavs.length > 0) {
@@ -452,7 +447,7 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
         setToCache(cacheKey, result);
         return result;
     } catch (error) {
-        const allHardcoded = [...HARDCODED_STATIONS, ...HARDCODED_ISLAMIC];
+        const allHardcoded = [...HARDCODED_STATIONS];
         const hardcodedFavs = allHardcoded.filter(s => uuids.includes(s.stationuuid));
         if (hardcodedFavs.length > 0) return hardcodedFavs;
         return [];

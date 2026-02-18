@@ -12,7 +12,7 @@ const RADIO_BROWSER_MIRRORS = [
 
 const GENRES = ['jazz', 'blues', 'rock', 'classical', 'electronic', 'hiphop', 'pop', 'rnb', 'reggae', 'soul', 'islamic'];
 const ERAS = ['60s', '70s', '80s', '90s', '00s'];
-const MOODS = ['chill', 'energy', 'focus', 'romantic', 'dark', 'vietnam', 'japan', 'russian', 'spanish', 'italian', 'french', 'kazakhstan', 'kyrgyzstan'];
+const MOODS = ['chill', 'energy', 'romantic', 'dark', 'vietnam', 'japan', 'russian', 'spanish', 'italian', 'french', 'kazakhstan', 'kyrgyzstan'];
 
 async function checkUrl(url) {
     const controller = new AbortController();
