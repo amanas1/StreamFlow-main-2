@@ -304,8 +304,8 @@ const io = new Server(server, {
 // ============================================
 
 
-const MEDIA_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days (Persistent)
-const TEXT_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days (Persistent History)
+const VOICE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days (Voice)
+const TEXT_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days (Text and Emojis)
 const VOICE_INTRO_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const MAX_EARLY_USERS = 100;
 const MAX_MESSAGES_PER_SESSION = 50;
@@ -396,9 +396,10 @@ setInterval(() => {
   
   for (const [sessionId, messageList] of messages.entries()) {
     const freshMessages = messageList.filter(msg => {
-      const age = now - msg.timestamp;
-      const ttl = (msg.messageType === 'image' || msg.messageType === 'audio' || msg.messageType === 'video') ? MEDIA_TTL : TEXT_TTL;
-      return age < ttl;
+      // Use pre-computed expiresAt (fallback to manual math if missing for legacy messages)
+      if (msg.expiresAt) return now < msg.expiresAt;
+      const ttl = (msg.messageType === 'voice' || msg.messageType === 'audio') ? VOICE_TTL : TEXT_TTL;
+      return (now - msg.timestamp) < ttl;
     });
     
     if (freshMessages.length !== messageList.length) {
@@ -1062,8 +1063,14 @@ io.on('connection', (socket) => {
         moderation.logViolation(boundUserId, flagReason, metadata.text);
     }
     
-    if (messageType === 'image' || messageType === 'audio' || messageType === 'video') {
-         console.log(`[MSG] 📸 Media message (${messageType}) from ${boundUserId}. Payload length: ${encryptedPayload?.length || 0}`);
+    if (messageType === 'image' || messageType === 'video' || messageType === 'file') {
+        console.error(`[MSG] ❌ Unsupported legacy message type (${messageType}) from ${boundUserId}`);
+        if (typeof ackCallback === 'function') ackCallback({ success: false, error: 'Unsupported message type. Only text and voice are supported.' });
+        return;
+    }
+
+    if (messageType === 'voice' || messageType === 'audio') {
+         console.log(`[MSG] 🎤 Voice message from ${boundUserId}. Payload length: ${encryptedPayload?.length || 0}`);
     }
 
     // Validate payload exists
@@ -1074,7 +1081,7 @@ io.on('connection', (socket) => {
     }
     
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    const ttl = (messageType === 'image' || messageType === 'audio' || messageType === 'video') ? MEDIA_TTL : TEXT_TTL;
+    const ttl = (messageType === 'voice' || messageType === 'audio') ? VOICE_TTL : TEXT_TTL;
     
     const message = {
       id: messageId,
