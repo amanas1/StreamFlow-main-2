@@ -878,11 +878,14 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
 
   // Background Location Detection (Silent) & Auto-Update Profile
   useEffect(() => {
+    // Skip if parent hasn't provided location data yet (initial null state)
+    if (!passedLocation) return;
+
     console.log('[Chat] 📍 Passed Location Prop:', passedLocation);
     
     const detect = async () => {
-      // If we have passedLocation (from App.tsx), use it first
-      if (passedLocation?.country && passedLocation.country !== 'Unknown') {
+      // If we have a valid passedLocation (from App.tsx), use it
+      if (passedLocation.country && passedLocation.country !== 'Unknown') {
           console.log('[Chat] ✅ Using passed location:', passedLocation.country);
           setDetectedLocation(passedLocation);
           
@@ -899,11 +902,9 @@ const ChatPanelEnhanced: React.FC<ChatPanelProps> = ({
              });
           }
           return;
-      } else {
-         console.warn('[Chat] ⚠️ Passed location is missing or Unknown, trying internal detection...');
       }
 
-      // Otherwise try internal detection
+      // passedLocation exists but country is Unknown — try internal detection
       try {
         const location = await geolocationService.detectLocation();
         if (location) {
