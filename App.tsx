@@ -109,7 +109,7 @@ const AMBIENCE_URLS = {
     rain_roof: 'https://soundbible.com/mp3/Rain_Background-Mike_Koenig-1681389445.mp3', // Fallback to same reliable source
     fire: '/kamin.mp3',
     city: 'https://soundbible.com/mp3/City_Traffic-Sound_Explorer-1662968325.mp3',
-    vinyl: 'https://cdn.pixabay.com/audio/2022/02/07/audio_6527581fb9.mp3' 
+    vinyl: '/kamin.mp3'
 };
 
 const StationCard = React.memo(({ 
