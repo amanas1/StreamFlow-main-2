@@ -22,7 +22,9 @@ const getSocketURL = (): string => {
   if (import.meta.env.DEV) {
       return 'http://localhost:3001';
   }
-  return 'https://streamflow-production.up.railway.app'; // Safe production default if env missing
+  
+  // PRODUCTION FALLBACK (Strict)
+  return 'https://streamflow-backend-production.up.railway.app';
 };
 
 const SERVER_URL = getSocketURL();
@@ -56,14 +58,17 @@ class SocketService {
     
     // Create Socket.IO connection
     this.socket = io(SERVER_URL, {
-      transports: ['websocket'], // Force WebSocket to avoid polling issues
+      transports: ['websocket', 'polling'], 
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: this.maxReconnectAttempts,
-      timeout: 20000, // Increase connection timeout
-      autoConnect: true,
+      timeout: 45000, // Increased to 45s to reduce premature timeouts
+      autoConnect: false, // We will call connect() manually
+      forceNew: true, // Ensure a fresh connection instance
     });
+    
+    this.socket.connect();
     
     this.socket.on('connect', () => {
       console.log('✅ Connected to AU RadioChat server');

@@ -1,4 +1,5 @@
 console.log("🚀 Starting AU RadioChat Server...");
+console.log("🚀 Backend version 2.0 deployed");
 
 // GLOBAL ERROR CATCHERS FOR PRODUCTION STABILITY
 process.on('uncaughtException', (err) => {
@@ -51,28 +52,38 @@ if (!fs.existsSync(AVATARS_DIR)) {
 
 const app = express();
 
-// CORS configuration to allow cookies from Vercel frontend
+// 1. TRUST PROXY (Required for Vercel/Railway)
+app.set('trust proxy', 1);
+
+// 2. CORS CONFIGURATION (Absolute Priority)
 const allowedOrigins = [
-  'http://localhost:3000', // Local development (Frontend)
-  'http://localhost:3001', // Local development (Backend/Self)
-  'http://localhost:3002', // Local development (Your current port)
-  'https://stream-flow-main-2.vercel.app', // Production frontend
+  'https://auradiochat.com',
+  'https://www.auradiochat.com',
+  'https://stream-flow-main-2.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002'
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.some(ao => origin === ao)) {
       callback(null, true);
     } else {
+      console.warn(`[CORS] BLOCKED: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true // Enable credentials (cookies)
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable Pre-Flight for all routes
+
+// 3. BODY PARSERS
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
@@ -149,43 +160,71 @@ app.post('/api/moderate-avatar', upload.single('avatar'), async (req, res) => {
     }
 });
 
+// TEST ROUTE FOR DEPLOYMENT VERIFICATION
+app.get('/api/test', (req, res) => {
+    res.json({ 
+        status: "backend working", 
+        version: "2.1",
+        timestamp: new Date().toISOString()
+    });
+});
+
 /**
  * Server-side IP Geolocation Proxy
  * Bypasses CORS and Mixed Content issues by fetching from the server
  */
 app.get('/api/location', async (req, res) => {
+    // Force JSON content type standard
+    res.setHeader('Content-Type', 'application/json');
+
     try {
         // trust proxy is needed if behind Vercel/Nginx
         // x-forwarded-for can be a list: "client, proxy1, proxy2"
         const forwarded = req.headers['x-forwarded-for'];
         let ip = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
 
-        // Start local dev with a known KZ IP if localhost
-        if (ip === '::1' || ip === '127.0.0.1') {
-            ip = '95.56.242.1'; // Example Almaty IP
+        // Clean up IP (remove ::ffff:)
+        if (ip && ip.includes('::ffff:')) {
+            ip = ip.replace('::ffff:', '');
         }
 
-        console.log(`[GEO] Resolving location for IP: ${ip}`);
-        
-        // Use ip-api.com (free, non-commercial, 45 requests/minute)
-        // We use HTTP because the pro endpoint is HTTPS but requires key.
-        // Free endpoint handles HTTP fine.
-        const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,city,query`);
+        console.log(`[GEO] Resolving IP: ${ip}`);
+
+        if (!ip || ip === '127.0.0.1' || ip === '::1') {
+             return res.json({ country: 'Unknown', city: 'Unknown', ip: ip || '127.0.0.1' });
+        }
+
+        // Use fetch with timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,city,query`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`Upstream API error: ${response.status}`);
+        }
+
         const data = await response.json();
 
-        if (data.status === 'success') {
-             res.json({
-                country: data.country,
-                city: data.city,
-                countryCode: data.countryCode,
-                ip: data.query
-            });
-        } else {
-             res.status(404).json({ error: 'Location not found' });
+        if (data.status === 'fail') {
+             console.warn('[GEO] Upstream lookup failed:', data.message);
+             return res.json({ country: 'Unknown', city: 'Unknown', ip });
         }
+
+        return res.json({
+            country: data.country,
+            city: data.city,
+            countryCode: data.countryCode,
+            ip: data.query
+        });
+
     } catch (e) {
-        console.error('[GEO] Server lookup failed:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('[GEO] Server lookup failed:', e.message);
+        // GUARANTEED JSON RETURN - NO HTML ERRORS
+        return res.status(200).json({ country: 'Unknown', city: 'Unknown', error: 'Lookup failed' }); 
     }
 });
 
@@ -247,11 +286,17 @@ app.post('/api/report-user', async (req, res) => {
 
 
 const server = http.createServer(app);
+// Socket.io Setup with Stability Settings
 const io = new Server(server, {
-  cors: { origin: "*" },
-  maxHttpBufferSize: 1e8, // 100MB to be safe
-  pingTimeout: 60000,
-  pingInterval: 25000
+  cors: { 
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST"]
+  },
+  maxHttpBufferSize: 1e8,
+  pingTimeout: 20000, // Increased to Prevent Drops
+  pingInterval: 10000, // Frequent Heartbeats
+  transports: ['websocket', 'polling'] // Comprehensive Transport Support
 });
 
 // ============================================
@@ -358,10 +403,6 @@ setInterval(() => {
 
 // Map: userId -> { id, email, created_at, last_login_at, status }
 const rawUsers = storage.load('users', []); 
-// Convert array to Map for easier lookup if using ID, but for Email lookup array find is okay. 
-// Actually lets keep it as a Map of userId -> UserData for consistency, or Email -> UserData?
-// Requirement 4: "Email - User ID". 
-// Let's use an array for storage to mimic SQL rows, but load into memory.
 const persistentUsers = new Map(); // userId -> User
 rawUsers.forEach(u => persistentUsers.set(u.id, u));
 
@@ -846,7 +887,7 @@ io.on('connection', (socket) => {
     const pairId = [boundUserId, targetUserId].sort().join(':');
     console.log(`[DEBUG] Knock pairId: ${pairId}`);
 
-    // Blocks - REMOVED for Reversion
+    // Block check
     if (permanentBlocks.has(pairId)) {
         socket.emit('knock:error', { 
             message: 'Пользователь вас заблокировал.',
@@ -1486,11 +1527,24 @@ app.get('/privacy', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.status(200).send('AU RadioChat Server is Running');
+  res.status(200).send('AU RadioChat Server is Running. Version: 2.0');
+});
+
+// 404 CATCH-ALL FOR JSON (Prevents HTML "Unexpected token <")
+app.use((req, res) => {
+    console.warn(`[404] Not Found: ${req.method} ${req.url}`);
+    res.status(404).json({ error: "Route not found", path: req.url });
+});
+
+// 500 GLOBAL ERROR HANDLER
+app.use((err, req, res, next) => {
+    console.error('[500] Internal Server Error:', err);
+    res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 AU RadioChat Server running on port ${PORT}`);
+  console.log(`✅ AU RadioChat Server running on port ${PORT}`);
+  console.log(`📡 Allowed Origins:`, allowedOrigins);
   console.log(`   - Users: 24h TTL`);
   console.log(`   - Text Msgs: 60s TTL (Newest on Top)`);
   console.log(`   - Media Msgs: 30s TTL`);
