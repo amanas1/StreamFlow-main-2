@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
         'process.env': JSON.stringify(env)
       },
       plugins: [react()],
+      esbuild: {
+        // Strip console.log and console.warn from production builds
+        // Keeps console.error for critical error reporting
+        drop: mode === 'production' ? ['console', 'debugger'] : [],
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
