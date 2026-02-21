@@ -16,29 +16,17 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const fs = require('fs');
-console.log('[INIT] ✓ fs loaded');
 const express = require('express');
-console.log('[INIT] ✓ express loaded');
 const http = require('http');
-console.log('[INIT] ✓ http loaded');
 const { Server } = require('socket.io');
-console.log('[INIT] ✓ socket.io loaded');
 const cors = require('cors');
-console.log('[INIT] ✓ cors loaded');
 const multer = require('multer');
-console.log('[INIT] ✓ multer loaded');
 const moderation = require('./moderation');
-console.log('[INIT] ✓ moderation loaded');
 const crypto = require('crypto');
-console.log('[INIT] ✓ crypto loaded');
 const path = require('path');
-console.log('[INIT] ✓ path loaded');
 const cookieParser = require('cookie-parser');
-console.log('[INIT] ✓ cookie-parser loaded');
-console.log('[INIT] ✓ devices NOT loaded (Legacy)');
 // Load environment variables (Railway provides these automatically)
 require('dotenv').config();
-console.log('[INIT] ✓ dotenv configured');
 
 
 // ENSURE DATA DIRECTORY EXISTS
@@ -118,7 +106,20 @@ app.post('/api/moderate-avatar', upload.single('avatar'), async (req, res) => {
 
         // 1. Moderate using Google Vision
         console.log('[MODERATION] Starting moderation.moderateImage...');
-        const modResult = await moderation.moderateImage(req.file.buffer);
+        let modResult;
+        try {
+            modResult = await Promise.race([
+              moderation.moderateImage(req.file.buffer),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Moderation timeout')), 5000)
+              )
+            ]);
+        } catch (err) {
+            if (err.message === 'Moderation timeout') {
+                return res.status(503).json({ status: 'error', reason: 'Moderation service timeout' });
+            }
+            throw err;
+        }
         console.log('[MODERATION] moderation.moderateImage result:', modResult);
         
         if (!modResult.approved) {
@@ -728,7 +729,6 @@ io.on('connection', (socket) => {
         
         // Fix: Persist location data
         userRecord.country = profile.country || userRecord.country;
-        userRecord.detectedCountry = profile.detectedCountry || userRecord.detectedCountry;
         userRecord.city = profile.city || userRecord.city || 'Unknown';
 
         userRecord.registrationTimestamp = userRecord.registrationTimestamp || now;
@@ -758,7 +758,6 @@ io.on('connection', (socket) => {
             reportsAgainst: 0,
             // Ensure location data is captured on creation
             country: profile.country || 'Unknown',
-            detectedCountry: profile.detectedCountry,
             city: profile.city || 'Unknown'
         };
         
@@ -1500,7 +1499,8 @@ app.post('/admin/cleanup-fake-users', (req, res) => {
   
   // Simple password protection
   if (!process.env.ADMIN_PASSWORD) {
-    throw new Error('ADMIN_PASSWORD environment variable is not set');
+    console.error('[ADMIN] ADMIN_PASSWORD not configured');
+    return res.status(500).json({ error: 'Admin not configured' });
   }
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
   
@@ -1547,7 +1547,8 @@ app.post('/admin/nuke-all-users', (req, res) => {
   const { adminPassword } = req.body;
   
   if (!process.env.ADMIN_PASSWORD) {
-    throw new Error('ADMIN_PASSWORD environment variable is not set');
+    console.error('[ADMIN] ADMIN_PASSWORD not configured');
+    return res.status(500).json({ error: 'Admin not configured' });
   }
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
   
@@ -1634,7 +1635,10 @@ app.use((req, res) => {
 
 // 500 GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
-    console.error('[500] Internal Server Error:', err);
+    console.error(JSON.stringify({
+      type: 'http500',
+      message: err.message
+    }));
     res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
