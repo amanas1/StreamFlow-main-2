@@ -3,10 +3,16 @@ console.log("🚀 Backend version 2.0 deployed");
 
 // GLOBAL ERROR CATCHERS FOR PRODUCTION STABILITY
 process.on('uncaughtException', (err) => {
-    console.error('[CRITICAL] Uncaught Exception:', err);
+    console.error(JSON.stringify({
+      type: 'uncaughtException',
+      message: err.message
+    }));
 });
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error(JSON.stringify({
+      type: 'unhandledRejection',
+      message: reason && reason.message ? reason.message : String(reason)
+    }));
 });
 
 const fs = require('fs');
@@ -377,7 +383,7 @@ function saveKnockLimits() {
 // ANTI-SPAM: IP Rate Limiting (In-Memory, Safe)
 // ============================================
 const ipConnectionLimits = new Map(); // ip -> { count, windowStart }
-const IP_CONN_LIMIT = 1000; // max connections per IP per minute (test)
+const IP_CONN_LIMIT = 150; // max connections per IP per minute (test)
 const IP_CONN_WINDOW = 60000; // 1 minute
 
 // Map: userId1:userId2 -> timestamp (24h block)
@@ -407,6 +413,7 @@ setInterval(() => {
 
   for (const [key, timestamp] of reconnectBlocks.entries()) {
     if (now - timestamp > TTL) {
+      console.log(`[TTL] reconnectBlock expired: ${key}`);
       reconnectBlocks.delete(key);
     }
   }
@@ -586,13 +593,13 @@ const broadcastPresenceCount = (targetSocket = null) => {
         io.emit('presence:count', data);
     }
 
-    // Log to history (once per broadcast to all)
-    if (!targetSocket) {
-        const now = Date.now();
-        onlineHistory[now] = totalOnline;
-        saveOnlineHistory();
-    }
 };
+
+setInterval(() => {
+  const now = Date.now();
+  onlineHistory[now] = io.engine.clientsCount;
+  saveOnlineHistory();
+}, 5 * 60 * 1000);
 
 // Clean online history every 24 hours (Keep 30 days)
 setInterval(() => {
@@ -722,7 +729,7 @@ io.on('connection', (socket) => {
         // Fix: Persist location data
         userRecord.country = profile.country || userRecord.country;
         userRecord.detectedCountry = profile.detectedCountry || userRecord.detectedCountry;
-        userRecord.city = profile.city || profile.detectedCity || userRecord.city || 'Unknown';
+        userRecord.city = profile.city || userRecord.city || 'Unknown';
 
         userRecord.registrationTimestamp = userRecord.registrationTimestamp || now;
         profile.registrationTimestamp = userRecord.registrationTimestamp;
@@ -752,7 +759,7 @@ io.on('connection', (socket) => {
             // Ensure location data is captured on creation
             country: profile.country || 'Unknown',
             detectedCountry: profile.detectedCountry,
-            city: profile.city || profile.detectedCity || 'Unknown'
+            city: profile.city || 'Unknown'
         };
         
         // Save to persistence
@@ -954,7 +961,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const knockId = `knock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const knockId = `knock_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     
     if (!knockRequests.has(targetUserId)) {
       knockRequests.set(targetUserId, new Set());
@@ -997,7 +1004,7 @@ io.on('connection', (socket) => {
       session.updatedAt = Date.now();
       session.expiresAt = expiresAt;
     } else {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       activeSessions.set(sessionId, {
         id: sessionId,
         participants: [boundUserId, fromUserId],
@@ -1124,11 +1131,13 @@ io.on('connection', (socket) => {
 
     // BRIDGE SESSION RESTRICTION: REMOVED
 
-    const flagReason = metadata?.text ? moderation.getFilterViolation(metadata.text) : null;
+    const safeMetadata = (typeof metadata === 'object' && metadata !== null) ? metadata : {};
+
+    const flagReason = safeMetadata?.text ? moderation.getFilterViolation(safeMetadata.text) : null;
     const isFlagged = flagReason !== null;
     
     if (isFlagged) {
-        moderation.logViolation(boundUserId, flagReason, metadata.text);
+        moderation.logViolation(boundUserId, flagReason, safeMetadata.text);
     }
     
     if (messageType === 'image' || messageType === 'video' || messageType === 'file') {
@@ -1144,7 +1153,7 @@ io.on('connection', (socket) => {
         return;
     }
     
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const ttl = (messageType === 'voice' || messageType === 'audio') ? VOICE_TTL : TEXT_TTL;
     
     const message = {
@@ -1154,7 +1163,7 @@ io.on('connection', (socket) => {
       encryptedPayload,
       messageType,
       metadata: {
-        ...metadata,
+        ...safeMetadata,
         flagged: isFlagged,
         flagReason
       },
