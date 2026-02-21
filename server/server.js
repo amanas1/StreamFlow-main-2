@@ -68,7 +68,7 @@ const allowedOrigins = [
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(ao => origin === ao)) {
+    if (allowedOrigins.some(ao => origin === ao) || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
       console.warn(`[CORS] BLOCKED: ${origin}`);

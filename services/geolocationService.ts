@@ -66,7 +66,11 @@ class GeolocationService {
         console.log('[GEO] 🌍 Requesting location from backend proxy...');
         
         // STRICT PRODUCTION BACKEND URL
-        const backendUrl = 'https://streamflow-backend-production.up.railway.app';
+        const backendUrl = import.meta.env.VITE_SOCKET_URL;
+        if (!backendUrl) {
+            console.error("🚨 CRITICAL: VITE_SOCKET_URL is missing in this environment!");
+            return { country: 'Unknown', city: 'Unknown', ip: 'Unknown' };
+        }
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);

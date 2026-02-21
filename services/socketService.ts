@@ -6,28 +6,11 @@ import { UserProfile, ChatMessage, ChatSession } from '../types';
  * ONLY uses: 1) VITE_SOCKET_URL env variable, 2) localhost fallback
  * NO window.location, NO origin, NO platform detection
  */
-const getSocketURL = (): string => {
-  let url = import.meta.env.VITE_SOCKET_URL;
-  
-  // Use env variable if set
-  if (url) {
-    // If it doesn't start with http/https, assume https for production
-    if (!url.startsWith('http')) {
-      url = `https://${url}`;
-    }
-    return url;
-  }
-  
-  // Fallback to localhost for development ONLY
-  if (import.meta.env.DEV) {
-      return 'http://localhost:3001';
-  }
-  
-  // PRODUCTION FALLBACK (Strict)
-  return 'https://streamflow-backend-production.up.railway.app';
-};
+const SERVER_URL = import.meta.env.VITE_SOCKET_URL;
 
-const SERVER_URL = getSocketURL();
+if (!SERVER_URL) {
+  console.error("🚨 CRITICAL: VITE_SOCKET_URL is missing in this environment!");
+}
 
 class SocketService {
   private socket: Socket | null = null;
