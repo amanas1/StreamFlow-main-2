@@ -4,7 +4,12 @@ const exifParser = require('exif-parser');
 require('dotenv').config();
 
 // Initialize Google Vision client
-const client = new vision.ImageAnnotatorClient();
+let client = null;
+try {
+    client = new vision.ImageAnnotatorClient();
+} catch (err) {
+    console.warn('[MODERATION] Vision client initialization failed:', err.message);
+}
 
 // ============================================
 // CONFIGURATION
@@ -41,6 +46,24 @@ const bans = new Map(Object.entries(storage.load('bans', {}))); // userId -> { t
 const violations = storage.load('violations', []); // ViolationLog[]: { userId, type, timestamp, messagePreview }
 const messageHistory = new Map(); // userId -> timestamp[]
 const muteStats = new Map(); // userId -> { expiresAt, violationCount }
+
+// TTL Cleanup (5 minutes inactivity)
+setInterval(() => {
+    const now = Date.now();
+    const TTL = 5 * 60 * 1000;
+    
+    for (const [userId, history] of messageHistory.entries()) {
+        if (history.length === 0 || now - history[history.length - 1] > TTL) {
+            messageHistory.delete(userId);
+        }
+    }
+    
+    for (const [userId, stats] of muteStats.entries()) {
+        if (now > stats.expiresAt && now - stats.expiresAt > TTL) {
+            muteStats.delete(userId);
+        }
+    }
+}, 5 * 60 * 1000);
 
 // ============================================
 // ENGINE
@@ -139,6 +162,7 @@ function isUserBanned(userId) {
     if (ban.expiresAt === -1) return true;
     if (Date.now() > ban.expiresAt) {
         bans.delete(userId);
+        storage.save('bans', Object.fromEntries(bans));
         return false;
     }
     return true;
@@ -150,6 +174,10 @@ function isUserBanned(userId) {
  * @returns {Promise<{approved: boolean, reason?: string}>}
  */
 async function moderateImage(imageBuffer) {
+    if (!client) {
+        console.warn('[MODERATION] Vision client is null, bypassing image moderation.');
+        return { approved: true };
+    }
     try {
         const [result] = await client.annotateImage({
             image: { content: imageBuffer },
@@ -164,7 +192,7 @@ async function moderateImage(imageBuffer) {
 
         const safeSearch = result.safeSearchAnnotation;
         const faces = result.faceAnnotations || [];
-        const labels = result.labelDetection || [];
+        const labels = result.labelAnnotations || [];
         const textAnnotations = result.textAnnotations || [];
         const webDetection = result.webDetection || {};
 
