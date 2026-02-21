@@ -209,7 +209,7 @@ app.get('/api/location', async (req, res) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,city,query`, {
+        const response = await fetch(`https://ip-api.com/json/${ip}?fields=status,message,country,countryCode,city,query`, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -399,6 +399,31 @@ function saveOnlineHistory() {
 }
 
 // ... (skipping unchanged code)
+
+// Clean expired reconnect blocks every 6 hours (TTL 48h)
+setInterval(() => {
+  const now = Date.now();
+  const TTL = 48 * 60 * 60 * 1000;
+
+  for (const [key, timestamp] of reconnectBlocks.entries()) {
+    if (now - timestamp > TTL) {
+      reconnectBlocks.delete(key);
+    }
+  }
+
+  storage.save('reconnectBlocks', Object.fromEntries(reconnectBlocks));
+}, 6 * 60 * 60 * 1000);
+
+// Clean expired IP connection limits every 5 minutes (memory leak protection)
+setInterval(() => {
+  const now = Date.now();
+
+  for (const [ip, data] of ipConnectionLimits.entries()) {
+    if (now - data.windowStart > IP_CONN_WINDOW) {
+      ipConnectionLimits.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
 
 // Clean expired messages every 1 hour (Reduced I/O load)
 setInterval(() => {
@@ -697,15 +722,13 @@ io.on('connection', (socket) => {
         // Fix: Persist location data
         userRecord.country = profile.country || userRecord.country;
         userRecord.detectedCountry = profile.detectedCountry || userRecord.detectedCountry;
-        userRecord.detectedCity = profile.detectedCity || userRecord.detectedCity;
+        userRecord.city = profile.city || profile.detectedCity || userRecord.city || 'Unknown';
 
         userRecord.registrationTimestamp = userRecord.registrationTimestamp || now;
         profile.registrationTimestamp = userRecord.registrationTimestamp;
         
         // Always allowed updates
         userRecord.intentStatus = profile.intentStatus;
-        userRecord.voiceIntro = profile.voiceIntro;
-        userRecord.last_login_at = now;
         userRecord.voiceIntro = profile.voiceIntro;
         userRecord.last_login_at = now;
         userRecord.fingerprint = profile.fingerprint || userRecord.fingerprint;
@@ -729,7 +752,7 @@ io.on('connection', (socket) => {
             // Ensure location data is captured on creation
             country: profile.country || 'Unknown',
             detectedCountry: profile.detectedCountry,
-            detectedCity: profile.detectedCity
+            city: profile.city || profile.detectedCity || 'Unknown'
         };
         
         // Save to persistence
@@ -1467,7 +1490,10 @@ app.post('/admin/cleanup-fake-users', (req, res) => {
   const { adminPassword } = req.body;
   
   // Simple password protection
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'cleanup2026secure';
+  if (!process.env.ADMIN_PASSWORD) {
+    throw new Error('ADMIN_PASSWORD environment variable is not set');
+  }
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
   
   if (adminPassword !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -1511,7 +1537,10 @@ app.post('/admin/cleanup-fake-users', (req, res) => {
 app.post('/admin/nuke-all-users', (req, res) => {
   const { adminPassword } = req.body;
   
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'cleanup2026secure';
+  if (!process.env.ADMIN_PASSWORD) {
+    throw new Error('ADMIN_PASSWORD environment variable is not set');
+  }
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
   
   if (adminPassword !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -1604,7 +1633,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ AU RadioChat Server running on port ${PORT}`);
   console.log(`📡 Allowed Origins:`, allowedOrigins);
   console.log(`   - Users: 24h TTL`);
-  console.log(`   - Text Msgs: 60s TTL (Newest on Top)`);
-  console.log(`   - Media Msgs: 30s TTL`);
+  console.log(`   - Text Msgs: 7d TTL`);
+  console.log(`   - Voice Msgs: 7d TTL`);
   console.log(`   - Capacity: Max ${MAX_MESSAGES_PER_SESSION} per chat`);
 });
