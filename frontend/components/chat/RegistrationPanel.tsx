@@ -243,10 +243,13 @@ export const RegistrationPanel: React.FC<Props> = ({ onComplete }) => {
                   </div>
                 </button>
               )}
-            </div>ен
+            </div>
 
             {/* Error */}
-               <p className="text-[11px] text-red-400 text-center mb-3">{error}</p>
+            {error && (
+              <p className="text-[11px] text-red-400 text-center mb-3">
+                {error}
+              </p>
             )}
 
             {/* ── Continue Button ── */}

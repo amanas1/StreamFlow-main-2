@@ -29,6 +29,15 @@ function profileDataToUserProfile(p: ProfileData): ChatUserProfile {
     id = crypto.randomUUID();
     localStorage.setItem(USER_ID_KEY, id);
   }
+  // Try to get the country from geolocation cache
+  let country = 'Global';
+  try {
+    const geoRaw = localStorage.getItem('auradiochat_last_detected_location');
+    if (geoRaw) {
+      const geo = JSON.parse(geoRaw);
+      if (geo?.country && geo.country !== 'Unknown') country = geo.country;
+    }
+  } catch {}
   return {
     id,
     avatar: p.avatar?.emoji || '👨',
@@ -36,7 +45,7 @@ function profileDataToUserProfile(p: ProfileData): ChatUserProfile {
     gender: (p.gender || 'male') as 'male' | 'female' | 'any',
     age: p.age,
     status: 'chat',
-    country: '',
+    country,
     nativeLanguage: '',
     communicationLanguage: '',
     interests: [],
@@ -229,7 +238,7 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
     }
   };
 
-  const onlineCount = (discoveryFeed as unknown as ChatUserProfile[]).length;
+  const onlineCount = state.onlineUsers.length;
   const feed = discoveryFeed as unknown as ChatUserProfile[];
 
   // ─── Filtered feed ───
