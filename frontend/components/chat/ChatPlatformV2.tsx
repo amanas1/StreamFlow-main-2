@@ -353,7 +353,7 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
         }} />
       </div>
 
-    <div className="fixed inset-y-0 right-0 z-[100] pointer-events-none font-['Inter']">
+    <div className="fixed inset-y-0 right-0 z-[100] pointer-events-none font-['Inter'] w-full sm:w-auto">
       
 
 
@@ -379,7 +379,7 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
 
       {/* ═══════════ CHAT PANEL ═══════════ */}
       <div 
-        className="pointer-events-auto h-full w-[420px] lg:w-[460px] flex flex-col bg-[#0f172a] border-l border-white/[0.06]"
+        className="pointer-events-auto h-full w-full sm:w-[420px] lg:w-[460px] flex flex-col bg-[#0f172a] border-l border-white/[0.06]"
       >
         
         {/* ─── HEADER BAR ─── */}

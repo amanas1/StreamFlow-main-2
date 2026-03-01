@@ -119,8 +119,8 @@ export const RegistrationPanel: React.FC<Props> = ({ onComplete }) => {
     <>
       <AvatarBuilderModal isOpen={showAvatarBuilder} onClose={() => setShowAvatarBuilder(false)} onSave={setAvatar} initial={avatar} />
 
-      <div className="fixed inset-y-0 right-0 z-[100] font-['Inter']">
-        <div className="h-full w-[420px] flex flex-col bg-[#0f172a] border-l border-white/[0.06]">
+      <div className="fixed inset-y-0 right-0 z-[100] font-['Inter'] w-full sm:w-auto">
+        <div className="h-full w-full sm:w-[420px] flex flex-col bg-[#0f172a] border-l border-white/[0.06]">
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-8">
