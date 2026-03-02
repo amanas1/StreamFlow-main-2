@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { UserProfile } from '../types';
-
+console.log('VITE_SOCKET_URL =', import.meta.env.VITE_SOCKET_URL);
 /**
  * HARDENED ENTERPRISE SOCKET MANAGER v2
  * Designed for 100k+ concurrent users.

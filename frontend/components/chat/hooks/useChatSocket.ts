@@ -17,14 +17,25 @@ export function useChatSocket(
     activeSessionRef.current = activeSessionId;
   }, [activeSessionId]);
 
-  // Lifecycle-driven Registration (Presence)
+  // 1. Connection Lifecycle: Connect immediately on mount, independent of currentUser
+  useEffect(() => {
+    console.log('[DIAGNOSTIC] INIT: Mount-driven socket connection start');
+    socketService.connect();
+
+    return () => {
+      console.log('[DIAGNOSTIC] CLEANUP: Unmount-driven socket cleanup');
+      socketService.cleanup();
+    };
+  }, []);
+
+  // 2. Registration Lifecycle: Handle user presence when currentUser changes
   useEffect(() => {
     if (!currentUser) return;
 
     const performRegistration = () => {
-      // DIAGNOSTIC: 1. Prevent registration if not strictly CONNECTED
+      // DIAGNOSTIC: Prevent registration if not strictly CONNECTED
       if (!socketService.isConnected) {
-        console.log('[DIAGNOSTIC] REGISTRATION BLOCKED: Socket is not connected. Current state:', socketService.getDiagnostics().state);
+        console.log('[DIAGNOSTIC] REGISTRATION BLOCKED: Socket not connected. State:', socketService.getDiagnostics().state);
         return;
       }
 
@@ -34,22 +45,14 @@ export function useChatSocket(
       });
     };
 
-    const checkConnectionAndRegister = () => {
-      const currentDiags = socketService.getDiagnostics();
-      if (currentDiags.state === 'CONNECTED') {
-        performRegistration();
-      } else if (currentDiags.state === 'IDLE' || currentDiags.state === 'DISCONNECTED' || currentDiags.state === 'FAILED') {
-        console.log('[DIAGNOSTIC] INIT: Calling socketService.connect()');
-        socketService.connect();
-      }
-    };
+    // If already connected when effect runs/currentUser arrives, register immediately
+    if (socketService.isConnected) {
+      performRegistration();
+    }
 
-    // DIAGNOSTIC: Initial trigger
-    checkConnectionAndRegister();
-
-    // DIAGNOSTIC: 2. Register on every future connection/reconnection
+    // Register on every future connection/reconnection
     const unsubConnect = socketService.on('connect', () => {
-      console.log('[DIAGNOSTIC] CONNECT EVENT: Socket connected, calling registration...');
+      console.log('[DIAGNOSTIC] CONNECT EVENT: Socket link ready, registering user...');
       performRegistration();
     });
 
