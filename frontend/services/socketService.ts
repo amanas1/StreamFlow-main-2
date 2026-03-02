@@ -128,6 +128,7 @@ class SocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
+      console.log('[WS CONNECTED]', this.socket?.id);
       this.reconnectAttempt = 0;
       this.lastActivity = Date.now();
       this.transition('CONNECTED');
@@ -137,6 +138,7 @@ class SocketManager {
     });
 
     this.socket.on('disconnect', (reason) => {
+      console.log('[WS DISCONNECTED]', reason);
       this.log('warn', `Disconnected: ${reason}`);
       this.transition('DISCONNECTED');
       if (reason !== 'io client disconnect') {
@@ -145,6 +147,7 @@ class SocketManager {
     });
 
     this.socket.on('connect_error', (err) => {
+      console.error('[WS ERROR]', err);
       this.metrics.errors++;
       this.log('error', `Connection error on ${FALLBACK_URLS[this.currentUrlIndex]}: ${err.message}`);
       this.handleRetry();
@@ -422,4 +425,15 @@ class SocketManager {
 }
 
 const socketService = SocketManager.getInstance();
+
+// 2️⃣ Гарантированный автоконнект
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    if (!socketService.isConnected) {
+      console.log('[DIAGNOSTIC] Safeguard: Triggering auto-connect');
+      socketService.connect();
+    }
+  }, 0);
+}
+
 export default socketService;

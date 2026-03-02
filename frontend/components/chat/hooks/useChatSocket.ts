@@ -32,28 +32,14 @@ export function useChatSocket(
   useEffect(() => {
     if (!currentUser) return;
 
-    const performRegistration = () => {
-      // DIAGNOSTIC: Prevent registration if not strictly CONNECTED
-      if (!socketService.isConnected) {
-        console.log('[DIAGNOSTIC] REGISTRATION BLOCKED: Socket not connected. State:', socketService.getDiagnostics().state);
-        return;
-      }
-
-      console.log('[DIAGNOSTIC] REGISTERING: Triggering registration for:', currentUser.name);
-      socketService.registerUser(currentUser as any, (res: any) => {
-        console.log('[DIAGNOSTIC] REGISTERED SUCCESSFULLY:', res);
-      });
-    };
-
-    // If already connected when effect runs/currentUser arrives, register immediately
-    if (socketService.isConnected) {
-      performRegistration();
-    }
-
     // Register on every future connection/reconnection
     const unsubConnect = socketService.on('connect', () => {
       console.log('[DIAGNOSTIC] CONNECT EVENT: Socket link ready, registering user...');
-      performRegistration();
+      if (currentUser) {
+        socketService.registerUser(currentUser as any, (res: any) => {
+          console.log('[DIAGNOSTIC] REGISTERED SUCCESSFULLY:', res);
+        });
+      }
     });
 
     return () => {
