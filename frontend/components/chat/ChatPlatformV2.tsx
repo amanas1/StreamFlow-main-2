@@ -731,7 +731,36 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
                         <p className="text-[12px] font-bold text-[#e5e7eb] uppercase tracking-wide">Случайный</p>
                         <p className="text-[9px] text-slate-500 mt-0.5">Диалог с кем угодно</p>
                       </button>
-                      <button onClick={() => { playCardOpenSound(); setDiscoveryView('online'); }}
+                      <button onClick={() => { 
+                        playCardOpenSound(); 
+                        
+                        // DIAGNOSTIC: Step 1 - Connect if not connected
+                        // 'state' is private, using a new diagnostics method or isConnected
+                        const currentDiags = socketService.getDiagnostics();
+                        
+                        if (currentDiags.state !== 'CONNECTED') {
+                          console.log('[DIAGNOSTIC] CONNECT: Socket state is', currentDiags.state, '-> Calling connect()');
+                          socketService.connect();
+                        }
+
+                        const performSearch = () => {
+                          console.log('[DIAGNOSTIC] SEARCH: Sending users:search request');
+                          socketService.searchUsers({ online: true });
+                          setDiscoveryView('online');
+                        };
+
+                        // DIAGNOSTIC: Step 3 - Ensure we are CONNECTED before searching
+                        if (socketService.isConnected) {
+                          performSearch();
+                        } else {
+                          console.log('[DIAGNOSTIC] SEARCH PENDING: Waiting for connection to establish before search');
+                          const unsub = socketService.on('connect', () => {
+                            console.log('[DIAGNOSTIC] SEARCH RESUMED: Connection established, executing search');
+                            performSearch();
+                            unsub();
+                          });
+                        }
+                      }}
                         className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-orange-500/20 hover:bg-white/[0.05] hover:border-orange-500/40 transition-all text-left group">
                         <div className="flex items-center gap-2 mb-1"><span className="text-lg">🖐</span>
                           <div className="w-6 h-6 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center"><span className="text-[10px]">👥</span></div>

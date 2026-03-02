@@ -22,19 +22,36 @@ export function useChatSocket(
     if (!currentUser) return;
 
     const performRegistration = () => {
-      console.log('[ChatV2] Triggering registration for:', currentUser.name);
+      // DIAGNOSTIC: 1. Prevent registration if not strictly CONNECTED
+      if (!socketService.isConnected) {
+        console.log('[DIAGNOSTIC] REGISTRATION BLOCKED: Socket is not connected. Current state:', socketService.getDiagnostics().state);
+        return;
+      }
+
+      console.log('[DIAGNOSTIC] REGISTERING: Triggering registration for:', currentUser.name);
       socketService.registerUser(currentUser as any, (res: any) => {
-        console.log('[ChatV2] Registered successfully:', res);
+        console.log('[DIAGNOSTIC] REGISTERED SUCCESSFULLY:', res);
       });
     };
 
-    // 1. If already connected, register immediately
-    if (socketService.isConnected) {
-      performRegistration();
-    }
+    const checkConnectionAndRegister = () => {
+      const currentDiags = socketService.getDiagnostics();
+      if (currentDiags.state === 'CONNECTED') {
+        performRegistration();
+      } else if (currentDiags.state === 'IDLE' || currentDiags.state === 'DISCONNECTED' || currentDiags.state === 'FAILED') {
+        console.log('[DIAGNOSTIC] INIT: Calling socketService.connect()');
+        socketService.connect();
+      }
+    };
 
-    // 2. Register on every future connection/reconnection
-    const unsubConnect = socketService.onConnect(performRegistration);
+    // DIAGNOSTIC: Initial trigger
+    checkConnectionAndRegister();
+
+    // DIAGNOSTIC: 2. Register on every future connection/reconnection
+    const unsubConnect = socketService.on('connect', () => {
+      console.log('[DIAGNOSTIC] CONNECT EVENT: Socket connected, calling registration...');
+      performRegistration();
+    });
 
     return () => {
       unsubConnect();
@@ -43,7 +60,14 @@ export function useChatSocket(
 
   // Global Listeners
   useEffect(() => {
+    // DIAGNOSTIC: Listeners for presence and search
+    const unsubSearch = socketService.on('users:search:results', (users: UserProfile[]) => {
+      console.log('[DIAGNOSTIC] SEARCH RESULTS RECEIVED:', users?.length || 0, 'users');
+      dispatch({ type: 'UPDATE_ONLINE_USERS', payload: users });
+    });
+
     const unsubPresence = socketService.onPresenceList((users: UserProfile[]) => {
+      console.log('[DIAGNOSTIC] PRESENCE LIST RECEIVED:', users?.length || 0, 'users');
       dispatch({ type: 'UPDATE_ONLINE_USERS', payload: users });
     });
 

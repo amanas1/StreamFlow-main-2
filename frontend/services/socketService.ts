@@ -26,9 +26,7 @@ interface SocketMetrics {
 
 const IS_PROD = import.meta.env.PROD;
 const FALLBACK_URLS = [
-  import.meta.env.VITE_SOCKET_URL,
-  'https://streamflow-backend-production-d554.up.railway.app',
-  'https://streamflow-main-2-production.up.railway.app'
+  import.meta.env.VITE_SOCKET_URL
 ].filter(Boolean) as string[];
 
 class SocketManager {
