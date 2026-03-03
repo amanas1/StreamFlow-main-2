@@ -36,7 +36,7 @@ export type VisualizerVariant = 'segmented' | 'rainbow-lines' | 'galaxy' | 'mixe
 
 export type VisualMode = 'high' | 'medium' | 'low';
 export type UIMode = 'classic' | 'modern';
-export type ParticleVariant = 'stars' | 'bubbles' | 'dust' | 'neon-rain';
+export type ParticleVariant = 'galaxy' | 'viz-journey' | 'stage-dancer';
 
 export interface ParticleSettings {
   variant: ParticleVariant;

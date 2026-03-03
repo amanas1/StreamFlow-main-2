@@ -328,7 +328,7 @@ export default function App(): React.JSX.Element {
     return 'rainbow-lines';
   });
 
-  const DEFAULT_PARTICLE_SETTINGS: ParticleSettings = { variant: 'stars', amount: 120, speed: 1.0, colorSync: true };
+  const DEFAULT_PARTICLE_SETTINGS: ParticleSettings = { variant: 'galaxy', amount: 120, speed: 1.0, colorSync: true };
   const [particleSettings, setParticleSettings] = useState<ParticleSettings>(() => {
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('auradiochat_particle_settings');
