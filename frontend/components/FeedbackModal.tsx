@@ -31,7 +31,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, language
 
   const t = {
       feedbackTitle: getTranslation('feedbackTitle', 'Feedback'),
-      helpImprove: getTranslation('helpImprove', 'Help us improve AU RadioChat.'),
+      helpImprove: getTranslation('helpImprove', 'Help us improve AU Radio.'),
       sendSuccess: getTranslation('sendSuccess', 'Message sent!'),
       rating: getTranslation('rating', 'Rate App'),
       tellUs: getTranslation('tellUs', 'Tell us what to improve...'),

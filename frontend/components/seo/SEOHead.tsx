@@ -21,8 +21,8 @@ export const SEOHead: React.FC<SEOHeadProps> = ({ language, title, description, 
     const canonicalUrl = `${baseUrl}${currentPath === '/' ? '' : currentPath}`;
     
     // Default Fallbacks
-    const defaultTitle = 'AU RadioChat – Global Online Radio Streaming Player';
-    const defaultDescription = 'AU RadioChat – Global Online Radio Streaming Platform. Listen to jazz, rock, electronic, hip-hop and world radio stations live. Free international internet radio player with smart chat.';
+    const defaultTitle = 'AU Radio – Global Online Radio Streaming Player';
+    const defaultDescription = 'AU Radio – Global Online Radio Streaming Platform. Listen to jazz, rock, electronic, hip-hop and world radio stations live. Free international internet radio player with smart chat.';
     const defaultImage = `${baseUrl}/og-image.jpg`;
 
     const metaTitle = title || defaultTitle;

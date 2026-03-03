@@ -291,7 +291,7 @@ export default function App(): React.JSX.Element {
   // Remove useAuth
   // const { user, logout, isAuthorized, showLoginModal, setShowLoginModal } = useAuth();
   
-  // Storage Migration: AU RadioChat -> AU RadioChat
+  // Storage Migration: AU Radio -> AU Radio
   useEffect(() => {
     const migrateStorage = () => {
        const keysToMigrate = [
@@ -316,7 +316,7 @@ export default function App(): React.JSX.Element {
        });
        
        if (migratedCount > 0) {
-           console.log(`[Rebranding] Migrated ${migratedCount} keys from AU RadioChat to AU RadioChat.`);
+           console.log(`[Rebranding] Migrated ${migratedCount} keys from AU Radio to AU Radio.`);
        }
     };
     
@@ -1094,8 +1094,8 @@ export default function App(): React.JSX.Element {
     if (currentStation) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentStation.name,
-        artist: currentStation.tags || 'AU RadioChat Radio',
-        album: 'AU RadioChat Live',
+        artist: currentStation.tags || 'AU Radio Radio',
+        album: 'AU Radio Live',
         artwork: [
           { src: currentStation.favicon || '/logo192.png', sizes: '96x96', type: 'image/png' },
           { src: currentStation.favicon || '/logo128.png', sizes: '128x128', type: 'image/png' },
@@ -1265,7 +1265,7 @@ export default function App(): React.JSX.Element {
     <>
         <Helmet>
             <title>AU Radio – Global Online Radio Streaming Player</title>
-            <meta name="description" content="AU RadioChat – Global Online Radio Streaming Platform. Listen to jazz, rock, electronic, hip-hop and world radio stations live. Free international internet radio player with smart chat." />
+            <meta name="description" content="AU Radio – Global Online Radio Streaming Platform. Listen to jazz, rock, electronic, hip-hop and world radio stations live. Free international internet radio player with smart chat." />
             <link rel="canonical" href="https://auradiochat.com/" />
         </Helmet>
         {selectedCategory && viewMode !== 'favorites' && (
@@ -1345,7 +1345,7 @@ export default function App(): React.JSX.Element {
            <div className="flex items-center gap-3">
                 <div className="flex flex-col">
                     <Link to="/" className="hover:opacity-80 transition-opacity flex flex-col">
-                        <div className="text-2xl font-black tracking-tighter leading-none text-white">AU RadioChat</div>
+                        <div className="text-2xl font-black tracking-tighter leading-none text-white">AU Radio</div>
                         <div className="text-[10px] font-bold text-rose-500 tracking-widest uppercase mt-1">
                             {t.tagline || 'Global Online Radio Streaming Player'}
                         </div>
@@ -1387,7 +1387,7 @@ export default function App(): React.JSX.Element {
         <div className="p-4 pt-2 border-t border-[var(--panel-border)] hidden md:block">
              <div className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-white/5 flex items-center justify-center gap-3">
                 <MusicNoteIcon className="w-5 h-5 text-slate-500" />
-                <div className="text-left"><p className="text-[10px] uppercase font-bold text-slate-500">{t.platform || 'Streaming'}</p><p className="text-xs font-black text-slate-400">AU RadioChat</p></div>
+                <div className="text-left"><p className="text-[10px] uppercase font-bold text-slate-500">{t.platform || 'Streaming'}</p><p className="text-xs font-black text-slate-400">AU Radio</p></div>
              </div>
         </div>
       </aside>
@@ -1492,7 +1492,7 @@ export default function App(): React.JSX.Element {
                 <Route path="/favorites" element={
                     <>
                         <Helmet>
-                            <title>My Favorite Radio Stations – AU RadioChat</title>
+                            <title>My Favorite Radio Stations – AU Radio</title>
                             <meta name="description" content="Access your personally curated list of global radio stations. Your favorite jazz, rock Park, and electronic streams in one place." />
                         </Helmet>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 pb-32">

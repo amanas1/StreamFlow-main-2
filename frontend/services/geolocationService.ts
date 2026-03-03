@@ -118,7 +118,7 @@ class GeolocationService {
       
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'AU RadioChat/1.0' // Required by Nominatim
+          'User-Agent': 'AU Radio/1.0' // Required by Nominatim
         }
       });
       

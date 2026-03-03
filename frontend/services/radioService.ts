@@ -60,7 +60,7 @@ const fetchAcrossMirrorsFast = async (path: string, urlParams: string): Promise<
                 signal: controller.signal,
                 headers: { 
                     'Accept': 'application/json',
-                    'User-Agent': 'AU-RadioChat-App/1.1 (https://auradiochat.com)'
+                    'User-Agent': 'AU-Radio-App/1.1 (https://auradiochat.com)'
                 }
             });
             

@@ -1,4 +1,4 @@
-// Minimal Service Worker for AU RadioChat PWA
+// Minimal Service Worker for AU Radio PWA
 const CACHE_NAME = 'auradiochat-cache-v1';
 
 self.addEventListener('install', (event) => {

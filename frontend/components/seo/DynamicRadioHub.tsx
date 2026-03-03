@@ -161,7 +161,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
     return (
         <div className="min-h-screen pb-32 pt-10 px-4 md:px-10 animate-in fade-in duration-700">
             <Helmet>
-                <title>{localizedData.title} | AU RadioChat</title>
+                <title>{localizedData.title} | AU Radio</title>
                 <meta name="description" content={localizedData.desc} />
                 <link rel="canonical" href={canonicalUrl} />
             </Helmet>
@@ -222,9 +222,9 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                 <h2>{localizedData.title}</h2>
                 <p>
                     {activeLanguage === 'ru' ? (
-                        `Добро пожаловать в раздел ${displayGenre} радио${displayCountry ? ` в ${displayCountry}` : ''}. Здесь вы найдете лучшие онлайн-трансляции, доступные в высоком качестве без регистрации. Наслаждайтесь любимой музыкой в прямом эфире на AU RadioChat.`
+                        `Добро пожаловать в раздел ${displayGenre} радио${displayCountry ? ` в ${displayCountry}` : ''}. Здесь вы найдете лучшие онлайн-трансляции, доступные в высоком качестве без регистрации. Наслаждайтесь любимой музыкой в прямом эфире на AU Radio.`
                     ) : (
-                        `Welcome to the ${displayGenre} radio section ${displayCountry ? `in ${displayCountry}` : ''}. Here you will find the best online broadcasts available in high quality without registration. Enjoy your favorite music live on AU RadioChat.`
+                        `Welcome to the ${displayGenre} radio section ${displayCountry ? `in ${displayCountry}` : ''}. Here you will find the best online broadcasts available in high quality without registration. Enjoy your favorite music live on AU Radio.`
                     )}
                 </p>
             </article>

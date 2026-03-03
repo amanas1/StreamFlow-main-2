@@ -1,48 +1,23 @@
-# AU RadioChat - Global Radio Engine
+# AU Radio
 
-AU RadioChat is a modern web application that combines global radio streaming with an encrypted private chat engine.
-
-## Project Structure
-
-- `/components`: Frontend React components.
-- `/services`: Frontend logic and socket handlers.
-- `/server`: Node.js backend with Socket.io and Moderation logic.
-- `/public`: Static assets.
-
-## Quick Start.
-
-### 1. Frontend Setup
-From the root directory:
-```bash
-npm install
-npm run dev
-```
-
-### 2. Backend Setup
-From the root directory:
-```bash
-cd server
-npm install
-npm start
-```
+AU Radio is a premium global online radio streaming platform.
 
 ## Features
-- **Global Radio**: Stream stations from around the world.
-- **E2EE Chat**: Private end-to-end encrypted messaging.
-- **Moderation**: Intelligent rate-limiting and content filtering.
-- **Persistence**: Moderation logs and bans persist through restarts.
 
-## Moderation Admin API
-- `GET /api/moderation/violations`: View violation logs.
-- `GET /api/moderation/bans`: View active bans.
-- `POST /api/moderation/ban`: Manually ban a user.
+- High-quality global radio streaming.
+- Ambient sound mixing (rain, fire, city sounds).
+- Sleep timer and Alarm clock.
+- Visualizers and interactive UI.
+- No registration required.
 
----
+## Tech Stack
 
-## 🤖 For AI Agents
-This repository is configured for automated development by AI models.
-- **Automation Keys**: Personal tokens for Vercel, GitHub, and Railway are stored in `.env.local` (Gitignored).
-- **Deployment**: Use `npx vercel --prod --yes` for production deployments.
-- **Git Hooks**: For AI agents, use the `GITHUB_TOKEN` from `.env.local` if SSH/standard auth fails.
+- **Frontend**: React, Vite, Framer Motion, Vanilla CSS.
+- **Backend**: Node.js, Express (Geolocation API).
+- **Deployment**: Vercel.
 
-Developed with Advanced Agentic Coding @ Google DeepMind.
+## Scripts
+
+- `npm run dev`: Start development server.
+- `npm run build`: Build for production.
+- `npm run preview`: Preview production build.

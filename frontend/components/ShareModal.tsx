@@ -22,7 +22,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
     const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auradiochat.app';
-    const shareText = "AU RadioChat - Listen to the world's music with visual magic! 🎵✨";
+    const shareText = "AU Radio - Listen to the world's music with visual magic! 🎵✨";
 
     const handleCopy = () => {
         navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
