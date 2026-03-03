@@ -155,6 +155,8 @@ export interface ChatMessage {
   text?: string;
   image?: string;
   audioBase64?: string;
+  messageType?: 'text' | 'audio' | 'sticker' | 'image';
+  flagged?: boolean;
   timestamp: number;
   read: boolean;
   isSystem?: boolean;
