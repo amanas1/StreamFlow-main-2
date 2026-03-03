@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-import { AuthProvider } from '../auth';
 
 import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, useLocation } from 'react-router-dom';
@@ -27,9 +26,7 @@ root.render(
     <HelmetProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ScrollToTop />
-        <AuthProvider>
           <App />
-        </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
   </React.StrictMode>
