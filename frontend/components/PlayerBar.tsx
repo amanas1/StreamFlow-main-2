@@ -54,10 +54,10 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 }) => {
     return (
         <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
-            <div className={`pointer-events-auto w-full md:w-full md:max-w-[1440px] mx-auto rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6 flex flex-col md:flex-row items-center shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
+            <div className={`pointer-events-auto w-full md:w-full md:max-w-[1440px] mx-auto rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6 flex flex-col md:flex-row items-center shadow-2xl transition-all duration-500 ${uiMode === 'modern' ? 'bg-black/40 backdrop-blur-2xl border border-white/10' : 'bg-[var(--player-bar-bg)] border-2 border-[var(--panel-border)]'}`}>
                 
                 {/* ROW 1: STATION INFO (Mobile Only) */}
-                <div className="flex md:hidden items-center gap-3 mb-2 relative z-10 w-full pr-16 bg-black/20 p-1.5 rounded-xl border border-white/5 backdrop-blur-sm">
+                <div className="flex md:hidden items-center gap-3 mb-2 relative z-10 w-full pr-16 bg-black/20 p-1.5 rounded-xl border border-white/5 backdrop-blur-md">
                     <div className="w-14 h-14 shrink-0 relative transition-transform active:scale-95 group cursor-pointer" onClick={() => setSidebarOpen(true)}>
                         <div className="w-full h-full flex items-center justify-center relative z-10">
                             <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-full h-full" visualMode={visualMode} />
