@@ -36,6 +36,14 @@ export type VisualizerVariant = 'segmented' | 'rainbow-lines' | 'galaxy' | 'mixe
 
 export type VisualMode = 'high' | 'medium' | 'low';
 export type UIMode = 'classic' | 'modern';
+export type ParticleVariant = 'stars' | 'bubbles' | 'dust' | 'neon-rain';
+
+export interface ParticleSettings {
+  variant: ParticleVariant;
+  amount: number; // 50 to 300
+  speed: number;  // 0.5 to 2.0
+  colorSync: boolean; // Sync with theme primary/secondary
+}
 
 export interface VisualizerSettings {
   scaleX: number;

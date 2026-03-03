@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings, UIMode } from '../types';
+import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings, UIMode, ParticleSettings } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, GLOBAL_PRESETS } from '../types/constants';
 import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioService';
 const generateUUID = () => Math.random().toString(36).substring(2, 11);
@@ -327,6 +327,20 @@ export default function App(): React.JSX.Element {
     if (typeof window !== 'undefined' && window.innerWidth < 768) return 'stage-dancer';
     return 'rainbow-lines';
   });
+
+  const DEFAULT_PARTICLE_SETTINGS: ParticleSettings = { variant: 'stars', amount: 120, speed: 1.0, colorSync: true };
+  const [particleSettings, setParticleSettings] = useState<ParticleSettings>(() => {
+      if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('auradiochat_particle_settings');
+          if (saved) return JSON.parse(saved);
+      }
+      return DEFAULT_PARTICLE_SETTINGS;
+  });
+
+  useEffect(() => {
+      localStorage.setItem('auradiochat_particle_settings', JSON.stringify(particleSettings));
+  }, [particleSettings]);
+
   const [vizSettingsMap, setVizSettingsMap] = useState<Record<string, VisualizerSettings>>(() => {
     const defaultSettings: Record<string, VisualizerSettings> = {};
     VISUALIZERS_LIST.forEach(v => {
@@ -1416,6 +1430,8 @@ export default function App(): React.JSX.Element {
                         favorites={favorites}
                         onToggleFavorite={toggleFavorite}
                         uiMode={uiMode}
+                        particleSettings={particleSettings}
+                        setParticleSettings={setParticleSettings}
                     />
                 } />
             </Routes>
