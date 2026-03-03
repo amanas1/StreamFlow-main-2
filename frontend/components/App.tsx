@@ -5,8 +5,6 @@ import { Helmet } from 'react-helmet-async';
 import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, GLOBAL_PRESETS } from '../types/constants';
 import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioService';
-import socketService from '../services/socketService';
-import { UserProfile } from './chat/types';
 const generateUUID = () => Math.random().toString(36).substring(2, 11);
 import { audioEngine } from '../services/AudioEngine';
 import AudioVisualizer from './AudioVisualizer';
@@ -22,7 +20,6 @@ import {
 } from './Icons';
 
 const ToolsPanel = React.lazy(() => import('./ToolsPanel'));
-const ChatPanel = React.lazy(() => import('./chat/ChatPlatformV2'));
 const ManualModal = React.lazy(() => import('./ManualModal'));
 const FeedbackModal = React.lazy(() => import('./FeedbackModal'));
 const ShareModal = React.lazy(() => import('./ShareModal'));
@@ -345,7 +342,6 @@ export default function App(): React.JSX.Element {
 
   // UI State
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -496,9 +492,6 @@ export default function App(): React.JSX.Element {
 
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [fxSettings, setFxSettings] = useState<FxSettings>({ reverb: 0, speed: 1.0 });
-  const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
-  const [countryStats, setCountryStats] = useState<Record<string, number>>({});
-  const [pendingKnocksCount, setPendingKnocksCount] = useState(0);
   const [isAuthorized, setIsAuthorized] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   
@@ -524,54 +517,13 @@ export default function App(): React.JSX.Element {
   const isSafeMode = useMemo(() => isMobile && !isAppVisible, [isMobile, isAppVisible]);
   const [isBackgroundOptimized, setIsBackgroundOptimized] = useState(true);
 
-  // User Profile
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('auradiochat_user_profile');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Ensure new fields exist
-        if (!parsed.chatSettings.bannerNotificationsEnabled) {
-            parsed.chatSettings = { 
-                ...parsed.chatSettings, 
-                bannerNotificationsEnabled: false,
-                voiceNotificationsEnabled: false,
-                notificationVoice: 'female'
-            };
-        }
-        return parsed;
-      } catch (e) {
-        console.error('Failed to parse saved user profile', e);
-      }
-    }
-    
-    // Create new UUID-based guest profile
-    return {
-      id: `u-${generateUUID()}`,
-      avatar: '👤',
-      name: 'Аноним',
-      gender: 'any',
-      age: 25,
-      status: 'chat',
-      country: 'Global',
-      nativeLanguage: 'Russian',
-      communicationLanguage: 'Russian',
-      interests: [],
-      lastActiveAt: Date.now(),
-      blockedUsers: [],
-      hasAgreedToRules: false,
-      safetyLevel: 'green',
-      bio: '',
-      filters: { minAge: 18, maxAge: 99, countries: [], languages: [], genders: ['any'], soundEnabled: true },
-      chatSettings: { 
-          notificationsEnabled: true, 
-          notificationVolume: 0.8, 
-          notificationSound: 'default',
-          bannerNotificationsEnabled: true,
-          voiceNotificationsEnabled: false,
-          notificationVoice: 'female'
-      }
-    };
+  // User ID (for stats/etc)
+  const [currentUserId] = useState(() => {
+    const saved = localStorage.getItem('auradiochat_user_id');
+    if (saved) return saved;
+    const newId = `u-${generateUUID()}`;
+    localStorage.setItem('auradiochat_user_id', newId);
+    return newId;
   });
 
   const [ambience, setAmbience] = useState<AmbienceState>({ 
@@ -609,10 +561,6 @@ export default function App(): React.JSX.Element {
 
   const t = TRANSLATIONS[language];
 
-  useEffect(() => {
-    // Connect socket regardless of auth for presence/bridge sessions
-    socketService.connect();
-  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -1117,10 +1065,6 @@ export default function App(): React.JSX.Element {
     localStorage.setItem('auradiochat_random_mode', isRandomMode.toString());
   }, [isRandomMode]);
 
-  // Persistent User Profile protection
-  useEffect(() => {
-    localStorage.setItem('auradiochat_user_profile', JSON.stringify(currentUser));
-  }, [currentUser]);
   
   const dedupeStations = (data: RadioStation[]) => {
     // Service already dedupes aggressively, this is just a safety pass for UUID-based fetches
@@ -1230,54 +1174,10 @@ export default function App(): React.JSX.Element {
         Object.keys(handlers).forEach(action => {
             try { navigator.mediaSession.setActionHandler(action as MediaSessionAction, null); } catch(e){}
         });
-        socketService.disconnect();
         audioEngine.suspend();
     };
   }, []); // Only once
 
-  const lastStatsUpdate = useRef(0);
-  const lastPresenceUpdate = useRef(0);
-
-  useEffect(() => {
-    // 1. Online Stats (Throttled 2s)
-    const unsubStats = socketService.on('users:online_count', (stats: any) => {
-        const now = Date.now();
-        if (now - lastStatsUpdate.current < 2000) return;
-        lastStatsUpdate.current = now;
-        if (isMountedRef.current) setOnlineStats(stats);
-    });
-
-    // 2. Presence List (Throttled 5s, optimized mapping)
-    const unsubPresence = socketService.on('users:presence_list', (users: any[]) => {
-         const now = Date.now();
-         if (now - lastPresenceUpdate.current < 5000) return;
-         lastPresenceUpdate.current = now;
-
-         const stats: Record<string, number> = {};
-         for (const u of users) {
-             const c = u.detectedCountry || u.country || 'Global';
-             stats[c] = (stats[c] || 0) + 1;
-         }
-         if (isMountedRef.current) setCountryStats(stats);
-         
-         if (currentUser.id) {
-             const myUserParams = users.find(u => u.id === currentUser.id);
-             if (myUserParams && (bestCountry(myUserParams) !== 'Unknown')) {
-                 const country = bestCountry(myUserParams);
-                 if (country && (!detectedLocation || detectedLocation.country === 'Unknown')) {
-                     setDetectedLocation({ country, city: 'Unknown', countryCode: 'Unknown' });
-                 }
-             }
-         }
-    });
-
-    const bestCountry = (u: any) => u.detectedCountry || u.country;
-
-    return () => {
-      unsubStats();
-      unsubPresence();
-    };
-  }, [currentUser.id, detectedLocation]);
 
   const loadCategory = useCallback(async (category: CategoryInfo | null, mode: ViewMode, autoPlay: boolean = false, isModeSwitch: boolean = false) => { 
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -1397,12 +1297,6 @@ export default function App(): React.JSX.Element {
     </>
   );
 
-  // Ensure lights are turned off when chat is closed
-  useEffect(() => {
-    if (!chatOpen) {
-      setIsGlobalLightsOn(false);
-    }
-  }, [chatOpen]);
 
   return (
     <ErrorBoundary>
@@ -1501,9 +1395,9 @@ export default function App(): React.JSX.Element {
       <motion.main 
         className={`flex-1 flex flex-col min-w-0 relative ${sidebarOpen ? 'md:ml-72' : 'ml-0'} transition-[margin] duration-500`}
         animate={{ 
-            scale: chatOpen ? 0.98 : 1, 
-            filter: chatOpen ? 'brightness(0.6) blur(2px)' : 'brightness(1) blur(0px)',
-            borderRadius: chatOpen ? '24px' : '0px'
+            scale: 1, 
+            filter: 'brightness(1) blur(0px)',
+            borderRadius: '0px'
         }}
         transition={{ duration: 0.28, ease: [0.25, 0.8, 0.25, 1] }}
         style={{ transformOrigin: 'center center' }}
@@ -1522,7 +1416,7 @@ export default function App(): React.JSX.Element {
             <div className="flex md:hidden items-center gap-1.5 px-2.5 py-1.5 bg-white/5 rounded-full border border-white/10 backdrop-blur-sm ml-1">
                 <span className="text-xs animate-spin-slow">🌍</span>
                 <span className="text-[11px] font-black text-primary tracking-tighter">
-                    {onlineStats.totalOnline || 1}
+                    1
                 </span>
             </div>
 
@@ -1537,10 +1431,10 @@ export default function App(): React.JSX.Element {
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.05em] flex items-center gap-2">
                         {language === 'ru' ? 'СЕЙЧАС СЛУШАЕТ' : 'LISTENING NOW'}
-                        <span className="text-sm">{getCountryFlag(detectedLocation?.countryCode || Object.keys(countryStats)[0] || 'KZ')}</span>
-                        <span className="text-primary">*{ (detectedLocation?.country || getCountryName(Object.keys(countryStats)[0] || 'KZ', language)).toUpperCase() }*</span>
+                        <span className="text-sm">{getCountryFlag(detectedLocation?.countryCode || 'KZ')}</span>
+                        <span className="text-primary">*{ (detectedLocation?.country || getCountryName('KZ', language)).toUpperCase() }*</span>
                         <span className="text-white/10">-</span> 
-                        {language === 'ru' ? 'ОНЛАЙН' : 'ONLINE'} {onlineStats.totalOnline || 1}
+                        {language === 'ru' ? 'ОНЛАЙН' : 'ONLINE'} 1
                     </span>
                 </div>
             </div>
@@ -1585,25 +1479,6 @@ export default function App(): React.JSX.Element {
                 title={t.feedback}
             >
                 <EnvelopeIcon className="w-6 h-6" />
-            </button>
-
-            {!chatOpen && (
-                <div className="flex items-center gap-1 animate-pulse -mr-1 md:mr-0 z-40 pointer-events-none">
-                    <span className="text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest whitespace-nowrap">Super-chat</span>
-                    <div className="text-primary text-xs">→</div> 
-                </div>
-            )}
-            <button 
-                onClick={() => setChatOpen(!chatOpen)} 
-                aria-label="Toggle Chat"
-                className="p-2 rounded-full relative text-primary hover:scale-110 transition-transform shrink-0 z-50"
-            >
-                <ChatBubbleIcon className="w-6 h-6" />
-                {pendingKnocksCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#1e293b] animate-pulse">
-                        {pendingKnocksCount}
-                    </span>
-                )}
             </button>
           </div>
         </header>
@@ -1668,7 +1543,7 @@ export default function App(): React.JSX.Element {
 
         {/* Idle View Removed */}
 
-        <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${chatOpen ? 'md:pr-[420px] lg:pr-[470px]' : ''} ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
+        <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
             <div className={`pointer-events-auto w-full md:w-full md:max-w-[1440px] mx-auto rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6 flex flex-col md:flex-row items-center shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
                
                 {/* ROW 1: STATION INFO (Mobile Only - Logo Restored with Avatar Fallback) */}
@@ -1924,7 +1799,7 @@ export default function App(): React.JSX.Element {
               randomMode={isRandomMode} setRandomMode={setIsRandomMode}
               onStartTutorial={() => { setToolsOpen(false); }} 
               onOpenManual={() => { setToolsOpen(false); setManualOpen(true); }} 
-              onOpenProfile={() => { setToolsOpen(false); setChatOpen(true); }} 
+              onOpenProfile={() => { setToolsOpen(false); /* Chat removed */ }} 
                 ambience={ambience} 
                 setAmbience={setAmbience} 
                 passport={passport} 
@@ -1942,29 +1817,9 @@ export default function App(): React.JSX.Element {
             />
         </Suspense>
         <Suspense fallback={null}><ManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} language={language} onShowFeature={handleShowFeature} /></Suspense>
-        <Suspense fallback={null}><FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} language={language} currentUserId={currentUser.id} /></Suspense>
+        <Suspense fallback={null}><FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} language={language} currentUserId={currentUserId} /></Suspense>
 
       </motion.main>
-      <Suspense fallback={null}>
-        <AnimatePresence mode="wait">
-            {chatOpen && (
-                <ChatPanel 
-                    currentUserOverride={currentUser}
-                    onExit={() => setChatOpen(false)}
-                    language={language}
-                    radioPlaying={isPlaying}
-                    radioStationName={currentStation?.name || ''}
-                    onTogglePlay={togglePlay}
-                    onNextStation={handleNextStation}
-                    onPrevStation={handlePreviousStation}
-                    isRandomMode={isRandomMode}
-                    onToggleRandom={() => setIsRandomMode(!isRandomMode)}
-                    isFavorite={!!(currentStation && favorites.includes(currentStation.stationuuid))}
-                    onToggleFavorite={() => { if (currentStation) toggleFavorite(currentStation.stationuuid); }}
-                />
-            )}
-        </AnimatePresence>
-      </Suspense>
 
       <Suspense fallback={null}>
         <ShareModal 
