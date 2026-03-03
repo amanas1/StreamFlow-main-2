@@ -6,4 +6,7 @@
   <sitemap>
     <loc>https://auradiochat.com/sitemap-combos.xml</loc>
   </sitemap>
+  <sitemap>
+    <loc>https://auradiochat.com/sitemap-stations.xml</loc>
+  </sitemap>
 </sitemapindex>

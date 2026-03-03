@@ -28,18 +28,6 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         content: "Это сердце приложения. Вам доступны тысячи станций. Используйте 'AI Optimize' (звездочка ✨), чтобы мгновенно отсеять неработающие или низкокачественные потоки. Станции, которые не загружаются за 3 секунды, удаляются автоматически — мы ценим ваше время." 
     },
     { 
-        id: 'voice',
-        icon: <span className="text-2xl">👄</span>, 
-        title: "Живая Озвучка (Live Voice)",
-        content: "Эксклюзивная фича для чата! Включите иконку рта в чате, и сообщения собеседника будут зачитываться в реальном времени. Система сама понимает русский или английский язык и выбирает подходящий голос. Идеально для использования за рулем или во время работы." 
-    },
-    { 
-        id: 'chat',
-        icon: <UsersIcon className="w-6 h-6 text-purple-500" />, 
-        title: "Приватный Чат (E2EE)",
-        content: "Безопасное общение. Все сообщения шифруются (E2EE) и удаляются через 60 секунд (текст) или 30 секунд (фото/аудио). Используйте 'Барабан открытий', чтобы найти случайного друга по интересам. Помните: вежливость — залог долгого общения." 
-    },
-    { 
         id: 'audio',
         icon: <AdjustmentsIcon className="w-6 h-6 text-emerald-500" />, 
         title: "Управление и Bluetooth", 
@@ -67,7 +55,7 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         id: 'safety',
         icon: <LifeBuoyIcon className="w-6 h-6 text-red-500" />, 
         title: "Советы и Правила", 
-        content: "1. Не спамьте в чате — система модерации работает автоматически. 2. Если станция заикается, проверьте интернет — мы уже отфильтровали плохие ссылки. 3. Добавляйте лучшее в Избранное (сердечко), чтобы не потерять." 
+        content: "1. Если станция заикается, проверьте интернет — мы уже отфильтровали плохие ссылки. 2. Добавляйте лучшее в Избранное (сердечко), чтобы не потерять." 
     },
   ] : [
     { 
@@ -75,18 +63,6 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         icon: <MusicNoteIcon className="w-6 h-6 text-pink-500" />, 
         title: "Global Radio & AI",
         content: "Thousands of worldwide stations at your fingertips. Use 'AI Optimize' (✨) to filter out low-quality streams. Stations that don't load within 3 seconds are removed automatically for a smooth experience." 
-    },
-    { 
-        id: 'voice',
-        icon: <span className="text-2xl">👄</span>, 
-        title: "Live Voice Mode",
-        content: "A game-changer for chat! Enable the mouth icon to have incoming messages read aloud in real-time. The system auto-detects English or Russian and picks the best voice. Perfect for hands-free listening." 
-    },
-    { 
-        id: 'chat',
-        icon: <UsersIcon className="w-6 h-6 text-purple-500" />, 
-        title: "Private Chat (E2EE)",
-        content: "Secure and ephemeral. All messages are encrypted (E2EE) and auto-deleted: text in 60s, media in 30s. Use the 'Discovery Drum' to find random peers. Mutual consent is required for all interactions." 
     },
     { 
         id: 'audio',
@@ -116,7 +92,7 @@ const ManualModal: React.FC<ManualModalProps> = ({ isOpen, onClose, language, on
         id: 'safety',
         icon: <LifeBuoyIcon className="w-6 h-6 text-red-500" />, 
         title: "Tips & Rules", 
-        content: "1. No spamming — auto-moderation is active. 2. If a stream stutters, it might be your connection; we've already cleaned the bad links. 3. Heart your favorites to save them forever." 
+        content: "1. If a stream stutters, it might be your connection; we've already cleaned the bad links. 2. Heart your favorites to save them forever." 
     },
   ];
 

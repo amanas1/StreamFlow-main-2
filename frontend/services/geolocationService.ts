@@ -68,7 +68,7 @@ class GeolocationService {
         // STRICT PRODUCTION BACKEND URL
         const backendUrl = import.meta.env.VITE_API_URL;
         if (!backendUrl) {
-            console.error("🚨 CRITICAL: VITE_API_URL is missing in this environment!");
+            // console.debug("[GEO] VITE_API_URL missing, using local fallback");
             return { country: 'Unknown', city: 'Unknown', ip: 'Unknown' };
         }
         

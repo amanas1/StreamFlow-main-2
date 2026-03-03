@@ -3,17 +3,23 @@ export interface RadioStation {
   changeuuid: string;
   stationuuid: string;
   name: string;
+  slug: string; // New field for /station/{slug}
   url: string;
   url_resolved: string;
   homepage: string;
   favicon: string;
   tags: string;
+  genre: string; // Map from tags
+  subGenre?: string; // Optional sub-category
   country: string;
+  countryCode?: string;
   state: string;
   language: string;
   votes: number;
   codec: string;
   bitrate: number;
+  popularityScore: number; // For ranking
+  isFeatured?: boolean;
 }
 
 export interface CategoryInfo {
@@ -29,6 +35,7 @@ export type ViewMode = 'genres' | 'eras' | 'moods' | 'effects' | 'favorites';
 export type VisualizerVariant = 'segmented' | 'rainbow-lines' | 'galaxy' | 'mixed-rings' | 'bubbles' | 'stage-dancer' | 'trio-dancers' | 'viz-journey';
 
 export type VisualMode = 'high' | 'medium' | 'low';
+export type UIMode = 'classic' | 'modern';
 
 export interface VisualizerSettings {
   scaleX: number;

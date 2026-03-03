@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, Link, useLocation, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings } from '../types';
+import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings, UIMode } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, GLOBAL_PRESETS } from '../types/constants';
 import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioService';
 const generateUUID = () => Math.random().toString(36).substring(2, 11);
@@ -19,19 +19,19 @@ import {
   QuestionMarkCircleIcon, RocketIcon
 } from './Icons';
 
-const ToolsPanel = React.lazy(() => import('./ToolsPanel'));
-const ManualModal = React.lazy(() => import('./ManualModal'));
-const FeedbackModal = React.lazy(() => import('./FeedbackModal'));
-const ShareModal = React.lazy(() => import('./ShareModal'));
-import ErrorBoundary from './ErrorBoundary';
-
-// SEO Components
 import { SEOHead } from './seo/SEOHead';
 import SEOContent from './seo/SEOContent';
 import { AboutPage, PrivacyPage, ContactPage, GenresPage } from './seo/StaticPages';
 import { JazzRadioPage, RockRadioPage, ElectronicRadioPage, HipHopRadioPage } from './seo/GenrePages';
 import DynamicRadioHub from './seo/DynamicRadioHub';
 import { DirectoryPage } from './seo/DirectoryPage';
+
+// Modular Components
+import StationCard from './StationCard';
+import VolumeDrum from './VolumeDrum';
+import Sidebar from './Sidebar';
+import PlayerBar from './PlayerBar';
+import StationPage from './StationPage';
 
 const THEME_COLORS: Record<ThemeName, { primary: string; secondary: string }> = {
   default: { primary: '#bc6ff1', secondary: '#f038ff' },
@@ -93,10 +93,10 @@ const VISUALIZERS_LIST: { id: VisualizerVariant; labelKey: string; defaults?: Vi
     { id: 'viz-journey', labelKey: 'vizJourney' },
 ];
 
-const INITIAL_CHUNK = 5; 
-const TRICKLE_STEP = 5;
-const AUTO_TRICKLE_LIMIT = 15;
-const PAGE_SIZE = 10;
+const INITIAL_CHUNK = 48; 
+const PAGE_SIZE = 24;
+const TRICKLE_STEP = 12;
+const AUTO_TRICKLE_LIMIT = 48;
 
 // Replaced with more reliable direct MP3 links
 const AMBIENCE_URLS = {
@@ -107,45 +107,11 @@ const AMBIENCE_URLS = {
     vinyl: '/kamin.mp3'
 };
 
-const StationCard = React.memo(({ 
-  station, isSelected, isFavorite, onPlay, onToggleFavorite, index 
-}: { 
-  station: RadioStation; isSelected: boolean; isFavorite: boolean; 
-  onPlay: (s: RadioStation) => void; onToggleFavorite: (id: string) => void; index: number;
-}) => {
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
-  return (
-    <div 
-      onClick={() => onPlay(station)} 
-      role="button"
-      aria-label={`Play ${station.name}`}
-      className={`group relative rounded-[2rem] p-5 cursor-pointer transition-all border-2 animate-in fade-in slide-in-from-bottom-3 duration-500 bg-black/60 backdrop-blur-md border-[var(--panel-border)] hover:border-white/20 hover:bg-black/80`}
-      style={{ animationDelay: `${(index % 5) * 50}ms` }}
-    >
-      <div className="flex justify-between mb-4">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden bg-slate-800/50 relative shadow-inner">
-          {!imgLoaded && !imgError && <div className="absolute inset-0 skeleton-loader" />}
-          {station.favicon && !imgError ? (
-            <img src={station.favicon} alt={station.name} loading="lazy" onLoad={() => setImgLoaded(true)} onError={() => setImgError(true)} className={`w-full h-full object-cover transition-all duration-500 ${imgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'}`} />
-          ) : (
-            <MusicNoteIcon className="w-6 h-6 text-slate-600" />
-          )}
-        </div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(station.stationuuid); }} 
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-          className={`p-2 rounded-full transition-all active:scale-150 ${isFavorite ? 'text-secondary bg-secondary/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-        >
-          <HeartIcon className="w-5 h-5" filled={isFavorite} />
-        </button>
-      </div>
-      <h3 className={`font-bold truncate text-sm transition-colors ${isSelected ? 'text-primary' : 'text-[var(--text-base)] group-hover:text-primary'}`}>{station.name}</h3>
-      <p className="text-[9px] font-black text-slate-500 mt-1 uppercase tracking-widest truncate">{station.tags || 'Music'} • {station.bitrate || 128}K</p>
-    </div>
-  );
-});
+const ToolsPanel = React.lazy(() => import('./ToolsPanel'));
+const ManualModal = React.lazy(() => import('./ManualModal'));
+const FeedbackModal = React.lazy(() => import('./FeedbackModal'));
+const ShareModal = React.lazy(() => import('./ShareModal'));
+import ErrorBoundary from './ErrorBoundary';
 
 const COUNTRY_FLAGS: Record<string, string> = {
   'Kazakhstan': '🇰🇿', 'KZ': '🇰🇿',
@@ -196,96 +162,6 @@ function getCountryFlag(country: string): string {
  * VolumeDrum Component
  * A vertical cylindrical volume control with a graduation scale.
  */
-const VolumeDrum = React.memo(({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
-    const drumRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-
-    const handleInteraction = useCallback((e: any) => {
-        if (!drumRef.current) return;
-        const rect = drumRef.current.getBoundingClientRect();
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const pos = (rect.bottom - clientY) / rect.height;
-        const newValue = Math.max(0, Math.min(1, pos));
-        onChange(newValue);
-    }, [onChange]);
-
-    const onMouseDown = (e: React.MouseEvent) => {
-        setIsDragging(true);
-        handleInteraction(e);
-    };
-
-    const onTouchStart = (e: React.TouchEvent) => {
-        setIsDragging(true);
-        handleInteraction(e);
-    };
-
-    useEffect(() => {
-        if (!isDragging) return;
-        const onMove = (e: MouseEvent | TouchEvent) => {
-            handleInteraction(e);
-        };
-        const onEnd = () => setIsDragging(false);
-
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onEnd);
-        window.addEventListener('touchmove', onMove, { passive: false });
-        window.addEventListener('touchend', onEnd);
-        return () => {
-            window.removeEventListener('mousemove', onMove);
-            window.removeEventListener('mouseup', onEnd);
-            window.removeEventListener('touchmove', onMove);
-            window.removeEventListener('touchend', onEnd);
-        };
-    }, [isDragging, handleInteraction]);
-
-    return (
-        <div 
-            ref={drumRef}
-            onMouseDown={onMouseDown}
-            onTouchStart={onTouchStart}
-            className="relative w-8 h-20 bg-slate-900 rounded-lg border border-white/5 cursor-ns-resize overflow-hidden group shadow-[inset_0_2px_8px_rgba(0,0,0,0.8),0_4px_10px_rgba(0,0,0,0.3)] flex items-center justify-center select-none translate-z-0"
-            style={{ 
-                background: 'linear-gradient(90deg, #05080f 0%, #161c2c 35%, #2a354d 50%, #161c2c 65%, #05080f 100%)',
-            }}
-            title="Volume"
-        >
-            {/* Depth caps */}
-            <div className="absolute top-0 inset-x-0 h-1 bg-black/40 border-b border-white/5 z-20" />
-            <div className="absolute bottom-0 inset-x-0 h-1 bg-black/40 border-t border-white/5 z-20" />
-
-            {/* Scale Marks */}
-            <div className="absolute inset-0 flex flex-col justify-between py-2 px-1 pointer-events-none z-10">
-                {Array.from({ length: 11 }).map((_, i) => (
-                    <div key={i} className={`h-[1px] bg-white transition-opacity duration-300 ${i % 5 === 0 ? 'w-full opacity-30 shadow-[0_0_2px_rgba(255,255,255,0.4)]' : 'w-2/3 mx-auto opacity-10'}`} />
-                ))}
-            </div>
-
-            {/* Level Fill */}
-            <div 
-                className="absolute bottom-0 inset-x-0 bg-primary/10 transition-all duration-75 mix-blend-screen"
-                style={{ height: `${value * 100}%` }}
-            />
-
-            {/* Indicator */}
-            <div 
-                className="absolute left-0 right-0 h-0.5 bg-primary z-30 transition-all duration-75"
-                style={{ 
-                    bottom: `${value * 100}%`, 
-                    transform: 'translateY(50%)',
-                    boxShadow: '0 0 12px var(--color-primary), 0 0 4px white' 
-                }}
-            />
-
-            {/* Gloss */}
-            <div className="absolute inset-y-0 left-1/4 w-1.5 bg-white/5 blur-sm pointer-events-none" />
-            
-            {/* Value Label */}
-            <div className="absolute inset-x-0 top-1 text-center pointer-events-none z-40 opacity-0 group-hover:opacity-40 transition-opacity">
-                <span className="text-[6px] font-black text-white">{Math.round(value * 100)}</span>
-            </div>
-        </div>
-    );
-});
 
 export default function App(): React.JSX.Element {
   // Remove useAuth
@@ -423,6 +299,18 @@ export default function App(): React.JSX.Element {
     }
     return 'ru';
   });
+
+  const [uiMode, setUiMode] = useState<UIMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('auradiochat_ui_mode') as UIMode;
+      if (saved) return saved;
+    }
+    return 'classic';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('auradiochat_ui_mode', uiMode);
+  }, [uiMode]);
   const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('auradiochat_visualizer_variant') as VisualizerVariant;
@@ -1199,8 +1087,15 @@ export default function App(): React.JSX.Element {
         }
     }
     const rid = ++loadRequestIdRef.current;
-    setViewMode(mode); setSelectedCategory(category); setIsLoading(true); setVisibleCount(INITIAL_CHUNK); setStations([]);
+    
+    // Clear previous state for a fresh start
+    setViewMode(mode); 
+    setSelectedCategory(category); 
+    setIsLoading(true); 
+    setVisibleCount(INITIAL_CHUNK); 
+    setStations([]);
     setIsAiCurating(false); 
+    
     try {
       if (mode === 'favorites') {
         const savedFavs = localStorage.getItem('auradiochat_favorites');
@@ -1213,23 +1108,39 @@ export default function App(): React.JSX.Element {
             if (dedupedPrev.length > 0 && autoPlay) handlePlayStation(dedupedPrev[0]); 
         }
       } else if (category) {
-        const fastData = await fetchStationsByTag(category.id, 10);
-        const dedupedFast = dedupeStations(fastData);
-        if (rid === loadRequestIdRef.current && isMountedRef.current) { 
-            setStations(dedupedFast); 
-            setIsLoading(false); 
-            if (dedupedFast.length > 0 && autoPlay) handlePlayStation(dedupedFast[0]); 
-        }
-        let fetchLimit = (category.id === 'chinese' || category.id === 'vietnam' || category.id === 'oriental' || category.id === 'love' || category.id === 'slow') ? 250 : 120; 
-        fetchStationsByTag(category.id, fetchLimit).then(fullData => { 
-            const dedupedFull = dedupeStations(fullData);
-            if (rid === loadRequestIdRef.current && isMountedRef.current && dedupedFull.length > 0) setStations(dedupedFull); 
-        }).catch(() => {});
+        // Parallel fetch strategy
+        fetchStationsByTag(category.id, 300).then(data => { 
+            if (rid !== loadRequestIdRef.current || !isMountedRef.current) return;
+            
+            const deduped = dedupeStations(data);
+            setStations(deduped);
+            setIsLoading(false);
+            
+            if (deduped.length > 0 && autoPlay) {
+                handlePlayStation(deduped[0]);
+            }
+        }).catch(err => {
+            if (rid === loadRequestIdRef.current && isMountedRef.current) {
+                setIsLoading(false);
+            }
+        });
+        
+        // Timeout safety
+        setTimeout(() => {
+            if (rid === loadRequestIdRef.current && isMountedRef.current && isLoading) {
+                setIsLoading(false);
+            }
+        }, 8000);
       }
     } catch (e) { if (rid === loadRequestIdRef.current && isMountedRef.current) setIsLoading(false); }
   }, [handlePlayStation]);
 
-  useEffect(() => { loadCategory(GENRES[0], 'genres', false); }, [loadCategory]);
+  // Initial Load - Only once
+  useEffect(() => { 
+    const initialGenre = GENRES.find(g => g.id === 'hiphop') || GENRES[0];
+    loadCategory(initialGenre, 'genres', false); 
+  }, []); 
+
   
   useEffect(() => {
     if (!sidebarOpen && sidebarTimerRef.current) {
@@ -1303,7 +1214,6 @@ export default function App(): React.JSX.Element {
     <div className={`relative flex h-screen font-sans overflow-hidden bg-[var(--base-bg)] text-[var(--text-base)] transition-all duration-700`}>
       <SEOHead language={language} />
       <RainEffect intensity={ambience.rainVolume} />
-      <RainEffect intensity={ambience.rainVolume} />
       <FireEffect intensity={ambience.fireVolume} />
       {/* Global Dimming Overlay for "Stage Mode" */}
       <div className={`absolute inset-0 bg-black/80 z-[80] transition-opacity duration-1000 pointer-events-none ${isGlobalLightsOn ? 'opacity-100' : 'opacity-0'}`} />
@@ -1340,57 +1250,22 @@ export default function App(): React.JSX.Element {
 
       {(window.innerWidth < 1024 && sidebarOpen) && ( <div className="fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm lg:hidden animate-in fade-in duration-300" onClick={() => setSidebarOpen(false)} /> )}
 
-      <aside className={`fixed inset-y-0 left-0 z-[70] w-72 transform transition-all duration-500 glass-panel flex flex-col bg-[var(--panel-bg)] ${isIdleView ? '-translate-x-full opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center justify-between">
-           <div className="flex items-center gap-3">
-                <div className="flex flex-col">
-                    <Link to="/" className="hover:opacity-80 transition-opacity flex flex-col">
-                        <div className="text-2xl font-black tracking-tighter leading-none text-white">AU Radio</div>
-                        <div className="text-[10px] font-bold text-rose-500 tracking-widest uppercase mt-1">
-                            {t.tagline || 'Global Online Radio Streaming Player'}
-                        </div>
-                    </Link>
-                    <span className="text-[9px] font-semibold text-slate-400 tracking-wider mt-0.5 italic opacity-90">
-                        V1.1 • {t.platform || 'Global Streaming Platform'}
-                    </span>
-                </div>
-               <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-12 h-12" visualMode={visualMode} />
-           </div>
-           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-slate-400"><XMarkIcon className="w-6 h-6" /></button>
-        </div>
-        <div className="px-4 pb-4 space-y-2 animate-in slide-in-from-left duration-300">
-            <div className="flex bg-[var(--input-bg)] p-1.5 rounded-2xl border border-[var(--panel-border)] gap-1">
-                {(['genres', 'eras', 'moods', 'effects'] as const).map(m => (
-                    <button key={m} onClick={(e) => { e.stopPropagation(); loadCategory(m === 'genres' ? GENRES[0] : m === 'eras' ? ERAS[0] : m === 'moods' ? MOODS[0] : EFFECTS[0], m, true, true); }} className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${viewMode === m ? 'bg-[var(--selected-item-bg)] text-[var(--text-base)]' : 'text-slate-400'}`}>{t[m]}</button>
-                ))}
-            </div>
-            <button onClick={(e) => { e.stopPropagation(); loadCategory(null, 'favorites', true, true); }} className={`w-full py-3 rounded-2xl text-xs font-black border transition-all ${viewMode === 'favorites' ? 'bg-secondary border-secondary text-white' : 'bg-[var(--input-bg)] text-slate-400'}`}>
-                <HeartIcon className="w-4 h-4 inline mr-2" filled={viewMode === 'favorites'} /> {t.favorites}
-            </button>
-        </div>
-        <div 
-          className="flex-1 overflow-y-auto px-4 pb-4 space-y-1 no-scrollbar"
-          onScroll={() => {
-              if (sidebarTimerRef.current) {
-                  clearTimeout(sidebarTimerRef.current);
-                  sidebarTimerRef.current = setTimeout(() => setSidebarOpen(false), 5000);
-              }
-          }}
-        >
-        {viewMode !== 'favorites' && (viewMode === 'genres' ? GENRES : viewMode === 'eras' ? ERAS : viewMode === 'moods' ? MOODS : EFFECTS).map((cat) => (
-            <button key={cat.id} onClick={(e) => { e.stopPropagation(); loadCategory(cat, viewMode, true); }} className={`w-full text-left px-4 py-3.5 rounded-2xl transition-all ${selectedCategory?.id === cat.id ? 'bg-[var(--selected-item-bg)] font-black' : 'text-slate-400 hover:text-[var(--text-base)]'}`}>
-                {t[cat.id] || cat.name}
-            </button>
-        ))}
-        </div>
-        {/* Sidebar Footer - Restore PWA/Download for Desktop only */}
-        <div className="p-4 pt-2 border-t border-[var(--panel-border)] hidden md:block">
-             <div className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-white/5 flex items-center justify-center gap-3">
-                <MusicNoteIcon className="w-5 h-5 text-slate-500" />
-                <div className="text-left"><p className="text-[10px] uppercase font-bold text-slate-500">{t.platform || 'Streaming'}</p><p className="text-xs font-black text-slate-400">AU Radio</p></div>
-             </div>
-        </div>
-      </aside>
+      <Sidebar 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          isIdleView={isIdleView} 
+          language={language} 
+          t={t} 
+          isPlaying={isPlaying} 
+          isBuffering={isBuffering} 
+          visualMode={visualMode} 
+          viewMode={viewMode} 
+          selectedCategory={selectedCategory} 
+          loadCategory={loadCategory} 
+          sidebarTimerRef={sidebarTimerRef} 
+          uiMode={uiMode}
+          setUiMode={setUiMode}
+      />
 
       <motion.main 
         className={`flex-1 flex flex-col min-w-0 relative ${sidebarOpen ? 'md:ml-72' : 'ml-0'} transition-[margin] duration-500`}
@@ -1487,8 +1362,8 @@ export default function App(): React.JSX.Element {
             <Routes>
                 <Route path="/" element={renderHome()} />
                 <Route path="/:lang" element={<LanguageWrapper>{renderHome()}</LanguageWrapper>} />
-                <Route path="/radio/:slug" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} />} />
-                <Route path="/:lang/radio/:slug" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} />} />
+                <Route path="/radio/:slug" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/:lang/radio/:slug" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
                 <Route path="/favorites" element={
                     <>
                         <Helmet>
@@ -1519,6 +1394,17 @@ export default function App(): React.JSX.Element {
                 <Route path="/electronic-radio" element={<ElectronicRadioPage language={language} />} />
                 <Route path="/hip-hop-radio" element={<HipHopRadioPage language={language} />} />
                 <Route path="/directory" element={<DirectoryPage language={language} />} />
+                <Route path="/station/:slug" element={
+                    <StationPage 
+                        language={language} 
+                        onPlayStation={handlePlayStation} 
+                        currentStationId={currentStation?.stationuuid}
+                        isPlaying={isPlaying}
+                        favorites={favorites}
+                        onToggleFavorite={toggleFavorite}
+                        uiMode={uiMode}
+                    />
+                } />
             </Routes>
                 <footer className="w-full pb-64 pt-20 flex flex-col items-center justify-center gap-10 opacity-80 z-0 relative border-t border-white/5 mt-20">
                     <div className="flex flex-col items-center gap-6">
@@ -1543,239 +1429,41 @@ export default function App(): React.JSX.Element {
 
         {/* Idle View Removed */}
 
-        <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
-            <div className={`pointer-events-auto w-full md:w-full md:max-w-[1440px] mx-auto rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6 flex flex-col md:flex-row items-center shadow-2xl border-2 border-[var(--panel-border)] transition-all duration-500 bg-[var(--player-bar-bg)]`}>
-               
-                {/* ROW 1: STATION INFO (Mobile Only - Logo Restored with Avatar Fallback) */}
-                <div className="flex md:hidden items-center gap-3 mb-2 relative z-10 w-full pr-16 bg-black/20 p-1.5 rounded-xl border border-white/5 backdrop-blur-sm">
-                    {/* Mascot Container */}
-                    <div className="w-14 h-14 shrink-0 relative transition-transform active:scale-95 group cursor-pointer" onClick={() => setSidebarOpen(true)}>
-                         {/* Main Mascot Box */}
-                        <div className="w-full h-full flex items-center justify-center relative z-10">
-                            <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-full h-full" visualMode={visualMode} />
-                        </div>
-                    </div>
-                
-                    {/* Info - Left Aligned */}
-                    <div className="min-w-0 flex-1 flex flex-col justify-center">
-                            <div className="flex items-center">
-                                <h4 className="font-black text-sm leading-tight truncate text-slate-100 uppercase tracking-wider">
-                                    {selectedCategory 
-                                        ? (t[selectedCategory.id] || selectedCategory.name) 
-                                        : (currentStation?.tags?.[0] || (currentStation?.name ? 'Radio' : 'Stream'))}
-                                </h4>
-                                {/* Language Switcher - Mobile Player Bar - Bigger & Spaced */}
-                                <div className="flex items-center bg-white/10 rounded-md p-0.5 border border-white/5 ml-4">
-                                    <button 
-                                        onClick={() => setLanguage('en')} 
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-sm transition-all ${language === 'en' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}
-                                    >
-                                        EN
-                                    </button>
-                                    <button 
-                                        onClick={() => setLanguage('ru')} 
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-sm transition-all ${language === 'ru' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}
-                                    >
-                                        RU
-                                    </button>
-                                </div>
-                            </div>
-                            {isBuffering && <p className="text-[9px] text-primary font-black uppercase tracking-widest leading-tight mt-0.5">Buffering...</p>}
-                    </div>
-
-                    {/* Mobile Only: Top Right Tools */}
-                    <div className="flex md:hidden items-center gap-1 absolute right-1.5 top-1/2 -translate-y-1/2">
-                        <button 
-                             onClick={() => setShareOpen(true)}
-                             className="p-2 text-slate-400 hover:text-white transition-colors hover:bg-white/10 rounded-full"
-                        >
-                            <ShareIcon className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2 text-slate-400 hover:text-white transition-colors hover:bg-white/10 rounded-full`}>
-                            <AdjustmentsIcon className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* ROW 2 (Mobile Only): PRESETS SCROLLABLE */}
-                <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
-                    {/* Reset Button (Compact) */}
-                    <button
-                        onClick={() => handleApplyPreset('reset')}
-                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border flex items-center gap-1 ${
-                            activePresetId === 'reset'
-                            ? 'bg-slate-700 text-white border-slate-600' 
-                            : 'bg-white/5 text-slate-500 border-white/5 hover:bg-white/10'
-                        }`}
-                    >
-                        <XMarkIcon className="w-3 h-3" />
-                        <span>{t.reset || 'Reset'}</span>
-                    </button>
-                    {GLOBAL_PRESETS.filter(p => p.id !== 'reset').map(preset => (
-                        <button
-                            key={preset.id}
-                            onClick={() => handleApplyPreset(preset.id)}
-                            className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border ${
-                                activePresetId === preset.id 
-                                ? 'bg-primary text-black border-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]' 
-                                : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:border-white/10'
-                            }`}
-                        >
-                            {preset.name}
-                        </button>
-                    ))}
-                </div>
-
-                {/* ROW 2.5 (Mobile Only): VISUALIZERS SCROLLABLE */}
-                <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
-                    {VISUALIZERS_LIST.map(viz => (
-                        <button
-                            key={viz.id}
-                            onClick={() => setVisualizerVariant(viz.id)}
-                            className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border ${
-                                visualizerVariant === viz.id 
-                                ? 'bg-purple-500 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' 
-                                : 'bg-white/5 border-white/5 hover:bg-white/10'
-                            }`}
-                        >
-                            <span className={visualizerVariant === viz.id ? 'shimmering-text-active' : 'shimmering-text'}>
-                                {t[viz.labelKey] || viz.id}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-
-                {/* ROW 3: CONTROLS */}
-                <div className="flex items-center justify-between w-full md:w-auto md:gap-4 z-10 px-2 md:px-0 md:mx-4">
-                    
-                    {/* LEFT GROUP: Viz Only */}
-                    <div className="flex items-center gap-2 md:gap-6">
-                        {/* Viz Toggle */}
-                        <button 
-                            onClick={() => setToolsOpen(!toolsOpen)} 
-                            className="p-2 transition-all hover:scale-110 active:scale-95 group"
-                            title={t.visualizer}
-                        >
-                            <div className="w-5 h-5 flex gap-0.5 items-end justify-center">
-                                <div className="w-1 h-3 bg-gradient-to-t from-green-400 to-blue-500 rounded-full animate-[bounce_1s_infinite]"></div>
-                                <div className="w-1 h-5 bg-gradient-to-t from-purple-400 to-pink-500 rounded-full animate-[bounce_1.2s_infinite]"></div>
-                                <div className="w-1 h-2 bg-gradient-to-t from-yellow-400 to-red-500 rounded-full animate-[bounce_0.8s_infinite]"></div>
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* CENTER GROUP: Transport */}
-                    <div className="flex items-center gap-3 sm:gap-6">
-                        <button onClick={handlePreviousStation} className="p-2 text-slate-400 hover:text-white transition-colors"><PreviousIcon className="w-6 h-6" /></button>
-                        
-                        <button 
-                            ref={playButtonRef} 
-                            onClick={togglePlay} 
-                            className={`w-14 h-14 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center text-black shadow-xl hover:scale-105 transition-all mx-1 duration-75 relative overflow-hidden group ${isPlaying ? 'bg-white' : 'bg-white/90'}`}
-                        >
-                            {isBuffering || locationStatus === 'detecting' ? (
-                                <LoadingIcon className="animate-spin w-6 h-6 text-primary" />
-                            ) : isPlaying ? (
-                                <PauseIcon className="w-6 h-6" />
-                            ) : (
-                                <PlayIcon className="w-6 h-6 ml-1" />
-                            )}
-                            
-                            {/* Location Status Indicator */}
-                            {locationStatus === 'detecting' && (
-                                <div className="absolute top-1 right-2 text-[8px] animate-pulse">🛰️</div>
-                            )}
-                            {locationStatus === 'error' && (
-                                <div className="absolute top-1 right-2 text-[8px] text-red-500" title="Location detection failed - using fallback">⚠️</div>
-                            )}
-                        </button>
-                        
-                        <button onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className="w-6 h-6" /></button>
-                    </div>
-
-                    {/* RIGHT GROUP: Heart & Shuffle & More */}
-                    <div className="flex items-center gap-2 md:gap-4">
-                        {/* Favorite (Moved here) */}
-                        <button 
-                             onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.stationuuid); }}
-                             className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`}
-                             disabled={!currentStation}
-                        >
-                            <HeartIcon className={`w-6 h-6 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
-                        </button>
-
-                        <button 
-                            onClick={() => setIsRandomMode(!isRandomMode)} 
-                            className={`p-2 transition-all hover:scale-110 active:scale-95 ${isRandomMode ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`}
-                            title={t.randomMode}
-                        >
-                            <ShuffleIcon className="w-5 h-5" />
-                        </button>
-                        
-                        {/* Presets & Visualizers (Desktop Only) */}
-                        <div className="hidden 2xl:flex flex-col items-center gap-1">
-                            <div className="flex items-center gap-1.5 bg-black/20 p-1.5 rounded-xl border border-white/5">
-                                {GLOBAL_PRESETS.map(preset => (
-                                    <button
-                                        key={preset.id}
-                                        onClick={() => handleApplyPreset(preset.id)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
-                                            activePresetId === preset.id 
-                                            ? 'bg-primary text-black shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)] scale-105' 
-                                            : 'text-slate-500 hover:text-white hover:bg-white/10'
-                                        }`}
-                                    >
-                                        {preset.name}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-black/20 p-1.5 rounded-xl border border-white/5">
-                                {VISUALIZERS_LIST.map(viz => (
-                                    <button
-                                        key={viz.id}
-                                        onClick={() => setVisualizerVariant(viz.id)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
-                                            visualizerVariant === viz.id 
-                                            ? 'bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)] scale-105' 
-                                            : 'text-slate-500 hover:text-white hover:bg-white/10'
-                                        }`}
-                                    >
-                                        <span className={visualizerVariant === viz.id ? 'shimmering-text-active' : 'shimmering-text'}>
-                                            {t[viz.labelKey] || viz.id}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ROW 3: DESKTOP EXTRAS (Volume, etc) */}
-                <div className="hidden md:flex flex-1 justify-end items-center gap-2 md:gap-4 z-10 pr-6 md:pr-2">
-                    {/* Animated Smiley (Desktop Only, Shown when Sidebar is closed) */}
-                    {!sidebarOpen && (
-                        <div className="hidden md:block w-14 h-14 group cursor-pointer transition-all hover:scale-110 active:scale-95 mr-1" 
-                             onClick={() => setSidebarOpen(true)}
-                             title="Show Sidebar"
-                        >
-                            <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-full h-full" visualMode={visualMode} />
-                        </div>
-                    )}
-                    <button 
-                         onClick={() => setShareOpen(true)}
-                         className="p-2 text-slate-400 hover:text-primary transition-colors hover:scale-110"
-                         title="Share"
-                    >
-                        <ShareIcon className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2.5 text-[var(--text-base)] hover:text-primary transition-colors ${isIdleView ? 'hidden' : ''}`}><AdjustmentsIcon className="w-6 h-6" /></button>
-                    <div className="flex items-center gap-3 ml-2">
-                        <VolumeIcon className="w-5 h-5 text-slate-400" />
-                        <VolumeDrum value={volume} onChange={setVolume} />
-                    </div>
-                </div>
-           </div>
-        </div>
+        <PlayerBar 
+            isIdleView={isIdleView} 
+            sidebarOpen={sidebarOpen} 
+            setSidebarOpen={setSidebarOpen} 
+            isPlaying={isPlaying} 
+            isBuffering={isBuffering} 
+            visualMode={visualMode} 
+            visualizerVariant={visualizerVariant} 
+            setVisualizerVariant={setVisualizerVariant} 
+            selectedCategory={selectedCategory} 
+            currentStation={currentStation} 
+            language={language} 
+            setLanguage={setLanguage} 
+            t={t} 
+            toolsOpen={toolsOpen} 
+            setToolsOpen={setToolsOpen} 
+            shareOpen={shareOpen} 
+            setShareOpen={setShareOpen} 
+            activePresetId={activePresetId} 
+            handleApplyPreset={handleApplyPreset} 
+            VISUALIZERS_LIST={VISUALIZERS_LIST} 
+            handlePreviousStation={handlePreviousStation} 
+            handleNextStation={handleNextStation} 
+            togglePlay={togglePlay} 
+            playButtonRef={playButtonRef} 
+            locationStatus={locationStatus} 
+            favorites={favorites} 
+            toggleFavorite={toggleFavorite} 
+            isRandomMode={isRandomMode} 
+            setIsRandomMode={setIsRandomMode} 
+            volume={volume} 
+            setVolume={setVolume} 
+            uiMode={uiMode}
+            setUiMode={setUiMode}
+        />
 
         <Suspense fallback={null}>
             <ToolsPanel 

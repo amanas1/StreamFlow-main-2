@@ -122,9 +122,17 @@ export class AudioEngine {
   private rebuildGraph(audioElement: HTMLMediaElement): void {
     if (!this.ctx) return;
 
-    // Safety Disconnect
+    // Safety Disconnect - Fully clear previous graph
     if (this.source) {
-      try { this.source.disconnect(); } catch (e) { console.debug('[AudioEngine] Cleanup disconnect failed', e); }
+      try { 
+        this.source.disconnect(); 
+        this.analyser?.disconnect();
+        this.compressor?.disconnect();
+        this.limiter?.disconnect();
+        this.volumeGain?.disconnect();
+      } catch (e) { 
+        console.debug('[AudioEngine] Safe disconnect failed', e); 
+      }
     }
 
     // Re-use or Create nodes

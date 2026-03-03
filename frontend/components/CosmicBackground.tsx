@@ -23,6 +23,7 @@ const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ showMoon = true }) 
                 <img 
                     src="https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?q=80&w=500&auto=format&fit=crop" 
                     alt="Moon"
+                    loading="lazy"
                     className="w-full h-full object-cover rounded-full grayscale brightness-125 contrast-125"
                 />
                 {/* Inner Shadow for dimensionality */}

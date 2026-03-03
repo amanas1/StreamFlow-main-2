@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { GENRES, COUNTRIES_DATA, TRANSLATIONS } from '../../types/constants';
-import { RadioStation, Language } from '../../types';
+import { RadioStation, Language, UIMode } from '../../types';
 import { fetchStationsByTag, fetchStationsByCountry } from '../../services/radioService';
 import { HeartIcon } from '../../components/Icons';
 
@@ -13,15 +13,25 @@ interface DynamicHubProps {
     favorites: string[];
     toggleFavorite: (id: string) => void;
     language: Language;
+    uiMode: UIMode;
 }
 
-const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, currentStation, favorites, toggleFavorite, language }) => {
+const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, currentStation, favorites, toggleFavorite, language, uiMode }) => {
     const { lang: urlLang, slug } = useParams<{ lang?: string; slug?: string }>();
     const navigate = useNavigate();
     
     // Stations State
     const [stations, setStations] = React.useState<RadioStation[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [visibleCount, setVisibleCount] = React.useState(48);
+    const observerRef = React.useRef<HTMLDivElement>(null);
+    const loadRequestIdRef = React.useRef(0);
+    const isMountedRef = React.useRef(true);
+
+    React.useEffect(() => {
+        isMountedRef.current = true;
+        return () => { isMountedRef.current = false; };
+    }, []);
 
     // Normalize Language from URL or prop
     useEffect(() => {
@@ -66,54 +76,76 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
 
     // Fetch Data
     useEffect(() => {
+        const rid = ++loadRequestIdRef.current;
+        setIsLoading(true);
+        setVisibleCount(48);
+        setStations([]);
+
         const loadStations = async () => {
             if (!pageContext) return;
-            setIsLoading(true);
             try {
                 let fetched: RadioStation[] = [];
                 const apiCountryName = pageContext.country ? pageContext.country.name : '';
                 
                 if (pageContext.genre && pageContext.country) {
                     let searchTag = pageContext.genre.id;
-                    const byTag = await fetchStationsByTag(searchTag);
+                    const byTag = await fetchStationsByTag(searchTag, 300);
                     fetched = byTag.filter(s => {
                         const c = (s.country || '').toLowerCase();
                         const target1 = pageContext.country!.name.toLowerCase();
                         return c.includes(target1) || (target1 === 'usa' && c.includes('united states')) || (target1 === 'uk' && c.includes('united kingdom'));
                     });
 
-                    if (fetched.length < 5) {
-                        const byCountry = await fetchStationsByCountry(apiCountryName);
+                    if (fetched.length < 50) {
+                        const byCountry = await fetchStationsByCountry(apiCountryName, 300);
                         const genreId = pageContext.genre.id.toLowerCase();
                         const genreName = pageContext.genre.name.toLowerCase();
                         const extra = byCountry.filter(s => {
                             const tags = (s.tags || '').toLowerCase();
-                            return tags.includes(genreId) || tags.includes(genreName) || (genreId === 'world' && (tags.includes('folk') || tags.includes('ethnic')));
+                            return tags.includes(genreId) || tags.includes(genreName);
                         });
                         fetched = [...fetched, ...extra];
-                        if (fetched.length === 0) fetched = byCountry.slice(0, 10);
                     }
                 } else if (pageContext.genre) {
-                    fetched = await fetchStationsByTag(pageContext.genre.id);
-                    if (fetched.length === 0 && pageContext.genre.id === 'world') {
-                         const folk = await fetchStationsByTag('folk');
-                         const ethnic = await fetchStationsByTag('ethnic');
-                         fetched = [...folk.slice(0, 25), ...ethnic.slice(0, 25)];
-                    }
+                    fetched = await fetchStationsByTag(pageContext.genre.id, 300);
                 } else if (pageContext.country) {
-                    fetched = await fetchStationsByCountry(apiCountryName);
+                    fetched = await fetchStationsByCountry(apiCountryName, 300);
                 }
-
-                const unique = Array.from(new Map(fetched.map(item => [item.stationuuid, item])).values());
-                setStations(unique.slice(0, 48));
+                if (rid === loadRequestIdRef.current && isMountedRef.current) {
+                    setStations(fetched);
+                    setIsLoading(false);
+                }
             } catch (e) {
-                console.error("SEO Page Fetch Error", e);
-            } finally {
-                setIsLoading(false);
+                if (rid === loadRequestIdRef.current && isMountedRef.current) setIsLoading(false);
             }
         };
+
+        // Safety timeout to prevent stuck skeleton
+        const timeoutId = setTimeout(() => {
+            if (rid === loadRequestIdRef.current && isMountedRef.current && isLoading) {
+                setIsLoading(false);
+            }
+        }, 8000);
+
         loadStations();
+        return () => {
+            clearTimeout(timeoutId);
+        };
     }, [pageContext]);
+
+    // Infinite Scroll Implementation
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && stations.length > visibleCount) {
+                setVisibleCount(prev => prev + 24);
+            }
+        }, { threshold: 0.1 });
+
+        if (observerRef.current) observer.observe(observerRef.current);
+        return () => observer.disconnect();
+    }, [stations.length, visibleCount]);
+
+    const visibleStations = useMemo(() => stations.slice(0, visibleCount), [stations, visibleCount]);
 
     if (!pageContext) {
         return (
@@ -156,7 +188,28 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
         };
     }, [activeLanguage, displayGenre, displayCountry, pageContext]);
 
-    const canonicalUrl = `https://auradiochat.com/radio/${pageContext.originalSlug}`;
+    const canonicalUrl = `https://auradiochat.com/${activeLanguage}/radio/${pageContext.originalSlug}`;
+    const languages: Language[] = ['en', 'ru', 'es', 'fr', 'de', 'zh'];
+
+    const structuredData = useMemo(() => {
+        return {
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": localizedData.title,
+            "description": localizedData.desc,
+            "url": canonicalUrl,
+            "numberOfItems": stations.length,
+            "mainEntity": {
+                "@type": "ItemList",
+                "itemListElement": stations.slice(0, 10).map((s, idx) => ({
+                    "@type": "ListItem",
+                    "position": idx + 1,
+                    "url": `https://auradiochat.com/${activeLanguage}/station/${s.slug}`,
+                    "name": s.name
+                }))
+            }
+        };
+    }, [localizedData, canonicalUrl, stations, activeLanguage]);
 
     return (
         <div className="min-h-screen pb-32 pt-10 px-4 md:px-10 animate-in fade-in duration-700">
@@ -164,6 +217,35 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                 <title>{localizedData.title} | AU Radio</title>
                 <meta name="description" content={localizedData.desc} />
                 <link rel="canonical" href={canonicalUrl} />
+                
+                {/* hreflang Support */}
+                {languages.map(l => (
+                    <link 
+                        key={l} 
+                        rel="alternate" 
+                        hrefLang={l} 
+                        href={`https://auradiochat.com/${l}/radio/${pageContext.originalSlug}`} 
+                    />
+                ))}
+
+                {/* Open Graph / Facebook */}
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content={canonicalUrl} />
+                <meta property="og:title" content={`${localizedData.title} | AU Radio`} />
+                <meta property="og:description" content={localizedData.desc} />
+                <meta property="og:image" content={stations[0]?.favicon || "https://auradiochat.com/og-image.jpg"} />
+
+                {/* Twitter */}
+                <meta property="twitter:card" content="summary_large_image" />
+                <meta property="twitter:url" content={canonicalUrl} />
+                <meta property="twitter:title" content={`${localizedData.title} | AU Radio`} />
+                <meta property="twitter:description" content={localizedData.desc} />
+                <meta property="twitter:image" content={stations[0]?.favicon || "https://auradiochat.com/og-image.jpg"} />
+
+                {/* Structured Data */}
+                <script type="application/ld+json">
+                    {JSON.stringify(structuredData)}
+                </script>
             </Helmet>
 
             <nav className="text-xs text-slate-500 mb-8 uppercase tracking-widest flex items-center gap-2">
@@ -173,18 +255,20 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             </nav>
 
             <header className="mb-12">
-                <h1 className="text-4xl md:text-6xl font-black text-white mb-6 uppercase tracking-tighter italic">
+                <h1 className={`${uiMode === 'classic' ? 'text-3xl font-bold' : 'text-4xl md:text-6xl font-black italic tracking-tighter uppercase'} text-white mb-6`}>
                     {displayGenre} <span className="text-primary">{displayCountry || ''}</span>
                 </h1>
-                <p className="text-xl text-slate-400 max-w-3xl leading-relaxed">
-                    {localizedData.desc}
-                </p>
+                {uiMode === 'classic' && (
+                    <p className="text-xl text-slate-400 max-w-3xl leading-relaxed">
+                        {localizedData.desc}
+                    </p>
+                )}
             </header>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                  {isLoading ? Array.from({ length: 8 }).map((_, i) => (
                      <div key={i} className="aspect-[1.2] rounded-[2rem] skeleton-loader bg-white/5" />
-                 )) : stations.map((station) => (
+                 )) : visibleStations.map((station) => (
                     <div 
                         key={station.stationuuid}
                         onClick={() => onPlay(station)}
@@ -194,7 +278,13 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                         <div className="flex justify-between mb-4">
                             <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden">
                                 {station.favicon ? (
-                                    <img src={station.favicon} alt={station.name} className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+                                    <img 
+                                        src={station.favicon} 
+                                        alt={station.name} 
+                                        className="w-full h-full object-cover" 
+                                        loading="lazy"
+                                        onError={(e) => e.currentTarget.style.display = 'none'} 
+                                    />
                                 ) : (
                                     <span className="text-xs">📻</span>
                                 )}
@@ -207,10 +297,21 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                             </button>
                         </div>
                         <h3 className="font-bold text-white truncate">{station.name}</h3>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider mt-1">{station.country} • {station.bitrate || 128}k</p>
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mt-1">{station.country} • {station.bitrate || 128}k • {station.codec || 'MP3'}</p>
                     </div>
                  ))}
             </div>
+
+            {/* Load More Marker */}
+            {!isLoading && stations.length > visibleCount && (
+                <div ref={observerRef} className="h-20 flex items-center justify-center mt-8">
+                    <div className="animate-pulse flex space-x-1">
+                        <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
+                    </div>
+                </div>
+            )}
             
             {!isLoading && stations.length === 0 && (
                 <div className="py-20 text-center border-2 border-dashed border-white/10 rounded-[3rem]">
