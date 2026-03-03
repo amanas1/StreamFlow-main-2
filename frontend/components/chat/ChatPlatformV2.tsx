@@ -643,90 +643,9 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
                 ) : discoveryView === 'main' ? (
                   <div className="p-5 flex flex-col items-center flex-1 relative">
                     {/* Scene warm ambient light — smooth, no visible edges, covers whole panel */}
-                    {sceneActive && (
-                      <div className="absolute inset-0 pointer-events-none z-0" style={{
-                        background: `
-                          radial-gradient(ellipse 120% 70% at 50% 15%, rgba(255,200,120,0.25) 0%, rgba(255,180,80,0.1) 35%, transparent 65%),
-                          radial-gradient(ellipse 100% 60% at 50% 45%, rgba(255,170,80,0.18) 0%, rgba(255,140,50,0.06) 40%, transparent 70%),
-                          radial-gradient(ellipse 90% 50% at 50% 75%, rgba(255,160,70,0.14) 0%, rgba(255,130,40,0.04) 40%, transparent 65%),
-                          linear-gradient(180deg, rgba(255,180,80,0.04) 0%, rgba(255,160,60,0.1) 35%, rgba(255,150,50,0.08) 65%, rgba(255,130,40,0.03) 90%, transparent 100%)
-                        `
-                      }} />
-                    )}
+                    
 
-                    {/* Pendant Lamps — clickable */}
-                    <button onClick={() => setSceneActive(!sceneActive)} className="relative w-full flex flex-col items-center mt-2 mb-4 cursor-pointer z-10 group outline-none focus:outline-none">
-                      <div className="flex items-start justify-between w-full px-2">
-
-                        {/* Left Pendant Lamp */}
-                        <div className="flex flex-col items-center" style={{ transform: 'rotate(-15deg)' }}>
-                          <svg className="w-14 h-20" viewBox="0 0 56 80" fill="none">
-                            {/* Cord */}
-                            <line x1="28" y1="0" x2="28" y2="20" stroke={sceneActive ? '#92400e' : '#475569'} strokeWidth="2" />
-                            {/* Dome */}
-                            <path d="M14 20 Q14 12 28 12 Q42 12 42 20 Z" fill={sceneActive ? '#92400e' : '#334155'} />
-                            <ellipse cx="28" cy="20" rx="14" ry="4" fill={sceneActive ? '#78350f' : '#1e293b'} />
-                            {/* Bulb glow */}
-                            <ellipse cx="28" cy="22" rx="4" ry="3" fill={sceneActive ? '#fbbf24' : '#475569'} />
-                            {sceneActive && <ellipse cx="28" cy="24" rx="6" ry="4" fill="#fbbf24" opacity="0.15" />}
-                          </svg>
-                        </div>
-
-                        {/* Center — Classic Floor Lamp (торшер) */}
-                        <div className="flex flex-col items-center">
-                          <svg className="w-20 h-28" viewBox="0 0 80 112" fill="none">
-                            {/* Round base */}
-                            <ellipse cx="40" cy="108" rx="14" ry="3" fill={sceneActive ? '#92400e' : '#334155'} />
-                            <ellipse cx="40" cy="107" rx="10" ry="2" fill={sceneActive ? '#78350f' : '#1e293b'} />
-                            {/* Pole */}
-                            <rect x="38" y="30" width="4" height="78" rx="2" fill={sceneActive ? '#92400e' : '#475569'} />
-                            {/* Decorative band bottom */}
-                            <rect x="36" y="90" width="8" height="3" rx="1.5" fill={sceneActive ? '#b45309' : '#64748b'} />
-                            {/* Decorative band middle */}
-                            <rect x="37" y="55" width="6" height="2" rx="1" fill={sceneActive ? '#b45309' : '#64748b'} />
-                            {/* Decorative band top */}
-                            <rect x="37" y="32" width="6" height="2" rx="1" fill={sceneActive ? '#b45309' : '#64748b'} />
-                            {/* Shade — trapezoid (narrower top, wider bottom = bowl) */}
-                            <path d="M26 8 L54 8 L62 30 L18 30 Z" fill={sceneActive ? '#d4a574' : '#334155'} />
-                            {/* Shade inner glow */}
-                            <path d="M28 10 L52 10 L58 28 L22 28 Z" fill={sceneActive ? '#e8c89e' : '#475569'} opacity="0.3" />
-                            {/* Top rim */}
-                            <line x1="26" y1="8" x2="54" y2="8" stroke={sceneActive ? '#b45309' : '#475569'} strokeWidth="1.5" />
-                            {/* Bottom rim */}
-                            <line x1="18" y1="30" x2="62" y2="30" stroke={sceneActive ? '#b45309' : '#475569'} strokeWidth="1" />
-                            {/* Bulb glow under shade */}
-                            <ellipse cx="40" cy="30" rx="8" ry="3" fill={sceneActive ? '#fbbf24' : '#475569'} opacity={sceneActive ? 0.7 : 0.3} />
-                            {sceneActive && <ellipse cx="40" cy="28" rx="14" ry="5" fill="#fbbf24" opacity="0.15" />}
-
-                          </svg>
-                        </div>
-
-                        {/* Right Pendant Lamp */}
-                        <div className="flex flex-col items-center" style={{ transform: 'rotate(15deg)' }}>
-                          <svg className="w-14 h-20" viewBox="0 0 56 80" fill="none">
-                            {/* Cord */}
-                            <line x1="28" y1="0" x2="28" y2="20" stroke={sceneActive ? '#92400e' : '#475569'} strokeWidth="2" />
-                            {/* Dome */}
-                            <path d="M14 20 Q14 12 28 12 Q42 12 42 20 Z" fill={sceneActive ? '#92400e' : '#334155'} />
-                            <ellipse cx="28" cy="20" rx="14" ry="4" fill={sceneActive ? '#78350f' : '#1e293b'} />
-                            {/* Bulb glow */}
-                            <ellipse cx="28" cy="22" rx="4" ry="3" fill={sceneActive ? '#fbbf24' : '#475569'} />
-                            {sceneActive && <ellipse cx="28" cy="24" rx="6" ry="4" fill="#fbbf24" opacity="0.15" />}
-                          </svg>
-                        </div>
-
-                      </div>
-
-                      {/* Toggle label */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className={`text-[10px] uppercase tracking-widest font-semibold transition-colors ${sceneActive ? 'text-orange-400' : 'text-slate-500 group-hover:text-slate-400'}`}>
-                          Торшер
-                        </span>
-                        <div className={`w-8 h-[18px] rounded-full relative transition-colors ${sceneActive ? 'bg-orange-500/30' : 'bg-white/5'}`}>
-                          <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all ${sceneActive ? 'right-[2px] bg-orange-400' : 'left-[2px] bg-slate-600'}`} />
-                        </div>
-                      </div>
-                    </button>
+                    
 
                     {/* Online badge */}
                     <span className="text-[10px] text-emerald-400 font-bold px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 mb-4 flex items-center gap-1.5 z-10">
