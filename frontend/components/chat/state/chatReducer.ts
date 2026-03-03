@@ -27,6 +27,11 @@ export type ChatAction =
   | { type: 'KNOCK_ACCEPTED'; payload: SessionData }
   | { type: 'KNOCK_REJECTED'; payload: null }
   | { type: 'SESSION_CREATED'; payload: SessionData }
+  | { type: 'SET_ACTIVE_SESSION'; payload: SessionData }
+  | { type: 'CLOSE_SESSION'; payload: null }
+  | { type: 'ADD_PRIVATE_MESSAGE'; payload: ChatMessage }
+  | { type: 'REMOVE_PRIVATE_MESSAGE'; payload: string }
+  | { type: 'SET_ONLINE_USERS'; payload: UserProfile[] }
   | { type: 'SESSION_ENDED'; payload: null };
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
@@ -38,28 +43,33 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'SET_ROOM':
       return { ...state, activeRoomId: action.payload, mode: 'room', roomMessages: [] };
     case 'UPDATE_ONLINE_USERS':
+    case 'SET_ONLINE_USERS':
       return { ...state, onlineUsers: action.payload };
     case 'DISCOVERY_RESULTS_UPDATED':
       return { ...state, discoveryResults: action.payload };
     case 'ROOM_MESSAGE_RECEIVED':
       return { 
         ...state, 
-        roomMessages: [...state.roomMessages, action.payload].slice(-50) // Keep last 50 strictly
+        roomMessages: [...state.roomMessages, action.payload].slice(-50)
       };
     case 'PRIVATE_MESSAGE_RECEIVED':
+    case 'ADD_PRIVATE_MESSAGE':
       return { 
         ...state, 
-        privateMessages: [...state.privateMessages, action.payload].slice(-50)
+        privateMessages: [...state.privateMessages, action.payload].slice(-100)
       };
     case 'MESSAGE_EXPIRED':
       return action.payload.isPrivate 
         ? { ...state, privateMessages: state.privateMessages.filter(m => m.id !== action.payload.messageId) }
         : { ...state, roomMessages: state.roomMessages.filter(m => m.id !== action.payload.messageId) };
+    case 'REMOVE_PRIVATE_MESSAGE':
+      return { ...state, privateMessages: state.privateMessages.filter(m => m.id !== action.payload) };
     case 'USER_KNOCKED':
       return { ...state, incomingKnock: action.payload };
     case 'KNOCK_SENT':
       return { ...state, outgoingKnock: action.payload };
     case 'KNOCK_ACCEPTED':
+    case 'SET_ACTIVE_SESSION':
     case 'SESSION_CREATED':
       return { 
         ...state, 
@@ -71,6 +81,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       };
     case 'KNOCK_REJECTED':
       return { ...state, incomingKnock: null, outgoingKnock: null };
+    case 'CLOSE_SESSION':
     case 'SESSION_ENDED':
       return { ...state, activeSession: null, mode: 'discovery', privateMessages: [] };
     default:

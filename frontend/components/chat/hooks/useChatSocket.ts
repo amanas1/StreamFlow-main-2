@@ -162,33 +162,86 @@ export function useChatSocket(
     dispatch({ type: 'KNOCK_REJECTED', payload: null });
   }, [dispatch]);
 
+  const startMatch = useCallback(() => {
+    socketService.emit('match:start', {});
+  }, []);
+
+  const stopMatch = useCallback(() => {
+    socketService.emit('match:stop', {});
+  }, []);
+
   const closeSession = useCallback((sessionId: string) => {
     socketService.emit('session:close', { sessionId });
-    dispatch({ type: 'SESSION_ENDED', payload: null });
+    dispatch({ type: 'CLOSE_SESSION', payload: null });
   }, [dispatch]);
 
   const sendMessage = useCallback((sessionId: string, text: string) => {
     if (!socketService.isConnected) return;
-    socketService.emit('message:send', { sessionId, text, messageType: 'text' });
+    socketService.emit('message:send', { sessionId, text });
     // Optimistic UI could be added here
   }, []);
 
-  const joinRoom = useCallback((roomId: string) => {
+  const joinRoom = useCallback((roomName: string) => {
     if (!socketService.isConnected) return;
-    socketService.emit('room:join', { roomId });
+    socketService.emit('room:join', { roomName });
   }, []);
 
-  const leaveRoom = useCallback((roomId: string) => {
+  const leaveRoom = useCallback((roomName: string) => {
     if (!socketService.isConnected) return;
-    socketService.emit('room:leave', { roomId });
+    socketService.emit('room:leave', { roomName });
   }, []);
 
-  const sendRoomMessage = useCallback((roomId: string, text: string) => {
+  const sendRoomMessage = useCallback((roomName: string, text: string) => {
     if (!socketService.isConnected) return;
-    socketService.emit('room:message', { roomId, text });
+    socketService.emit('room:message:send', { roomName, text });
   }, []);
+
+  useEffect(() => {
+    const unsubMatchQueued = socketService.on('match:queued', () => {
+      dispatch({ type: 'SET_MODE', payload: 'matching' });
+    });
+
+    const unsubSessionCreated = socketService.on('session:created', (payload: any) => {
+      dispatch({ 
+        type: 'SET_ACTIVE_SESSION', 
+        payload: {
+          sessionId: payload.sessionId,
+          partnerId: payload.partnerId,
+          partnerProfile: payload.partnerProfile
+        } 
+      });
+      dispatch({ type: 'SET_MODE', payload: 'private' });
+    });
+
+    const unsubMessageReceived = socketService.on('message:received', (payload: any) => {
+      dispatch({ type: 'ADD_PRIVATE_MESSAGE', payload });
+    });
+
+    const unsubMessageExpired = socketService.on('message:expired', (payload: any) => {
+      dispatch({ type: 'REMOVE_PRIVATE_MESSAGE', payload: payload.messageId });
+    });
+
+    const unsubSessionClosed = socketService.on('session:closed', () => {
+      dispatch({ type: 'CLOSE_SESSION', payload: null });
+    });
+
+    const unsubPresence = socketService.on('presence:list', (users: any[]) => {
+      dispatch({ type: 'SET_ONLINE_USERS', payload: users });
+    });
+
+    return () => {
+      unsubMatchQueued();
+      unsubSessionCreated();
+      unsubMessageReceived();
+      unsubMessageExpired();
+      unsubSessionClosed();
+      unsubPresence();
+    };
+  }, [dispatch]);
 
   return {
+    startMatch,
+    stopMatch,
     sendKnock,
     acceptKnock,
     rejectKnock,

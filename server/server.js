@@ -9,8 +9,8 @@ const server = http.createServer(app);
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3001;
-const MESSAGE_TTL = 30000;
-const MAX_MESSAGES = 50;
+const MESSAGE_TTL = 10000; // 10 seconds per requirements
+const MAX_MESSAGES = 100;
 const MAX_ROOMS = 1000;
 const MAX_SESSIONS = 5000;
 const REPORT_THRESHOLD = 3;
@@ -20,7 +20,6 @@ const allowedOrigins = [
   'https://auradiochat.com',
   'https://www.auradiochat.com',
   'https://stream-flow-main-2.vercel.app',
-  'https://chat-platform-v2.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173'
 ];
@@ -29,15 +28,18 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // --- IN-MEMORY STORAGE ---
-const activeUsers = new Map();
-const sessions = new Map();
-const messages = new Map();
+const activeUsers = new Map(); // userId -> { profile, socketId }
+const sessions = new Map(); // sessionId -> { participants: [uid1, uid2], createdAt }
+const messages = new Map(); // sessionId -> [messageObjs]
 const reports = new Map();
 const blocks = new Map();
 const rooms = new Map();
-const rateLimits = new Map(); // userId -> { eventType: [timestamps] }
+const matchmakingQueue = []; // Array of { userId, socketId, profile }
+const rateLimits = new Map();
 
-// --- UTILS, LOGGING & BROADCASTS ---
+// --- LOCKS & THROTTLES ---
+let isMatchmakingProcessing = false;
+
 const sysLog = (event, data) => {
   console.log(`[SYS] ${new Date().toISOString()} | ${event} | ${JSON.stringify(data)}`);
 };
@@ -120,6 +122,12 @@ setInterval(() => {
         });
       });
     }
+
+    // Auto-close idle sessions (no messages for 5 mins)
+    const lastMsg = sessionMsgs[sessionMsgs.length - 1];
+    if (lastMsg && now - lastMsg.timestamp > 300000) {
+      closeSession(sessionId);
+    }
   });
 
   // Clean public rooms
@@ -146,6 +154,18 @@ setInterval(() => {
       if (userLimits[type].length > 0) hasRecent = true;
     });
     if (!hasRecent) rateLimits.delete(userId);
+  });
+  
+  // Ghost user cleanup
+  activeUsers.forEach((userData, userId) => {
+      const socket = io.sockets.sockets.get(userData.socketId);
+      if (!socket || !socket.connected) {
+          sysLog('ghost_cleanup', { userId, socketId: userData.socketId });
+          activeUsers.delete(userId);
+          // Remove from queue
+          const qIdx = matchmakingQueue.findIndex(q => q.userId === userId);
+          if (qIdx !== -1) matchmakingQueue.splice(qIdx, 1);
+      }
   });
 }, CLEANUP_INTERVAL);
 
@@ -188,34 +208,31 @@ io.on('connection', (socket) => {
       return;
     }
 
-    let reconnected = false;
     const existing = activeUsers.get(profile.id);
+    const reconnected = !!existing;
     if (existing?.socketId && existing.socketId !== socket.id) {
       io.sockets.sockets.get(existing.socketId)?.disconnect(true);
-      reconnected = true;
-    } else if (existing) {
-      reconnected = true;
-    }
+    } 
 
     boundUserId = profile.id;
     activeUsers.set(boundUserId, { profile, socketId: socket.id });
     if (typeof callback === 'function') callback({ userId: boundUserId, profile });
     socket.emit('user:registered', { userId: boundUserId, profile });
+    
+    // Broadcast updated presence
     broadcastPresenceList();
     broadcastPresenceCount();
 
     if (reconnected) {
+      // Re-join rooms and sessions
       rooms.forEach((room, roomId) => {
         if (room.participants.has(boundUserId)) {
           socket.join(roomId);
-          if (room.messages && room.messages.length > 0) {
-            room.messages.forEach(msg => socket.emit('room:message', msg));
-          }
         }
       });
       sessions.forEach((session, sessionId) => {
         if (session.participants.includes(boundUserId)) {
-          const partnerId = session.participants.find(id => id !== boundUserId) || boundUserId;
+          const partnerId = session.participants.find(id => id !== boundUserId);
           const partnerProfile = activeUsers.get(partnerId)?.profile;
           socket.emit('session:restore', { 
             sessionId,
@@ -226,6 +243,98 @@ io.on('connection', (socket) => {
         }
       });
     }
+  });
+
+  // Matchmaking
+  socket.on('match:start', async () => {
+    if (!boundUserId) return;
+    
+    // Prevent spamming queue
+    if (!checkRateLimit(boundUserId, 'match:start', 2, 2000)) {
+        socket.emit('user:error', { message: 'Too many match requests.' });
+        return;
+    }
+
+    // Check if already in an active session
+    let inActiveSession = false;
+    sessions.forEach((s) => {
+        if (s.participants.includes(boundUserId)) inActiveSession = true;
+    });
+    if (inActiveSession) {
+        socket.emit('user:error', { message: 'Already in an active session.' });
+        return;
+    }
+    
+    // Remove if already in queue (prevent duplicates)
+    let idx = matchmakingQueue.findIndex(q => q.userId === boundUserId);
+    if (idx !== -1) matchmakingQueue.splice(idx, 1);
+
+    const userEntry = { 
+      userId: boundUserId, 
+      socketId: socket.id, 
+      profile: activeUsers.get(boundUserId)?.profile 
+    };
+
+    // Atomic Matchmaking Queue Processor
+    const processQueue = () => {
+      if (isMatchmakingProcessing) return;
+      isMatchmakingProcessing = true;
+      
+      try {
+        if (matchmakingQueue.length > 1) {
+            // Find a valid partner
+            let myIdx = matchmakingQueue.findIndex(q => q.userId === boundUserId);
+            if (myIdx === -1) {
+                // Was not in queue yet, add to end
+                matchmakingQueue.push(userEntry);
+                myIdx = matchmakingQueue.length - 1;
+            }
+
+            // Simple FIFO logic finding someone who isn't self
+            const partnerIdx = matchmakingQueue.findIndex((q, i) => i !== myIdx && q.userId !== boundUserId);
+            
+            if (partnerIdx !== -1) {
+                const partner = matchmakingQueue[partnerIdx];
+                const me = matchmakingQueue[myIdx];
+                
+                // Remove both from queue
+                matchmakingQueue.splice(Math.max(myIdx, partnerIdx), 1);
+                matchmakingQueue.splice(Math.min(myIdx, partnerIdx), 1);
+                
+                const sessionId = `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                sessions.set(sessionId, { participants: [me.userId, partner.userId], createdAt: Date.now() });
+                
+                io.to(me.socketId).emit('session:created', { 
+                  sessionId, partnerId: partner.userId, partnerProfile: partner.profile 
+                });
+                
+                io.to(partner.socketId).emit('session:created', { 
+                  sessionId, partnerId: me.userId, partnerProfile: me.profile 
+                });
+                sysLog('match_created', { sessionId, u1: me.userId, u2: partner.userId });
+            } else if (myIdx === matchmakingQueue.length - 1) {
+                // Queued, waiting for partner
+                socket.emit('match:queued');
+            }
+        } else {
+            // Check if already in queue from earlier
+            const alreadyInQueue = matchmakingQueue.some(q => q.userId === boundUserId);
+            if (!alreadyInQueue) {
+                matchmakingQueue.push(userEntry);
+                socket.emit('match:queued');
+            }
+        }
+      } finally {
+        isMatchmakingProcessing = false;
+      }
+    };
+    
+    processQueue();
+  });
+
+  socket.on('match:stop', () => {
+    const idx = matchmakingQueue.findIndex(q => q.userId === boundUserId);
+    if (idx !== -1) matchmakingQueue.splice(idx, 1);
   });
 
 
@@ -325,7 +434,7 @@ io.on('connection', (socket) => {
   socket.on('message:send', (p, ack) => {
     if (!boundUserId || !p?.sessionId) return;
     
-    if (!checkRateLimit(boundUserId, 'message:send', 5, 5000)) {
+    if (!checkRateLimit(boundUserId, 'message:send', 5, 2000)) {
       socket.emit('user:error', { message: 'Rate limit exceeded.' });
       return;
     }
@@ -334,7 +443,10 @@ io.on('connection', (socket) => {
     if (!p.encryptedPayload && !cleanText && !p.audio && !p.sticker) return;
 
     const session = sessions.get(p.sessionId);
-    if (!session?.participants.includes(boundUserId)) return;
+    if (!session || !session.participants.includes(boundUserId)) {
+        socket.emit('user:error', { message: 'Invalid session or not a participant.' });
+        return;
+    }
     
     const msg = {
       id: `m_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -502,6 +614,10 @@ io.on('connection', (socket) => {
           }
         }
       });
+
+      // Remove from matchmaking queue just in case
+      let idx = matchmakingQueue.findIndex(q => q.userId === boundUserId);
+      if (idx !== -1) matchmakingQueue.splice(idx, 1);
 
       activeUsers.delete(boundUserId);
     }

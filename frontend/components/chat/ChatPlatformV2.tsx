@@ -119,6 +119,7 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
   }, []);
 
   const { 
+    startMatch, stopMatch,
     sendKnock, acceptKnock, rejectKnock, 
     closeSession, sendMessage,
     joinRoom, leaveRoom, sendRoomMessage
@@ -622,10 +623,24 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
               </motion.div>
 
             ) : (
-              /* ═══ DISCOVERY TAB ═══ */
-              <motion.div key="discovery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex flex-col h-full">
+              <motion.div key="discovery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex flex-col h-full overflow-hidden">
                 
-                {discoveryView === 'main' ? (
+                {state.mode === 'matching' ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+                    <div className="relative mb-10">
+                      <div className="w-32 h-32 rounded-full border-4 border-orange-500/20 animate-ping absolute inset-0" />
+                      <div className="w-32 h-32 rounded-full border-4 border-orange-500 flex items-center justify-center bg-orange-500/10 relative z-10">
+                        <span className="text-4xl animate-pulse">🔍</span>
+                      </div>
+                    </div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-widest mb-2">ПОИСК СОБЕСЕДНИКА</h2>
+                    <p className="text-sm text-slate-400 mb-8">Ищем для вас идеальную пару... Это займет всего несколько секунд.</p>
+                    <button 
+                      onClick={stopMatch}
+                      className="px-8 py-3 rounded-2xl bg-white/5 border border-white/10 text-slate-400 font-bold uppercase tracking-wider hover:bg-white/10 transition-all"
+                    >ОТМЕНИТЬ ПОИСК</button>
+                  </div>
+                ) : discoveryView === 'main' ? (
                   <div className="p-5 flex flex-col items-center flex-1 relative">
                     {/* Scene warm ambient light — smooth, no visible edges, covers whole panel */}
                     {sceneActive && (
@@ -728,49 +743,53 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
                         <div className="flex items-center gap-2 mb-1"><span className="text-lg">🌐</span>
                           <div className="w-6 h-6 rounded-full bg-[#1a2235] border border-white/8 flex items-center justify-center"><span className="text-[10px]">👤</span></div>
                         </div>
-                        <p className="text-[12px] font-bold text-[#e5e7eb] uppercase tracking-wide">Случайный</p>
                         <p className="text-[9px] text-slate-500 mt-0.5">Диалог с кем угодно</p>
                       </button>
                       <button onClick={() => { 
                         playCardOpenSound(); 
-                        
-                        // DIAGNOSTIC: Step 1 - Connect if not connected
-                        // 'state' is private, using a new diagnostics method or isConnected
-                        const currentDiags = socketService.getDiagnostics();
-                        
-                        if (currentDiags.state !== 'CONNECTED') {
-                          console.log('[DIAGNOSTIC] CONNECT: Socket state is', currentDiags.state, '-> Calling connect()');
-                          socketService.connect();
-                        }
-
-                        const performSearch = () => {
-                          console.log('[DIAGNOSTIC] SEARCH: Sending users:search request');
-                          socketService.searchUsers({ online: true });
-                          setDiscoveryView('online');
-                        };
-
-                        // DIAGNOSTIC: Step 3 - Ensure we are CONNECTED before searching
-                        if (socketService.isConnected) {
-                          performSearch();
-                        } else {
-                          console.log('[DIAGNOSTIC] SEARCH PENDING: Waiting for connection to establish before search');
-                          const unsub = socketService.on('connect', () => {
-                            console.log('[DIAGNOSTIC] SEARCH RESUMED: Connection established, executing search');
-                            performSearch();
-                            unsub();
-                          });
-                        }
+                        startMatch();
                       }}
                         className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-orange-500/20 hover:bg-white/[0.05] hover:border-orange-500/40 transition-all text-left group">
-                        <div className="flex items-center gap-2 mb-1"><span className="text-lg">🖐</span>
+                        <div className="flex items-center gap-2 mb-1"><span className="text-lg">🎲</span>
                           <div className="w-6 h-6 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center"><span className="text-[10px]">👥</span></div>
                         </div>
-                        <p className="text-[12px] font-bold text-orange-400 uppercase tracking-wide">Кто онлайн</p>
-                        <p className="text-[9px] text-slate-500 mt-0.5">Только активные</p>
+                        <p className="text-[12px] font-bold text-orange-400 uppercase tracking-wide">Начать поиск</p>
+                        <p className="text-[9px] text-slate-500 mt-0.5">Matchmaking</p>
                       </button>
                     </div>
 
-                    <p className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold mb-4 z-10">или по параметрам</p>
+                    <p className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold mb-4 z-10">Вокруг света (Online)</p>
+
+                    {/* User Carousel */}
+                    <div className="w-full flex-1 overflow-visible relative mt-4">
+                      <div className="flex gap-4 overflow-x-auto no-scrollbar pb-10 px-2 mask-linear-fade">
+                        {state.onlineUsers.length > 0 ? state.onlineUsers.filter(u => u.id !== state.currentUser?.id).map((u, i) => (
+                          <motion.div
+                            key={u.id}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            onClick={() => sendKnock(u.id)}
+                            className="shrink-0 w-32 h-44 rounded-2xl bg-white/[0.02] border border-white/[0.06] p-3 flex flex-col items-center justify-between cursor-pointer hover:bg-white/[0.05] hover:border-orange-500/30 transition-all group"
+                          >
+                            <div className="w-16 h-16 rounded-full bg-[#1e293b] flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                              {u.avatar || '👤'}
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[12px] font-bold text-white truncate w-24">{u.name || 'Аноним'}</p>
+                              <p className="text-[9px] text-slate-500 mt-0.5">{u.age}, {u.country}</p>
+                            </div>
+                            <div className="w-full py-1.5 rounded-lg bg-orange-500/10 text-orange-400 text-[9px] font-black uppercase text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              Привет!
+                            </div>
+                          </motion.div>
+                        )) : (
+                          <div className="w-full py-10 text-center text-slate-600 italic text-[11px]">
+                            Пока никого нет... Потяните торшер или подождите.
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Functional Filters */}
                     <div className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-4 z-10">

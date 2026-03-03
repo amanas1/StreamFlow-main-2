@@ -3,7 +3,7 @@ import { AvatarBuilderModal, AvatarResult } from './components/AvatarBuilderModa
 import { AvatarPreview } from './components/AvatarPreview';
 
 /* ─── localStorage ─── */
-const LS_KEY = 'radio_chat_profile';
+const LS_KEY = 'auradiochat_user_profile';
 
 interface ProfileData {
   nickname: string;

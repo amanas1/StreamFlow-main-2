@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, Link, useLocation, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, UserProfile, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings } from '../types';
+import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, GLOBAL_PRESETS } from '../types/constants';
 import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioService';
 import socketService from '../services/socketService';
+import { UserProfile } from './chat/types';
+const generateUUID = () => Math.random().toString(36).substring(2, 11);
 import { audioEngine } from '../services/AudioEngine';
 import AudioVisualizer from './AudioVisualizer';
 import DancingAvatar from './DancingAvatar';
@@ -24,9 +26,7 @@ const ChatPanel = React.lazy(() => import('./chat/ChatPlatformV2'));
 const ManualModal = React.lazy(() => import('./ManualModal'));
 const FeedbackModal = React.lazy(() => import('./FeedbackModal'));
 const ShareModal = React.lazy(() => import('./ShareModal'));
-const LoginModal = React.lazy(() => import('./LoginModal'));
 import ErrorBoundary from './ErrorBoundary';
-import { useAuth } from '../auth';
 
 // SEO Components
 import { SEOHead } from './seo/SEOHead';
@@ -291,7 +291,8 @@ const VolumeDrum = React.memo(({ value, onChange }: { value: number; onChange: (
 });
 
 export default function App(): React.JSX.Element {
-  const { user, isAuthorized, loading } = useAuth();
+  // Remove useAuth
+  // const { user, logout, isAuthorized, showLoginModal, setShowLoginModal } = useAuth();
   
   // Storage Migration: AU RadioChat -> AU RadioChat
   useEffect(() => {
@@ -498,6 +499,7 @@ export default function App(): React.JSX.Element {
   const [onlineStats, setOnlineStats] = useState({ totalOnline: 0, chatOnline: 0 });
   const [countryStats, setCountryStats] = useState<Record<string, number>>({});
   const [pendingKnocksCount, setPendingKnocksCount] = useState(0);
+  const [isAuthorized, setIsAuthorized] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   
   const [audioEnhancements, setAudioEnhancements] = useState<AudioProcessSettings>({
@@ -524,32 +526,38 @@ export default function App(): React.JSX.Element {
 
   // User Profile
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    try {
-        const saved = localStorage.getItem('auradiochat_user_profile');
-        if (saved) {
-             const parsed = JSON.parse(saved);
-             // Ensure new fields exist
-             if (!parsed.chatSettings.bannerNotificationsEnabled) {
-                 parsed.chatSettings = { 
-                     ...parsed.chatSettings, 
-                     bannerNotificationsEnabled: false,
-                     voiceNotificationsEnabled: false,
-                     notificationVoice: 'female'
-                 };
-             }
-             return parsed;
+    const saved = localStorage.getItem('auradiochat_user_profile');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Ensure new fields exist
+        if (!parsed.chatSettings.bannerNotificationsEnabled) {
+            parsed.chatSettings = { 
+                ...parsed.chatSettings, 
+                bannerNotificationsEnabled: false,
+                voiceNotificationsEnabled: false,
+                notificationVoice: 'female'
+            };
         }
-    } catch (e) {
-        // align with lint requirements
+        return parsed;
+      } catch (e) {
+        console.error('Failed to parse saved user profile', e);
+      }
     }
     
+    // Create new UUID-based guest profile
     return {
-      id: "u-" + Math.random().toString(36).substr(2, 9),
-      name: "Guest",
-      avatar: null,
+      id: `u-${generateUUID()}`,
+      avatar: '👤',
+      name: 'Аноним',
+      gender: 'any',
       age: 25,
-      gender: 'other',
-      status: 'online',
+      status: 'chat',
+      country: 'Global',
+      nativeLanguage: 'Russian',
+      communicationLanguage: 'Russian',
+      interests: [],
+      lastActiveAt: Date.now(),
       blockedUsers: [],
       hasAgreedToRules: false,
       safetyLevel: 'green',
@@ -604,28 +612,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     // Connect socket regardless of auth for presence/bridge sessions
     socketService.connect();
-
-    if (isAuthorized && user) {
-        setCurrentUser(prev => {
-            const updated = { 
-                ...prev, 
-                id: user.uid, 
-                name: prev.name || user.displayName || '',
-                isAuthenticated: true 
-            };
-            return updated;
-        });
-    } else {
-        // Only reset if we don't have a local authenticated session (e.g. guest)
-        setCurrentUser(prev => {
-             // If we already have a session (guest or otherwise) that is strictly authenticated, keep it.
-             // This prevents the "reset" when Google Auth is null but user registered manually as guest.
-             if (prev.isAuthenticated && prev.name && prev.id) return prev;
-             
-             return { ...prev, isAuthenticated: false };
-        });
-    }
-  }, [isAuthorized, user]);
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -1956,7 +1943,6 @@ export default function App(): React.JSX.Element {
         </Suspense>
         <Suspense fallback={null}><ManualModal isOpen={manualOpen} onClose={() => setManualOpen(false)} language={language} onShowFeature={handleShowFeature} /></Suspense>
         <Suspense fallback={null}><FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} language={language} currentUserId={currentUser.id} /></Suspense>
-        <Suspense fallback={null}><LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} language={language} /></Suspense>
 
       </motion.main>
       <Suspense fallback={null}>

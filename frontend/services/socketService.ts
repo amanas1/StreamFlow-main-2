@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { UserProfile } from '../types';
-console.log('VITE_SOCKET_URL =', import.meta.env.VITE_SOCKET_URL);
+import { UserProfile } from '../components/chat/types';
 /**
  * HARDENED ENTERPRISE SOCKET MANAGER v2
  * Designed for 100k+ concurrent users.
@@ -25,9 +24,7 @@ interface SocketMetrics {
 }
 
 const IS_PROD = import.meta.env.PROD;
-const FALLBACK_URLS = [
-  import.meta.env.VITE_SOCKET_URL
-].filter(Boolean) as string[];
+const FALLBACK_URLS = [import.meta.env.VITE_SOCKET_URL].filter(Boolean) as string[];
 
 class SocketManager {
   private static instance: SocketManager;

@@ -13,7 +13,7 @@ export interface UserProfile {
   lastActiveAt: number;
 }
 
-export type Mode = "room" | "discovery" | "private";
+export type Mode = "room" | "discovery" | "private" | "matching";
 
 export interface ChatMessage {
   id: string;
