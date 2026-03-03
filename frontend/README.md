@@ -9,7 +9,7 @@ AU RadioChat is a modern web application that combines global radio streaming wi
 - `/server`: Node.js backend with Socket.io and Moderation logic.
 - `/public`: Static assets.
 
-## Quick Start
+## Quick Start.
 
 ### 1. Frontend Setup
 From the root directory:
