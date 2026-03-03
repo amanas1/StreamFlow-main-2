@@ -183,8 +183,7 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
   const chunksRef = React.useRef<Blob[]>([]);
 
   // Scene lighting
-  const [sceneActive, setSceneActive] = React.useState(false);
-
+  
   // Discovery
   const [discoveryView, setDiscoveryView] = React.useState<'main' | 'online'>('main');
   const [filterAgeMin, setFilterAgeMin] = React.useState(18);
@@ -338,21 +337,6 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
         initial={avatarConfigData || undefined}
       />
 
-      {/* ═══ GLOBAL SCENE OVERLAY ═══ */}
-      <div
-        className={`fixed inset-0 z-[90] pointer-events-none transition-opacity duration-700 ${sceneActive ? 'opacity-100' : 'opacity-0'}`}
-        style={{ backdropFilter: sceneActive ? 'blur(5px)' : 'none' }}
-      >
-        {/* Layer 1 — Deep darkness */}
-        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.85)' }} />
-        {/* Layer 2 — Warm amber spotlight (elliptical, vertical stretch) */}
-        <div className="absolute inset-0" style={{
-          background: `
-            radial-gradient(ellipse 600px 900px at calc(100% - 220px) 200px, rgba(255,190,80,0.35) 0%, rgba(255,150,40,0.25) 20%, rgba(255,120,20,0.12) 40%, rgba(0,0,0,0) 65%),
-            linear-gradient(90deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0.4) 75%, rgba(0,0,0,0.2) 100%)
-          `
-        }} />
-      </div>
 
     <div className="fixed inset-y-0 right-0 z-[100] pointer-events-none font-['Inter'] w-full sm:w-auto">
       
