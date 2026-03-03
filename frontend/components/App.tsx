@@ -1264,7 +1264,7 @@ export default function App(): React.JSX.Element {
   const renderHome = () => (
     <>
         <Helmet>
-            <title>AU RadioChat – Global Online Radio Streaming Player</title>
+            <title>AU Radio – Global Online Radio Streaming Player</title>
             <meta name="description" content="AU RadioChat – Global Online Radio Streaming Platform. Listen to jazz, rock, electronic, hip-hop and world radio stations live. Free international internet radio player with smart chat." />
             <link rel="canonical" href="https://auradiochat.com/" />
         </Helmet>

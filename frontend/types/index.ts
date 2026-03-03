@@ -81,106 +81,12 @@ export type ThemeName =
 export type BaseTheme = 'dark' | 'light' | 'auto';
 export type Language = 'en' | 'ru' | 'es' | 'fr' | 'zh' | 'de';
 
-export interface ChatSettings {
-  notificationsEnabled: boolean;
-  notificationVolume: number; // 0.0 – 1.0
-  notificationSound: 'default' | 'soft' | 'alert';
-  bannerNotificationsEnabled: boolean;
-  voiceNotificationsEnabled: boolean;
-  notificationVoice: 'female' | 'male';
-}
 
 export interface UserProfile {
   id: string;
   name: string;
-  avatar: string | null;
-  age: number;
-  country?: string; 
-  city?: string;
-  approxRegion?: string; // Internal privacy-first region hint
-  hideFromSearch?: boolean; // Privacy setting: Hide from global search/list
-  gender: 'male' | 'female';
-  status: 'online' | 'offline';
-  intentStatus?: string;
-  voiceIntro?: string; // Base64 encoded voice snippet (5-7s)
-  voiceIntroTimestamp?: number;
-  lastSeen?: number;
-  safetyLevel: 'green' | 'yellow' | 'red';
-  blockedUsers: string[];
-  bio: string;
-  hasAgreedToRules: boolean;
-  isAuthenticated?: boolean; 
-  sentInvites?: { timestamp: number, toUserId: string }[];
-  // User Management
-  role?: 'early_user' | 'regular';
-  early_access?: boolean;
-  free_until?: number | null;
-  accountStatus?: 'active' | 'warning' | 'blocked';
-  email?: string;
-  deletionRequestedAt?: number;
-  filters: {
-    minAge: number;
-    maxAge: number;
-    countries: string[];
-    languages: string[];
-    genders: (string | 'any')[];
-    soundEnabled: boolean;
-  };
-  chatSettings: ChatSettings;
-  // Geolocation & Anti-Chaos tracking
-  detectedCountry?: string;
-  detectedCity?: string;
-  detectedIP?: string;
-  deviceId?: string;
-  registrationTimestamp?: number;
-  canDeleteAfter?: number;
-  // Trust Score system
-  trustScore?: number;
-  trustLevel?: 'TRUSTED' | 'SUSPICIOUS' | 'HIGH_RISK';
-  trustFlags?: string[];
-  locationFingerprint?: {
-    browserTimezone: string;
-    browserLocale: string;
-    browserUtcOffset: number;
-    userAgent: string;
-    platform: string;
-  };
-  fingerprint?: string; // Device fingerprint for security tracking
 }
 
-export interface ChatMessage {
-  id: string;
-  sessionId: string; 
-  senderId: string;
-  text?: string;
-  image?: string;
-  audioBase64?: string;
-  messageType?: 'text' | 'audio' | 'sticker' | 'image';
-  flagged?: boolean;
-  timestamp: number;
-  read: boolean;
-  isSystem?: boolean;
-}
-
-export interface ChatSession {
-  id: string; 
-  participants: string[]; 
-  lastMessage: ChatMessage | null;
-  createdAt: number;
-  updatedAt: number;
-  expiresAt: number; // Mandatory 56s timer
-  isBridge: boolean; // Always true for this model
-  isClosed?: boolean;
-}
-
-export interface ChatRequest {
-  id: string;
-  fromUserId: string;
-  toUserId: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  timestamp: number;
-  message?: string; 
-}
 
 export interface Track {
   id: string;
@@ -234,7 +140,6 @@ export interface AlarmConfig {
   days: number[]; 
 }
 
-export type KnockState = 'idle' | 'sending' | 'received' | 'accepted' | 'rejected' | 'expired';
 
 export interface LocationData {
   country: string;

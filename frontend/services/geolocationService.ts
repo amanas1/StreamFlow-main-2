@@ -66,9 +66,9 @@ class GeolocationService {
         console.log('[GEO] 🌍 Requesting location from backend proxy...');
         
         // STRICT PRODUCTION BACKEND URL
-        const backendUrl = import.meta.env.VITE_SOCKET_URL;
+        const backendUrl = import.meta.env.VITE_API_URL;
         if (!backendUrl) {
-            console.error("🚨 CRITICAL: VITE_SOCKET_URL is missing in this environment!");
+            console.error("🚨 CRITICAL: VITE_API_URL is missing in this environment!");
             return { country: 'Unknown', city: 'Unknown', ip: 'Unknown' };
         }
         
