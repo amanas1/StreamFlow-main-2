@@ -733,99 +733,72 @@ export const ChatPlatformV2: React.FC<ChatPlatformV2Props> = ({ currentUserOverr
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>СЕЙЧАС ОНЛАЙН: {onlineCount}
                     </span>
 
-                    <h2 className="text-[22px] font-bold text-white text-center mb-1 leading-tight z-10">Найди собеседника<br />прямо сейчас</h2>
+                    <h2 className="text-[22px] font-bold text-white text-center mb-1 leading-tight z-10">Найди собеседника прямо сейчас</h2>
                     <p className="text-[11px] text-slate-500 mb-6 z-10">Без истории. Без обязательств. 18+</p>
 
                     {/* Mode Cards */}
-                    <div className="flex gap-3 w-full mb-6 z-10">
+                    <div className="flex gap-4 w-full mb-6 z-10">
                       <button onClick={() => { playCardOpenSound(); handleTabSwitch('dialogues'); }}
-                        className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-all text-left group">
-                        <div className="flex items-center gap-2 mb-1"><span className="text-lg">🌐</span>
-                          <div className="w-6 h-6 rounded-full bg-[#1a2235] border border-white/8 flex items-center justify-center"><span className="text-[10px]">👤</span></div>
-                        </div>
-                        <p className="text-[9px] text-slate-500 mt-0.5">Диалог с кем угодно</p>
+                        className="flex-1 p-5 rounded-2xl bg-[#1e1b4b] hover:bg-[#2e2b5e] border border-indigo-500/10 transition-all text-left group shadow-lg relative overflow-hidden">
+                        <div className="absolute top-2 right-2 text-indigo-500/10 text-4xl transform rotate-12">🎲</div>
+                        <div className="flex items-center gap-2 mb-2 relative z-10"><span className="text-xl">🎲</span></div>
+                        <p className="text-[12px] font-bold text-indigo-200 uppercase tracking-widest relative z-10">СЛУЧАЙНЫЙ</p>
+                        <p className="text-[9px] text-indigo-300 mt-1 relative z-10">Диалог с кем угодно</p>
                       </button>
                       <button onClick={() => { 
                         playCardOpenSound(); 
-                        startMatch();
+                        setDiscoveryView('online');
                       }}
-                        className="flex-1 p-4 rounded-2xl bg-white/[0.03] border border-orange-500/20 hover:bg-white/[0.05] hover:border-orange-500/40 transition-all text-left group">
-                        <div className="flex items-center gap-2 mb-1"><span className="text-lg">🎲</span>
-                          <div className="w-6 h-6 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center"><span className="text-[10px]">👥</span></div>
-                        </div>
-                        <p className="text-[12px] font-bold text-orange-400 uppercase tracking-wide">Начать поиск</p>
-                        <p className="text-[9px] text-slate-500 mt-0.5">Matchmaking</p>
+                        className="flex-1 p-5 rounded-2xl bg-[#4b1e1b] hover:bg-[#5e2b2e] border border-red-500/10 transition-all text-left group shadow-lg relative overflow-hidden">
+                        <div className="absolute top-2 right-2 text-red-500/10 text-4xl transform rotate-12">🔥</div>
+                        <div className="flex items-center gap-2 mb-2 relative z-10"><span className="text-xl">🔥</span></div>
+                        <p className="text-[12px] font-bold text-orange-400 uppercase tracking-widest relative z-10">КТО ОНЛАЙН</p>
+                        <p className="text-[9px] text-red-300 mt-1 relative z-10">Только активные</p>
                       </button>
                     </div>
 
-                    <p className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold mb-4 z-10">Вокруг света (Online)</p>
-
-                    {/* User Carousel */}
-                    <div className="w-full flex-1 overflow-visible relative mt-4">
-                      <div className="flex gap-4 overflow-x-auto no-scrollbar pb-10 px-2 mask-linear-fade">
-                        {state.onlineUsers.length > 0 ? state.onlineUsers.filter(u => u.id !== state.currentUser?.id).map((u, i) => (
-                          <motion.div
-                            key={u.id}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            onClick={() => sendKnock(u.id)}
-                            className="shrink-0 w-32 h-44 rounded-2xl bg-white/[0.02] border border-white/[0.06] p-3 flex flex-col items-center justify-between cursor-pointer hover:bg-white/[0.05] hover:border-orange-500/30 transition-all group"
-                          >
-                            <div className="w-16 h-16 rounded-full bg-[#1e293b] flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                              {u.avatar || '👤'}
-                            </div>
-                            <div className="text-center">
-                              <p className="text-[12px] font-bold text-white truncate w-24">{u.name || 'Аноним'}</p>
-                              <p className="text-[9px] text-slate-500 mt-0.5">{u.age}, {u.country}</p>
-                            </div>
-                            <div className="w-full py-1.5 rounded-lg bg-orange-500/10 text-orange-400 text-[9px] font-black uppercase text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              Привет!
-                            </div>
-                          </motion.div>
-                        )) : (
-                          <div className="w-full py-10 text-center text-slate-600 italic text-[11px]">
-                            Пока никого нет... Потяните торшер или подождите.
-                          </div>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-4 w-full mb-6 z-10">
+                      <div className="h-px bg-white/[0.05] flex-1"></div>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">ИЛИ ПО ПАРАМЕТРАМ</p>
+                      <div className="h-px bg-white/[0.05] flex-1"></div>
                     </div>
 
                     {/* Functional Filters */}
-                    <div className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-4 z-10">
-                      <div className="flex gap-6 mb-2">
+                    <div className="w-full p-5 rounded-3xl bg-[#161c2d] border border-white/[0.04] mb-4 z-10 shadow-2xl">
+                      <div className="flex gap-8 mb-5">
                         <div className="flex-1">
-                          <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-2 block">Возраст</label>
-                          <div className="flex items-center gap-2">
+                          <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 block">ВОЗРАСТ</label>
+                          <div className="flex items-center gap-2 bg-[#0d1323] rounded-xl px-2 py-0.5 border border-white/[0.03]">
                             <select value={filterAgeMin} onChange={e => setFilterAgeMin(Number(e.target.value))}
-                              className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-[13px] font-bold text-white outline-none cursor-pointer appearance-none text-center w-16">
+                              className="bg-transparent text-center border-none py-2 text-[13px] font-bold text-white outline-none cursor-pointer flex-1 appearance-none">
                               {ages.map(a => <option key={a} value={a} className="bg-[#0f172a] text-white">{a}</option>)}
                             </select>
                             <span className="text-slate-600 font-bold">—</span>
                             <select value={filterAgeMax} onChange={e => setFilterAgeMax(Number(e.target.value))}
-                              className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1.5 text-[13px] font-bold text-white outline-none cursor-pointer appearance-none text-center w-16">
+                              className="bg-transparent text-center border-none py-2 text-[13px] font-bold text-white outline-none cursor-pointer flex-1 appearance-none">
                               {ages.map(a => <option key={a} value={a} className="bg-[#0f172a] text-white">{a}{a >= 65 ? '+' : ''}</option>)}
                             </select>
                           </div>
                         </div>
-                        <div>
-                          <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-2 block">Пол</label>
-                          <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 block">ПОЛ</label>
+                          <div className="flex gap-1 bg-[#0d1323] rounded-xl p-1 border border-white/[0.03]">
                             <button onClick={() => setFilterGender(filterGender === 'male' ? 'all' : 'male')}
-                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${filterGender === 'male' ? 'bg-white/10 text-white border-white/20' : 'bg-white/[0.03] text-slate-400 border-white/[0.06] hover:bg-white/[0.06]'}`}>М</button>
+                              className={`flex-1 py-1.5 rounded-lg text-[13px] font-bold transition-all ${filterGender === 'male' ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-400'}`}>М</button>
                             <button onClick={() => setFilterGender(filterGender === 'female' ? 'all' : 'female')}
-                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${filterGender === 'female' ? 'bg-white/10 text-white border-white/20' : 'bg-white/[0.03] text-slate-400 border-white/[0.06] hover:bg-white/[0.06]'}`}>Ж</button>
+                              className={`flex-1 py-1.5 rounded-lg text-[13px] font-bold transition-all ${filterGender === 'female' ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-400'}`}>Ж</button>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <button onClick={() => { playCardOpenSound(); setDiscoveryView('online'); }}
-                      className="w-full py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-[0.12em] text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 transition-all active:scale-[0.98] flex items-center justify-center gap-2 z-10">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                      НАЧАТЬ ПОИСК
-                    </button>
-                    <p className="text-[8px] text-slate-600 mt-2 z-10">* Сообщения удаляются автоматически</p>
+                      <button onClick={() => { playCardOpenSound(); startMatch(); }}
+                        className="w-full py-4 rounded-xl text-[14px] font-black uppercase tracking-[0.1em] text-white bg-gradient-to-r from-orange-600 to-yellow-500 hover:from-orange-500 hover:to-yellow-400 shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        НАЧАТЬ ПОИСК
+                      </button>
+                      <p className="text-[9px] text-slate-600 text-center mt-4">* Сообщения удаляются автоматически</p>
+                    </div>
                   </div>
                 ) : (
                   /* ── Online Users (Conveyor) ── */
