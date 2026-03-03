@@ -8,6 +8,7 @@ import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioServi
 const generateUUID = () => Math.random().toString(36).substring(2, 11);
 import { audioEngine } from '../services/AudioEngine';
 import AudioVisualizer from './AudioVisualizer';
+import ParticleVisualizer from './ParticleVisualizer';
 import DancingAvatar from './DancingAvatar';
 import RainEffect from './RainEffect';
 import FireEffect from './FireEffect';
@@ -1304,6 +1305,19 @@ export default function App(): React.JSX.Element {
         transition={{ duration: 0.28, ease: [0.25, 0.8, 0.25, 1] }}
         style={{ transformOrigin: 'center center' }}
       >
+        
+        {/* Global Particles for Modern StationPage */}
+        {uiMode === 'modern' && particleSettings && location.pathname.includes('/station/') && (
+            <div className="absolute inset-0 z-0 bg-slate-950 pointer-events-none overflow-hidden">
+                <ParticleVisualizer 
+                    analyserNode={audioEngine.getAnalyser()} 
+                    isPlaying={isPlaying} 
+                    settings={particleSettings}
+                    className="w-full h-full"
+                />
+            </div>
+        )}
+
         <header className={`h-20 flex items-center px-4 md:px-10 justify-between shrink-0 transition-all duration-500 z-10 ${isIdleView ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
           <div className="flex items-center gap-2 md:gap-4 flex-1">
             <button 

@@ -88,17 +88,6 @@ const StationPage: React.FC<StationPageProps> = ({
                 </script>
             </Helmet>
 
-            {uiMode === 'modern' && particleSettings && (
-                <div className="fixed inset-0 z-0 bg-slate-950 pointer-events-none">
-                    <ParticleVisualizer 
-                        analyserNode={audioEngine.getAnalyser()} 
-                        isPlaying={!!isPlaying && currentStationId === station.stationuuid} 
-                        settings={particleSettings}
-                        className="w-full h-full"
-                    />
-                </div>
-            )}
-
             <div className={`mb-12 flex flex-col items-center text-center relative z-10 ${uiMode === 'classic' ? 'pt-10' : ''}`}>
                 <div className="relative group mb-8 w-64 h-64 flex items-center justify-center">
                     {uiMode === 'modern' && (
