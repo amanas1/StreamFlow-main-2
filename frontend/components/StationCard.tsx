@@ -50,13 +50,12 @@ const StationCard: React.FC<StationCardProps> = React.memo(({
           <HeartIcon className="w-5 h-5" filled={isFavorite} />
         </button>
       </div>
-      <Link 
-        to={`/station/${station.slug}`}
-        onClick={(e) => e.stopPropagation()}
-        className={`block font-bold truncate text-sm transition-colors ${isSelected ? 'text-primary' : 'text-[var(--text-base)] group-hover:text-primary'}`}
+      <button 
+        onClick={(e) => { e.stopPropagation(); onPlay(station); }}
+        className={`block text-left w-full font-bold truncate text-sm transition-colors ${isSelected ? 'text-primary' : 'text-[var(--text-base)] group-hover:text-primary'}`}
       >
         {station.name}
-      </Link>
+      </button>
       <p className="text-[9px] font-black text-slate-500 mt-1 uppercase tracking-widest truncate">{station.genre || station.tags || 'Music'} • {station.bitrate || 128}K</p>
     </div>
   );

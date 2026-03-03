@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Routes, Route, Link, useLocation, useParams } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings, UIMode } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, GLOBAL_PRESETS } from '../types/constants';
@@ -164,6 +164,7 @@ function getCountryFlag(country: string): string {
  */
 
 export default function App(): React.JSX.Element {
+  const navigate = useNavigate();
   // Remove useAuth
   // const { user, logout, isAuthorized, showLoginModal, setShowLoginModal } = useAuth();
   
@@ -301,16 +302,23 @@ export default function App(): React.JSX.Element {
   });
 
   const [uiMode, setUiMode] = useState<UIMode>(() => {
-    if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('auradiochat_ui_mode') as UIMode;
-      if (saved) return saved;
-    }
-    return 'classic';
+      return saved === 'modern' ? 'modern' : 'classic';
   });
 
-  useEffect(() => {
-    localStorage.setItem('auradiochat_ui_mode', uiMode);
-  }, [uiMode]);
+  const currentStationRef = useRef<RadioStation | null>(null);
+
+  const handleUiModeChange = useCallback((mode: UIMode) => {
+      setUiMode(mode);
+      localStorage.setItem('auradiochat_ui_mode', mode);
+
+      if (mode === 'modern' && currentStationRef.current) {
+          navigate(`/station/${currentStationRef.current.slug}`);
+      } else if (mode === 'classic') {
+          navigate('/');
+      }
+      if (window.innerWidth < 1024) setSidebarOpen(false);
+  }, [navigate, currentStationRef]);
   const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('auradiochat_visualizer_variant') as VisualizerVariant;
@@ -438,7 +446,7 @@ export default function App(): React.JSX.Element {
   const loaderRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<number | null>(null);
   const stationsRef = useRef<RadioStation[]>([]);
-  const currentStationRef = useRef<RadioStation | null>(null);
+
   const isPlayingRef = useRef(false);
   const isRandomModeRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -658,6 +666,11 @@ export default function App(): React.JSX.Element {
     if (isMountedRef.current) {
         setCurrentStation(station);
         setIsPlaying(true);
+        
+        // Navigation logic for Modern UI
+        if (uiMode === 'modern') {
+            navigate(`/station/${station.slug}`);
+        }
         setIsBuffering(true);
     }
     
@@ -692,7 +705,7 @@ export default function App(): React.JSX.Element {
             }
         }, 3000);
     }
-  }, [initAudioContext, fxSettings.speed]);
+  }, [initAudioContext, fxSettings.speed, uiMode, navigate]);
   // Removed language from dependency because we no longer use it for notifications here
 
   useEffect(() => {
@@ -1264,7 +1277,7 @@ export default function App(): React.JSX.Element {
           loadCategory={loadCategory} 
           sidebarTimerRef={sidebarTimerRef} 
           uiMode={uiMode}
-          setUiMode={setUiMode}
+          setUiMode={handleUiModeChange}
       />
 
       <motion.main 
