@@ -491,6 +491,8 @@ export default function App(): React.JSX.Element {
   const handlePreviousStationRef = useRef<() => void>(() => {});
   const handlePlayStationRef = useRef<(s: RadioStation) => void>(() => {});
   const togglePlayRef = useRef<() => void>(() => {});
+  const streamRetryCountRef = useRef(0);
+  const stalledTimerRef = useRef<number | null>(null);
 
   const t = TRANSLATIONS[language];
 
@@ -684,6 +686,36 @@ export default function App(): React.JSX.Element {
     const rid = ++loadRequestIdRef.current;
     currentStationRef.current = station; 
     
+    // --- Resume Listening: Save last station ---
+    try {
+      localStorage.setItem('auradio_last_station', JSON.stringify({
+        stationuuid: station.stationuuid,
+        name: station.name,
+        url_resolved: station.url_resolved,
+        genre: station.genre,
+        favicon: station.favicon,
+        slug: station.slug,
+        country: station.country,
+        bitrate: station.bitrate,
+        tags: station.tags,
+        votes: station.votes,
+        subGenre: station.subGenre,
+      }));
+    } catch (e) {}
+
+    // --- Recently Played: Update history ---
+    try {
+      const recentRaw = localStorage.getItem('auradio_recent_stations');
+      let recent: RadioStation[] = recentRaw ? JSON.parse(recentRaw) : [];
+      recent = recent.filter(s => s.stationuuid !== station.stationuuid);
+      recent.unshift(station);
+      if (recent.length > 10) recent = recent.slice(0, 10);
+      localStorage.setItem('auradio_recent_stations', JSON.stringify(recent));
+    } catch (e) {}
+
+    // --- Stream Recovery: Reset retry counter ---
+    streamRetryCountRef.current = 0;
+
     setTimeout(() => {
         if (rid !== loadRequestIdRef.current) return;
         if (visualizerRef.current) {
@@ -1173,7 +1205,35 @@ export default function App(): React.JSX.Element {
   // Initial Load - Only once
   useEffect(() => { 
     const initialGenre = GENRES.find(g => g.id === 'hiphop') || GENRES[0];
-    loadCategory(initialGenre, 'genres', false); 
+    loadCategory(initialGenre, 'genres', false);
+
+    // --- Resume Listening: Restore last station on first user interaction ---
+    const resumeLastStation = () => {
+      try {
+        const saved = localStorage.getItem('auradio_last_station');
+        if (saved) {
+          const station = JSON.parse(saved) as RadioStation;
+          if (station && station.url_resolved && station.stationuuid) {
+            handlePlayStationRef.current(station);
+          }
+        }
+      } catch (e) {}
+      // Remove listeners after first interaction
+      window.removeEventListener('click', resumeLastStation);
+      window.removeEventListener('touchstart', resumeLastStation);
+      window.removeEventListener('keydown', resumeLastStation);
+    };
+
+    // Wait for user gesture to comply with browser autoplay policies
+    window.addEventListener('click', resumeLastStation, { once: true });
+    window.addEventListener('touchstart', resumeLastStation, { once: true });
+    window.addEventListener('keydown', resumeLastStation, { once: true });
+
+    return () => {
+      window.removeEventListener('click', resumeLastStation);
+      window.removeEventListener('touchstart', resumeLastStation);
+      window.removeEventListener('keydown', resumeLastStation);
+    };
   }, []); 
 
   
@@ -1275,10 +1335,58 @@ export default function App(): React.JSX.Element {
         onWaiting={() => setIsBuffering(true)} 
         onEnded={() => { 
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            if (audioRef.current) { audioRef.current.load(); audioRef.current.play().catch(() => {}); } 
+            // Stream Recovery: auto-restart on stream end
+            const station = currentStationRef.current;
+            if (station && streamRetryCountRef.current < 2) {
+                streamRetryCountRef.current++;
+                console.log(`[StreamRecovery] Stream ended, retry #${streamRetryCountRef.current}`);
+                if (audioRef.current) {
+                    audioRef.current.src = station.url_resolved;
+                    audioRef.current.play().catch(() => {});
+                }
+            } else if (station && streamRetryCountRef.current >= 2) {
+                console.log('[StreamRecovery] Max retries reached, switching to next station');
+                streamRetryCountRef.current = 0;
+                if (handleNextStationRef.current) handleNextStationRef.current();
+            }
         }} 
         onError={() => {
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+            // Stream Recovery: retry on error
+            const station = currentStationRef.current;
+            if (station && streamRetryCountRef.current < 2) {
+                streamRetryCountRef.current++;
+                console.log(`[StreamRecovery] Error detected, retry #${streamRetryCountRef.current}`);
+                setTimeout(() => {
+                    if (audioRef.current && currentStationRef.current?.stationuuid === station.stationuuid) {
+                        audioRef.current.src = station.url_resolved;
+                        audioRef.current.play().catch(() => {});
+                    }
+                }, 2000);
+            } else if (station && streamRetryCountRef.current >= 2) {
+                console.log('[StreamRecovery] Max retries after error, switching to next station');
+                streamRetryCountRef.current = 0;
+                if (handleNextStationRef.current) handleNextStationRef.current();
+            }
+        }}
+        onStalled={() => {
+            // Stream Recovery: start a 5-second timer on stalled
+            if (stalledTimerRef.current) clearTimeout(stalledTimerRef.current);
+            stalledTimerRef.current = window.setTimeout(() => {
+                const station = currentStationRef.current;
+                if (station && streamRetryCountRef.current < 2) {
+                    streamRetryCountRef.current++;
+                    console.log(`[StreamRecovery] Stalled for 5s, retry #${streamRetryCountRef.current}`);
+                    if (audioRef.current) {
+                        audioRef.current.src = station.url_resolved;
+                        audioRef.current.play().catch(() => {});
+                    }
+                } else if (station && streamRetryCountRef.current >= 2) {
+                    console.log('[StreamRecovery] Max retries after stall, switching to next station');
+                    streamRetryCountRef.current = 0;
+                    if (handleNextStationRef.current) handleNextStationRef.current();
+                }
+            }, 5000);
         }}
       />
       
