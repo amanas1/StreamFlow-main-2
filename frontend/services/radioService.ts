@@ -245,15 +245,14 @@ export const fetchStationsByTag = async (tag: string, limit: number = 200): Prom
             
         if (allFetched.length === 0) return [];
 
-        // Progressive filtering
-        let filtered = filterStations(allFetched, 15); // Semi-Popular
+        let filtered = filterStations(allFetched, 15) || []; // Semi-Popular
         
         if (filtered.length < 100) {
-            filtered = filterStations(allFetched, 5); // Allow less popular
+            filtered = filterStations(allFetched, 5) || []; // Allow less popular
         }
         
         if (filtered.length < 50) {
-            filtered = filterStations(allFetched, 1); // Desperate
+            filtered = filterStations(allFetched, 1) || []; // Desperate
         }
 
         const result = filtered.slice(0, limit);
@@ -298,29 +297,38 @@ export const fetchStationBySlug = async (slug: string): Promise<RadioStation | n
 };
 
 export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStation[]> => {
-    if (uuids.length === 0) return [];
-    const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2);
-    const fetchPromises = uuids.map(uuid => fetchFromMirror(mirrors[0], `byuuid/${uuid}`, ''));
-    const results = await Promise.allSettled(fetchPromises);
-    const all = results.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap(r => r.value);
-    return filterStations(all, 0);
+    if (!uuids || uuids.length === 0) return [];
+    try {
+        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2);
+        const fetchPromises = uuids.map(uuid => fetchFromMirror(mirrors[0], `byuuid/${uuid}`, ''));
+        const results = await Promise.allSettled(fetchPromises);
+        const all = results.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap(r => r.value);
+        return filterStations(all, 0) || [];
+    } catch (e) {
+        return [];
+    }
 };
 
 export const fetchStationsByCountry = async (country: string, limit: number = 200): Promise<RadioStation[]> => {
+    if (!country) return [];
     const cacheKey = `country_v16_${country.toLowerCase()}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
-    if (cachedData) return cachedData;
+    if (cachedData && cachedData.length > 0) return cachedData;
 
-    const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 3);
-    const query = `?limit=500&order=votes&reverse=true&hidebroken=true&lastcheckok=1`;
-    const results = await Promise.allSettled(mirrors.map(m => fetchFromMirror(m, `bycountry/${encodeURIComponent(country)}`, query)));
-    const all = results.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap(r => r.value);
-    
-    let filtered = filterStations(all, 50);
-    if (filtered.length < 50) filtered = filterStations(all, 10);
-    
-    const result = filtered.slice(0, limit);
-    if (result.length > 0) setToCache(cacheKey, result);
-    return result;
+    try {
+        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 3);
+        const query = `?limit=500&order=votes&reverse=true&hidebroken=true&lastcheckok=1`;
+        const results = await Promise.allSettled(mirrors.map(m => fetchFromMirror(m, `bycountry/${encodeURIComponent(country)}`, query)));
+        const all = results.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap(r => r.value);
+        
+        let filtered = filterStations(all, 50) || [];
+        if (filtered.length < 50) filtered = filterStations(all, 10) || [];
+        
+        const result = filtered.slice(0, limit);
+        if (result.length > 0) setToCache(cacheKey, result);
+        return result;
+    } catch (e) {
+        return [];
+    }
 };
 

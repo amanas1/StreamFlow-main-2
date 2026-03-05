@@ -201,7 +201,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             "numberOfItems": stations.length,
             "mainEntity": {
                 "@type": "ItemList",
-                "itemListElement": stations.slice(0, 10).map((s, idx) => ({
+                "itemListElement": (stations || []).slice(0, 10).map((s, idx) => ({
                     "@type": "ListItem",
                     "position": idx + 1,
                     "url": `https://auradiochat.com/${activeLanguage}/station/${s.slug}`,
@@ -268,7 +268,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                  {isLoading ? Array.from({ length: 8 }).map((_, i) => (
                      <div key={i} className="aspect-[1.2] rounded-[2rem] skeleton-loader bg-white/5" />
-                 )) : visibleStations.map((station) => (
+                 )) : (visibleStations || []).map((station) => (
                     <div 
                         key={station.stationuuid}
                         onClick={() => onPlay(station)}
