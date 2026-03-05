@@ -1621,11 +1621,10 @@ export default function App(): React.JSX.Element {
                     />
                 } />
 
-                {/* --- PROGRAMMATIC SEO ROUTES (Handles 3000+ combinations + static landings) --- */}
-                <Route path="/:slug" element={
+                <Route path="/:lang/:slug" element={
                     <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
                 } />
-                <Route path="/:lang/:slug" element={
+                <Route path="/:slug" element={
                     <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
                 } />
             </Routes>

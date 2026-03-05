@@ -16,6 +16,33 @@ interface DynamicHubProps {
     uiMode: UIMode;
 }
 
+const SEO_SLUG_MAP: Record<string, any> = {
+    "radio-russia": { type: "country", tag: "Russia" },
+    "radio-kazakhstan": { type: "country", tag: "Kazakhstan" },
+    "radio-ukraine": { type: "country", tag: "Ukraine" },
+    "radio-belarus": { type: "country", tag: "Belarus" },
+    "radio-uzbekistan": { type: "country", tag: "Uzbekistan" },
+    "radio-kyrgyzstan": { type: "country", tag: "Kyrgyzstan" },
+    "radio-tajikistan": { type: "country", tag: "Tajikistan" },
+  
+    "pop-radio": { type: "genre", tag: "pop" },
+    "jazz-radio": { type: "genre", tag: "jazz" },
+    "rock-radio": { type: "genre", tag: "rock" },
+    "electronic-radio": { type: "genre", tag: "electronic" },
+    "hip-hop-radio": { type: "genre", tag: "hip-hop" },
+    "lounge-radio": { type: "genre", tag: "lounge" },
+    "classical-radio": { type: "genre", tag: "classical" },
+  
+    "slushat-radio-online": { type: "landing" },
+    "radio-online": { type: "landing" },
+    "internet-radio": { type: "landing" },
+    "free-online-radio": { type: "landing" },
+    "free-internet-radio": { type: "landing" },
+  
+    "jazz-radio-russia": { type: "combo", genre: "jazz", country: "Russia" },
+    "electronic-radio-germany": { type: "combo", genre: "electronic", country: "Germany" }
+};
+
 const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, currentStation, favorites, toggleFavorite, language, uiMode }) => {
     const { lang: urlLang, slug } = useParams<{ lang?: string; slug?: string }>();
     const navigate = useNavigate();
@@ -46,23 +73,48 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
 
     // Parse Slug Strategy
     const pageContext = useMemo(() => {
-        if (!slug) return null;
+        if (!slug) return { isStaticLanding: true, originalSlug: 'radio-online' };
         
         const cleanSlug = slug.toLowerCase();
         
-        // 1. Check Genre
+        // 1. Check SEO_SLUG_MAP first
+        const mapped = SEO_SLUG_MAP[cleanSlug];
+        if (mapped) {
+            if (mapped.type === 'country') {
+                const country = COUNTRIES_DATA.find(c => c.name.toLowerCase() === mapped.tag.toLowerCase());
+                return { country, originalSlug: slug };
+            }
+            if (mapped.type === 'genre') {
+                const genre = GENRES.find(g => g.id === mapped.tag);
+                return { genre, originalSlug: slug };
+            }
+            if (mapped.type === 'combo') {
+                const genre = GENRES.find(g => g.id === mapped.genre);
+                const country = COUNTRIES_DATA.find(c => c.name.toLowerCase() === mapped.country.toLowerCase());
+                return { genre, country, originalSlug: slug };
+            }
+            if (mapped.type === 'landing') {
+                return { isStaticLanding: true, originalSlug: slug };
+            }
+        }
+
+        // 2. Fallback to Dynamic Dynamic Matching
+        // Check Genre
         const genre = GENRES.find(g => cleanSlug.includes(g.id) || cleanSlug.includes(g.id.replace('-', '')));
         
-        // 2. Check Country
+        // Check Country
         const country = COUNTRIES_DATA.find(c => {
             const countrySlug = c.name.toLowerCase().replace(/\s+/g, '-');
             return cleanSlug.includes(countrySlug);
         });
 
-        // 3. Static landing check
+        // Static landing check (legacy)
         const isStaticLanding = ['slushat-radio-online', 'radio-online', 'internet-radio', 'free-online-radio'].includes(cleanSlug);
 
-        if (!genre && !country && !isStaticLanding) return null;
+        // Fallback to global if nothing matches (NEVER return null)
+        if (!genre && !country && !isStaticLanding) {
+            return { isStaticLanding: true, originalSlug: slug };
+        }
 
         return { genre, country, originalSlug: slug, isStaticLanding };
     }, [slug]);
