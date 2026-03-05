@@ -6,6 +6,7 @@ import { fetchStationBySlug } from '../services/radioService';
 import StationCard from './StationCard';
 import { TRANSLATIONS } from '../types/constants';
 import ParticleVisualizer from './ParticleVisualizer';
+import RingVisualizer from './RingVisualizer';
 import { audioEngine } from '../services/AudioEngine';
 
 interface StationPageProps {
@@ -89,17 +90,25 @@ const StationPage: React.FC<StationPageProps> = ({
             </Helmet>
 
             <div className={`mb-12 flex flex-col items-center text-center relative z-10 ${uiMode === 'classic' ? 'pt-10' : ''}`}>
-                <div className="relative group mb-8 w-64 h-64 flex items-center justify-center">
-                    {uiMode === 'modern' && (
-                        <div className="absolute -inset-4 bg-gradient-to-r from-primary to-secondary opacity-20 blur-[60px] group-hover:opacity-40 transition-opacity z-0 pointer-events-none"></div>
+                <div className={`relative group mb-8 flex items-center justify-center ${uiMode === 'modern' ? 'w-64 h-64 sm:w-80 sm:h-80' : 'w-64 h-64'}`}>
+                    {uiMode === 'modern' ? (
+                        <>
+                            <div className="absolute -inset-4 bg-gradient-to-r from-primary to-secondary opacity-10 blur-[60px] transition-opacity z-0 pointer-events-none"></div>
+                            <RingVisualizer 
+                                analyserNode={audioEngine.getAnalyser()} 
+                                isPlaying={!!isPlaying && currentStationId === station.stationuuid} 
+                                className="w-full h-full drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                            />
+                        </>
+                    ) : (
+                        <img 
+                            src={station.favicon || 'https://www.google.com/s2/favicons?domain=' + new URL(station.url_resolved).hostname + '&sz=128'} 
+                            alt={station.name}
+                            className={`w-40 h-40 relative z-10 shadow-2xl border-4 border-white/10 rounded-3xl`}
+                            loading="lazy"
+                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/3103/3103181.png'; }}
+                        />
                     )}
-                    <img 
-                        src={station.favicon || 'https://www.google.com/s2/favicons?domain=' + new URL(station.url_resolved).hostname + '&sz=128'} 
-                        alt={station.name}
-                        className={`w-40 h-40 relative z-10 shadow-2xl border-4 border-white/10 ${uiMode === 'classic' ? 'rounded-3xl' : 'rounded-full hover:scale-105 transition-transform duration-500'}`}
-                        loading="lazy"
-                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/3103/3103181.png'; }}
-                    />
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight drop-shadow-xl flex items-center gap-3">
