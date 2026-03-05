@@ -1,5 +1,18 @@
 {
+  "functions": {
+    "api/seo-handler.js": {
+      "includeFiles": "dist/index.html"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/(radio-.*|.*-radio.*|slushat-radio-online|internet-radio|free-online-radio|free-internet-radio)",
+      "destination": "/api/seo-handler"
+    },
+    {
+      "source": "/(ru|es|fr|de|zh)/(radio-.*|.*-radio.*|slushat-radio-online|internet-radio|free-online-radio|free-internet-radio)",
+      "destination": "/api/seo-handler"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
