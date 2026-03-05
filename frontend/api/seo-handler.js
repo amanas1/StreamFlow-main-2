@@ -27,19 +27,21 @@ export default async function handler(req, res) {
         }
     }
 
-    // Load base index.html (ESM safe path resolution)
-    const indexPath = path.join(process.cwd(), 'dist', 'index.html');
+    // Load base template (ESM safe path resolution)
+    let indexPath = path.join(process.cwd(), 'dist', 'app-template.html');
     let htmlContent = '';
     
     try {
-        if (fs.existsSync(indexPath)) {
-            htmlContent = fs.readFileSync(indexPath, 'utf8');
-        } else {
-            const fallbackPath = path.join(process.cwd(), 'frontend', 'dist', 'index.html');
-            htmlContent = fs.readFileSync(fallbackPath, 'utf8');
+        if (!fs.existsSync(indexPath)) {
+          // Development or local fallback
+          indexPath = path.join(process.cwd(), 'dist', 'index.html');
+          if (!fs.existsSync(indexPath)) {
+             indexPath = path.join(process.cwd(), 'index.html');
+          }
         }
+        htmlContent = fs.readFileSync(indexPath, 'utf8');
     } catch (err) {
-        return res.status(500).send('Error loading index.html template');
+        return res.status(500).send('Error loading HTML template from ' + indexPath);
     }
 
     // SEO Configurations (Mirrored from DynamicRadioHub.tsx)

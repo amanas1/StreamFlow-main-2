@@ -2,14 +2,10 @@
   "cleanUrls": true,
   "functions": {
     "api/seo-handler.js": {
-      "includeFiles": "dist/index.html"
+      "includeFiles": "dist/app-template.html"
     }
   },
   "rewrites": [
-    {
-      "source": "/index.html",
-      "destination": "/api/seo-handler"
-    },
     {
       "source": "/",
       "destination": "/api/seo-handler"
@@ -28,7 +24,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/api/seo-handler"
     }
   ]
 }
