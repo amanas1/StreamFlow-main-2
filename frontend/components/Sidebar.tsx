@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RadioStation, Language, ViewMode, CategoryInfo, VisualMode, UIMode } from '../types';
+import { Language, ViewMode, CategoryInfo, VisualMode, UIMode } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS } from '../types/constants';
 import { XMarkIcon, HeartIcon, MusicNoteIcon, SearchIcon } from './Icons';
 import DancingAvatar from './DancingAvatar';
+import QRCode from 'qrcode';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -20,12 +21,25 @@ interface SidebarProps {
     sidebarTimerRef: React.MutableRefObject<NodeJS.Timeout | null>;
     uiMode: UIMode;
     setUiMode: (mode: UIMode) => void;
+    installPrompt?: any;
+    onInstall?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
     isOpen, onClose, isIdleView, language, t, isPlaying, isBuffering, visualMode, 
-    viewMode, selectedCategory, loadCategory, sidebarTimerRef, uiMode, setUiMode 
+    viewMode, selectedCategory, loadCategory, sidebarTimerRef, uiMode, setUiMode,
+    installPrompt, onInstall
 }) => {
+    const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+    useEffect(() => {
+        QRCode.toDataURL('https://auradiochat.com', {
+            width: 80,
+            margin: 1,
+            color: { dark: '#ffffffcc', light: '#00000000' }
+        }).then(url => setQrDataUrl(url)).catch(() => {});
+    }, []);
+
     return (
         <aside className={`fixed inset-y-0 left-0 z-[70] w-72 transform transition-all duration-500 glass-panel flex flex-col bg-[var(--panel-bg)] ${isIdleView ? '-translate-x-full opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'} ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="p-6 flex items-center justify-between shrink-0">
@@ -118,9 +132,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                 ))}
             </div>
 
-            <div className="p-4 pt-2 border-t border-[var(--panel-border)] hidden md:block">
-                <div className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-white/5 flex items-center justify-center gap-3">
-                    <MusicNoteIcon className="w-5 h-5 text-slate-500" />
+            <div className="p-4 pt-2 border-t border-[var(--panel-border)] hidden md:block space-y-2">
+                {installPrompt && (
+                    <button
+                        onClick={onInstall}
+                        className="w-full py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center justify-center gap-2"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        {language === 'ru' ? 'Установить AU Radio' : 'Install AU Radio'}
+                    </button>
+                )}
+                <div className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-white/5 flex items-center gap-3">
+                    {qrDataUrl ? (
+                        <img src={qrDataUrl} alt="QR" className="w-12 h-12 rounded-lg flex-shrink-0" />
+                    ) : (
+                        <MusicNoteIcon className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                    )}
                     <div className="text-left">
                         <p className="text-[10px] uppercase font-bold text-slate-500">{t.platform || 'Streaming'}</p>
                         <p className="text-xs font-black text-slate-400">AU Radio</p>

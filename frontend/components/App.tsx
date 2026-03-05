@@ -1408,6 +1408,13 @@ export default function App(): React.JSX.Element {
           sidebarTimerRef={sidebarTimerRef} 
           uiMode={uiMode}
           setUiMode={handleUiModeChange}
+          installPrompt={installPrompt}
+          onInstall={() => {
+              if (installPrompt) {
+                  installPrompt.prompt();
+                  installPrompt.userChoice.then(() => setInstallPrompt(null));
+              }
+          }}
       />
 
       <motion.main 
