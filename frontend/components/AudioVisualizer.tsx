@@ -762,33 +762,9 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
             // --- Draw Bouncing Peak Dot (segmented) ---
             if (dot.y > 2) {
               const dotSize = Math.max(3, barWidth - 2);
-              let dotY: number;
-              if (isBottom) {
-                dotY = baselineY - dot.y - 6;
-              } else {
-                dotY = baselineY - dot.y - 6;
-              }
-              // Glow
-              if (visualMode !== 'low') {
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = `hsla(${hue}, 100%, 70%, 0.9)`;
-              }
-              ctx.fillStyle = `hsla(${hue}, 100%, 85%, 0.95)`;
-              // Rounded square
-              const r = 1.5;
-              const dx = x + 0.5;
-              ctx.beginPath();
-              ctx.moveTo(dx + r, dotY);
-              ctx.lineTo(dx + dotSize - r, dotY);
-              ctx.arcTo(dx + dotSize, dotY, dx + dotSize, dotY + r, r);
-              ctx.lineTo(dx + dotSize, dotY + 4 - r);
-              ctx.arcTo(dx + dotSize, dotY + 4, dx + dotSize - r, dotY + 4, r);
-              ctx.lineTo(dx + r, dotY + 4);
-              ctx.arcTo(dx, dotY + 4, dx, dotY + 4 - r, r);
-              ctx.lineTo(dx, dotY + r);
-              ctx.arcTo(dx, dotY, dx + r, dotY, r);
-              ctx.fill();
-              ctx.shadowBlur = 0;
+              const dotY = (isBottom ? baselineY : baselineY) - dot.y - 6;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+              ctx.fillRect(x + 0.5, dotY, dotSize, 3);
             }
           } else {
             const barGrd = ctx.createLinearGradient(x, height, x, height - barHeight);
@@ -807,25 +783,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
             if (dot.y > 2) {
               const dotSize = Math.max(3, barWidth - 2);
               const dotY = height - dot.y - (height - effectiveHeight)/2 - 6;
-              if (visualMode !== 'low') {
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = `hsla(${hue}, 100%, 70%, 0.9)`;
-              }
-              ctx.fillStyle = `hsla(${hue}, 100%, 85%, 0.95)`;
-              const r = 1.5;
-              const dx = x + 0.5;
-              ctx.beginPath();
-              ctx.moveTo(dx + r, dotY);
-              ctx.lineTo(dx + dotSize - r, dotY);
-              ctx.arcTo(dx + dotSize, dotY, dx + dotSize, dotY + r, r);
-              ctx.lineTo(dx + dotSize, dotY + 4 - r);
-              ctx.arcTo(dx + dotSize, dotY + 4, dx + dotSize - r, dotY + 4, r);
-              ctx.lineTo(dx + r, dotY + 4);
-              ctx.arcTo(dx, dotY + 4, dx, dotY + 4 - r, r);
-              ctx.lineTo(dx, dotY + r);
-              ctx.arcTo(dx, dotY, dx + r, dotY, r);
-              ctx.fill();
-              ctx.shadowBlur = 0;
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+              ctx.fillRect(x + 0.5, dotY, dotSize, 3);
             }
           }
         }
