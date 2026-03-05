@@ -352,12 +352,33 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                 "itemListElement": (stations || []).slice(0, 10).map((s, idx) => ({
                     "@type": "ListItem",
                     "position": idx + 1,
-                    "url": `https://auradiochat.com/station/${s.slug}`,
+                    "url": `https://auradiochat.com/station/${s.stationuuid}`,
                     "name": s.name
                 }))
             }
         };
-    }, [localizedData, canonicalUrl, stations, activeLanguage]);
+    }, [localizedData, canonicalUrl, stations]);
+
+    const breadcrumbData = React.useMemo(() => {
+        return {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Online Radio",
+                    "item": "https://auradiochat.com"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": localizedData.title,
+                    "item": canonicalUrl
+                }
+            ]
+        };
+    }, [localizedData, canonicalUrl]);
 
     const faqData = React.useMemo(() => {
         return {
@@ -398,6 +419,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                 <title>{localizedData.title} | AU Radio</title>
                 <meta name="description" content={localizedData.desc} />
                 <link rel="canonical" href={canonicalUrl} />
+                <link rel="alternate" hrefLang="x-default" href={`https://auradiochat.com${canonicalPath}`} />
                 
                 {/* hreflang Support */}
                 {languages.map(l => (
@@ -431,6 +453,9 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                 <script type="application/ld+json">
                     {JSON.stringify(faqData)}
                 </script>
+                <script type="application/ld+json">
+                    {JSON.stringify(breadcrumbData)}
+                </script>
             </Helmet>
 
             <nav className="text-xs text-slate-500 mb-8 uppercase tracking-widest flex items-center gap-2">
@@ -443,9 +468,12 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
 
             <header className="mb-12">
                 <h1 className={`${uiMode === 'classic' ? 'text-3xl font-bold' : 'text-4xl md:text-6xl font-black italic tracking-tighter uppercase'} text-white mb-6`}>
-                    {pageContext.isStaticLanding ? localizedData.title : (
-                        <>{displayGenre} <span className="text-primary">{displayCountry || ''}</span></>
-                    )}
+                    {pageContext.isStaticLanding ? localizedData.title : (() => {
+                        if (pageContext.genre && pageContext.country) return `${displayGenre} Radio in ${displayCountry}`;
+                        if (pageContext.genre && !pageContext.country) return `${displayGenre} Radio Stations`;
+                        if (pageContext.country && !pageContext.genre) return `Radio Stations in ${displayCountry}`;
+                        return localizedData.title;
+                    })()}
                 </h1>
                 {uiMode === 'classic' && (
                     <p className="text-xl text-slate-400 max-w-3xl leading-relaxed">
@@ -453,6 +481,10 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                     </p>
                 )}
             </header>
+
+            <h2 className="sr-only">
+                {localizedData.title} – Online Radio Stations
+            </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                  {isLoading ? Array.from({ length: 8 }).map((_, i) => (
@@ -511,7 +543,9 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             <article className="mt-24 prose prose-invert prose-lg max-w-4xl mx-auto text-slate-400">
                 <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-wider">{localizedData.title}</h2>
                 <div className="leading-relaxed text-sm text-justify">
-                    <p>{seoContent}</p>
+                    {seoContent.split('\n\n').map((paragraph, idx) => (
+                        <p key={idx}>{paragraph}</p>
+                    ))}
                 </div>
             </article>
         </div>
