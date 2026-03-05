@@ -168,26 +168,49 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
     
     // Localization of dynamic titles and descriptions
     const localizedData = useMemo(() => {
+        const isStaticLanding = pageContext.isStaticLanding;
         const isBoth = pageContext.genre && pageContext.country;
         const isGenre = !!pageContext.genre;
         
-        const titles: Record<Language, string> = {
-            en: isBoth ? `${displayGenre} Radio in ${displayCountry}` : isGenre ? `Best ${displayGenre} Radio` : `Radio in ${displayCountry}`,
-            ru: isBoth ? `${displayGenre} радио ${displayCountry}` : isGenre ? `Лучшее ${displayGenre} радио` : `Радио ${displayCountry}`,
-            es: isBoth ? `Radio ${displayGenre} en ${displayCountry}` : isGenre ? `Mejor Radio ${displayGenre}` : `Radio en ${displayCountry}`,
-            fr: isBoth ? `Radio ${displayGenre} en ${displayCountry}` : isGenre ? `Meilleure Radio ${displayGenre}` : `Radio en ${displayCountry}`,
-            zh: isBoth ? `${displayCountry}的${displayGenre}广播` : isGenre ? `最佳${displayGenre}广播` : `${displayCountry}的广播`,
-            de: isBoth ? `${displayGenre} Radio in ${displayCountry}` : isGenre ? `Bestes ${displayGenre} Radio` : `Radio in ${displayCountry}`
-        };
+        let titles: Record<Language, string>;
+        let descriptions: Record<Language, string>;
 
-        const descriptions: Record<Language, string> = {
-            en: `Listen to ${displayGenre} ${displayCountry} radio stations live. Best online radio streaming player.`,
-            ru: `Слушайте ${displayGenre} ${displayCountry} радио онлайн. Лучший плеер для интернет-радио.`,
-            es: `Escucha radio ${displayGenre} ${displayCountry} en vivo. El mejor reproductor de radio online.`,
-            fr: `Écoutez la radio ${displayGenre} ${displayCountry} en direct. Le meilleur lecteur radio en ligne.`,
-            zh: `在线收听${displayCountry}${displayGenre}广播。最佳在线广播播放器。`,
-            de: `Hören Sie ${displayGenre} ${displayCountry} Radio live. Bester Online-Radio-Streaming-Player.`
-        };
+        if (isStaticLanding) {
+            titles = {
+                en: 'Listen to Radio Online Free',
+                ru: 'Слушать радио онлайн бесплатно',
+                es: 'Escuchar radio en vivo gratis',
+                fr: 'Écouter la radio en direct gratuit',
+                zh: '在线免费收听广播',
+                de: 'Radio online kostenlos hören'
+            };
+            descriptions = {
+                en: 'Listen to thousands of internet radio stations online for free. Best online radio streaming player.',
+                ru: 'Слушайте тысячи интернет-радиостанций онлайн бесплатно. Лучший плеер для интернет-радио.',
+                es: 'Escucha miles de estaciones de radio por internet gratis en vivo. El mejor reproductor de radio online.',
+                fr: 'Écoutez des milliers de stations de radio sur internet en direct gratuitement. Le meilleur lecteur radio en ligne.',
+                zh: '免费在线收听数千个互联网广播电台。最佳在线广播播放器。',
+                de: 'Hören Sie Tausende von Internetradiosendern online kostenlos live. Bester Online-Radio-Streaming-Player.'
+            };
+        } else {
+            titles = {
+                en: isBoth ? `${displayGenre} Radio in ${displayCountry}` : isGenre ? `Best ${displayGenre} Radio` : `Radio in ${displayCountry}`,
+                ru: isBoth ? `${displayGenre} радио ${displayCountry}` : isGenre ? `Лучшее ${displayGenre} радио` : `Радио ${displayCountry}`,
+                es: isBoth ? `Radio ${displayGenre} en ${displayCountry}` : isGenre ? `Mejor Radio ${displayGenre}` : `Radio en ${displayCountry}`,
+                fr: isBoth ? `Radio ${displayGenre} en ${displayCountry}` : isGenre ? `Meilleure Radio ${displayGenre}` : `Radio en ${displayCountry}`,
+                zh: isBoth ? `${displayCountry}的${displayGenre}广播` : isGenre ? `最佳${displayGenre}广播` : `${displayCountry}的广播`,
+                de: isBoth ? `${displayGenre} Radio in ${displayCountry}` : isGenre ? `Bestes ${displayGenre} Radio` : `Radio in ${displayCountry}`
+            };
+
+            descriptions = {
+                en: `Listen to ${displayGenre} ${displayCountry} radio stations live. Best online radio streaming player.`,
+                ru: `Слушайте ${displayGenre} ${displayCountry} радио онлайн. Лучший плеер для интернет-радио.`,
+                es: `Escucha radio ${displayGenre} ${displayCountry} en vivo. El mejor reproductor de radio online.`,
+                fr: `Écoutez la radio ${displayGenre} ${displayCountry} en direct. Le meilleur lecteur radio en ligne.`,
+                zh: `在线收听${displayCountry}${displayGenre}广播。最佳在线广播播放器。`,
+                de: `Hören Sie ${displayGenre} ${displayCountry} Radio live. Bester Online-Radio-Streaming-Player.`
+            };
+        }
 
         return { 
             title: titles[activeLanguage] || titles.en, 
@@ -350,12 +373,16 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             <nav className="text-xs text-slate-500 mb-8 uppercase tracking-widest flex items-center gap-2">
                 <Link to="/" className="hover:text-white">{ui.back || 'Home'}</Link> 
                 <span>/</span>
-                <span className="text-slate-300">{displayGenre} {displayCountry}</span>
+                <span className="text-slate-300">
+                    {pageContext.isStaticLanding ? localizedData.title : `${displayGenre} ${displayCountry}`}
+                </span>
             </nav>
 
             <header className="mb-12">
                 <h1 className={`${uiMode === 'classic' ? 'text-3xl font-bold' : 'text-4xl md:text-6xl font-black italic tracking-tighter uppercase'} text-white mb-6`}>
-                    {displayGenre} <span className="text-primary">{displayCountry || ''}</span>
+                    {pageContext.isStaticLanding ? localizedData.title : (
+                        <>{displayGenre} <span className="text-primary">{displayCountry || ''}</span></>
+                    )}
                 </h1>
                 {uiMode === 'classic' && (
                     <p className="text-xl text-slate-400 max-w-3xl leading-relaxed">
