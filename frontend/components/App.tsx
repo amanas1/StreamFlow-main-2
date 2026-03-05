@@ -1621,32 +1621,7 @@ export default function App(): React.JSX.Element {
                     />
                 } />
 
-                {/* --- SEO STATIC LANDING ROUTES --- */}
-                <Route path="/slushat-radio-online" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-online" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/internet-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/free-online-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-
-                {/* --- SEO COUNTRY ROUTES --- */}
-                <Route path="/radio-russia" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-kazakhstan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-ukraine" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-belarus" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-uzbekistan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-kyrgyzstan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/radio-tajikistan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-
-                {/* --- SEO GENRE ROUTES --- */}
-                <Route path="/jazz-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/pop-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/rock-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/electronic-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/hip-hop-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/lounge-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/classical-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/world-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-
-                {/* --- PROGRAMMATIC SEO ROUTES (GENRE + COUNTRY 3000+ Combinations) --- */}
+                {/* --- PROGRAMMATIC SEO ROUTES (Handles 3000+ combinations + static landings) --- */}
                 <Route path="/:slug" element={
                     <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
                 } />

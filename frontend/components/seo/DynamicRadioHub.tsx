@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { GENRES, COUNTRIES_DATA, TRANSLATIONS } from '../../types/constants';
 import { RadioStation, Language, UIMode } from '../../types';
-import { fetchStationsByTag, fetchStationsByCountry } from '../../services/radioService';
+import { fetchStationsByTag, fetchStationsByCountry, fetchGlobalMusicStations } from '../../services/radioService';
 import { HeartIcon } from '../../components/Icons';
 
 interface DynamicHubProps {
@@ -59,7 +59,12 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             return cleanSlug.includes(countrySlug);
         });
 
-        return { genre, country, originalSlug: slug };
+        // 3. Static landing check
+        const isStaticLanding = ['slushat-radio-online', 'radio-online', 'internet-radio', 'free-online-radio'].includes(cleanSlug);
+
+        if (!genre && !country && !isStaticLanding) return null;
+
+        return { genre, country, originalSlug: slug, isStaticLanding };
     }, [slug]);
 
     // Helper to translate country names (reusing logic from DirectoryPage)
@@ -110,6 +115,8 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                     fetched = await fetchStationsByTag(pageContext.genre.id, 300);
                 } else if (pageContext.country) {
                     fetched = await fetchStationsByCountry(apiCountryName, 300);
+                } else if (pageContext.isStaticLanding) {
+                    fetched = await fetchGlobalMusicStations();
                 }
                 if (rid === loadRequestIdRef.current && isMountedRef.current) {
                     setStations(fetched);
@@ -190,7 +197,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
 
     // Extended SEO Text (200-300 words) for various page types
     const seoContent = useMemo(() => {
-        const isStaticLanding = !pageContext.genre && !pageContext.country && pageContext.originalSlug && ['slushat-radio-online', 'radio-online', 'internet-radio', 'free-online-radio'].includes(pageContext.originalSlug);
+        const isStaticLanding = pageContext.isStaticLanding;
         
         if (activeLanguage === 'ru') {
             if (isStaticLanding) {
