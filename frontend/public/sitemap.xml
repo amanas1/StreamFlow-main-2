@@ -4,6 +4,12 @@
     <loc>https://auradiochat.com/sitemap-main.xml</loc>
   </sitemap>
   <sitemap>
+    <loc>https://auradiochat.com/sitemap-genres.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://auradiochat.com/sitemap-countries.xml</loc>
+  </sitemap>
+  <sitemap>
     <loc>https://auradiochat.com/sitemap-combos.xml</loc>
   </sitemap>
   <sitemap>

@@ -101,10 +101,16 @@ const StationPage: React.FC<StationPageProps> = ({
 
     const jsonLd = {
         "@context": "https://schema.org",
-        "@type": "RadioStation",
+        "@type": ["RadioStation", "MusicStreamingService"],
         "name": station.name,
         "url": `https://auradiochat.com/station/${station.slug}`,
-        "description": `Listen to ${station.name} live on AU Radio. High quality ${station.genre} music streaming.`,
+        "description": `Listen ${station.name} online. Free internet radio streaming.`,
+        "applicationCategory": "MultimediaApplication",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
         "genre": station.genre,
         "address": {
             "@type": "PostalAddress",
@@ -116,11 +122,24 @@ const StationPage: React.FC<StationPageProps> = ({
     return (
         <div className="max-w-4xl mx-auto px-6 py-12">
             <Helmet>
-                <title>{`${station.name} – ${t.listenNow} | AU Radio`}</title>
-                <meta name="description" content={`${t.listenNow} ${station.name} online. High-quality ${station.genre} and ${station.subGenre} music stream. No registration required.`} />
-                <meta property="og:title" content={`${station.name} – AU Radio`} />
+                <title>{`${station.name} — Listen Online Radio`}</title>
+                <meta name="description" content={`Listen ${station.name} online. Free internet radio streaming.`} />
+                
+                {/* Open Graph / Facebook */}
+                <meta property="og:type" content="music.radio_station" />
+                <meta property="og:url" content={`https://auradiochat.com/station/${station.slug}`} />
+                <meta property="og:site_name" content="AU Radio" />
+                <meta property="og:title" content={`${station.name} — Listen Online Radio`} />
                 <meta property="og:description" content={`Streaming ${station.genre} music from ${station.country || 'around the world'}.`} />
                 <meta property="og:image" content={station.favicon || "https://auradiochat.com/og-image.png"} />
+                
+                {/* Twitter */}
+                <meta property="twitter:card" content="summary_large_image" />
+                <meta property="twitter:url" content={`https://auradiochat.com/station/${station.slug}`} />
+                <meta property="twitter:title" content={`${station.name} — Listen Online Radio`} />
+                <meta property="twitter:description" content={`Streaming ${station.genre} music from ${station.country || 'around the world'}.`} />
+                <meta property="twitter:image" content={station.favicon || "https://auradiochat.com/og-image.png"} />
+
                 <link rel="canonical" href={`https://auradiochat.com/station/${station.slug}`} />
                 <script type="application/ld+json">
                     {JSON.stringify(jsonLd)}

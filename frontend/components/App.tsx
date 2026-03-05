@@ -1574,8 +1574,7 @@ export default function App(): React.JSX.Element {
             <Routes>
                 <Route path="/" element={renderHome()} />
                 <Route path="/:lang" element={<LanguageWrapper>{renderHome()}</LanguageWrapper>} />
-                <Route path="/radio/:slug" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
-                <Route path="/:lang/radio/:slug" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                {/* Legacy cleanup: Keep these temporarily if needed, but the main driver is /:slug and /:lang/:slug */}
                 <Route path="/favorites" element={
                     <>
                         <Helmet>
@@ -1619,23 +1618,77 @@ export default function App(): React.JSX.Element {
                         setParticleSettings={setParticleSettings}
                         ringSettings={ringSettings}
                         setRingSettings={setRingSettings}
-                        isVisible={isAppVisible}
                     />
+                } />
+
+                {/* --- SEO STATIC LANDING ROUTES --- */}
+                <Route path="/slushat-radio-online" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-online" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/internet-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/free-online-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+
+                {/* --- SEO COUNTRY ROUTES --- */}
+                <Route path="/radio-russia" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-kazakhstan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-ukraine" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-belarus" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-uzbekistan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-kyrgyzstan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/radio-tajikistan" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+
+                {/* --- SEO GENRE ROUTES --- */}
+                <Route path="/jazz-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/pop-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/rock-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/electronic-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/hip-hop-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/lounge-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/classical-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+                <Route path="/world-radio" element={<DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />} />
+
+                {/* --- PROGRAMMATIC SEO ROUTES (GENRE + COUNTRY 3000+ Combinations) --- */}
+                <Route path="/:slug" element={
+                    <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
+                } />
+                <Route path="/:lang/:slug" element={
+                    <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
                 } />
             </Routes>
                 <footer className="w-full pb-64 pt-20 flex flex-col items-center justify-center gap-10 opacity-80 z-0 relative border-t border-white/5 mt-20">
-                    <div className="flex flex-col items-center gap-6">
-                        <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            <Link to="/about" className="hover:text-white transition-colors">{t.aboutAU}</Link>
-                            <span className="text-slate-800">•</span>
-                            <Link to="/genres" className="hover:text-white transition-colors">{t.genresText}</Link>
-                            <span className="text-slate-800">•</span>
-                            <Link to="/privacy-policy" className="hover:text-white transition-colors">{t.privacyPolicy}</Link>
-                            <span className="text-slate-800">•</span>
-                            <Link to="/contact" className="hover:text-white transition-colors">{t.contactText}</Link>
-                            <span className="text-slate-800">•</span>
-                            <Link to="/directory" className="hover:text-white transition-colors">{t.directoryText}</Link>
+                    <div className="flex flex-col items-center gap-6 w-full px-4 max-w-5xl mx-auto">
+                        
+                        {/* SEO Internal Linking Block */}
+                        <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-8 mb-8 text-left text-xs">
+                            <div className="space-y-3">
+                                <h4 className="text-slate-400 font-bold uppercase tracking-wider mb-4">Top Countries</h4>
+                                <Link to="/radio-russia" className="block text-slate-500 hover:text-white transition-colors">Russia Radio</Link>
+                                <Link to="/radio-kazakhstan" className="block text-slate-500 hover:text-white transition-colors">Kazakhstan Radio</Link>
+                                <Link to="/radio-ukraine" className="block text-slate-500 hover:text-white transition-colors">Ukraine Radio</Link>
+                                <Link to="/radio-belarus" className="block text-slate-500 hover:text-white transition-colors">Belarus Radio</Link>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="text-slate-400 font-bold uppercase tracking-wider mb-4">Top Genres</h4>
+                                <Link to="/jazz-radio" className="block text-slate-500 hover:text-white transition-colors">Jazz Radio</Link>
+                                <Link to="/rock-radio" className="block text-slate-500 hover:text-white transition-colors">Rock Radio</Link>
+                                <Link to="/pop-radio" className="block text-slate-500 hover:text-white transition-colors">Pop Radio</Link>
+                                <Link to="/electronic-radio" className="block text-slate-500 hover:text-white transition-colors">Electronic Radio</Link>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="text-slate-400 font-bold uppercase tracking-wider mb-4">Discover</h4>
+                                <Link to="/slushat-radio-online" className="block text-slate-500 hover:text-white transition-colors">Слушать радио онлайн</Link>
+                                <Link to="/free-online-radio" className="block text-slate-500 hover:text-white transition-colors">Free Internet Radio</Link>
+                                <Link to="/jazz-radio-russia" className="block text-slate-500 hover:text-white transition-colors">Jazz in Russia</Link>
+                                <Link to="/electronic-radio-germany" className="block text-slate-500 hover:text-white transition-colors">Electronic Germany</Link>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="text-slate-400 font-bold uppercase tracking-wider mb-4">Resources</h4>
+                                <Link to="/about" className="block text-slate-500 hover:text-white transition-colors">{t.aboutAU}</Link>
+                                <Link to="/privacy-policy" className="block text-slate-500 hover:text-white transition-colors">{t.privacyPolicy}</Link>
+                                <Link to="/contact" className="block text-slate-500 hover:text-white transition-colors">{t.contactText}</Link>
+                                <Link to="/directory" className="block text-slate-500 hover:text-white transition-colors">{t.directoryText}</Link>
+                            </div>
                         </div>
+
                         <div className="w-16 h-px bg-slate-800"></div>
                         <p className="text-[10px] text-slate-600 font-bold tracking-widest text-center px-4">
                             {t.copyRight}
