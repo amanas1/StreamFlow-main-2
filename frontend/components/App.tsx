@@ -342,7 +342,7 @@ export default function App(): React.JSX.Element {
       localStorage.setItem('auradiochat_particle_settings', JSON.stringify(particleSettings));
   }, [particleSettings]);
 
-  const DEFAULT_RING_SETTINGS: RingSettings = { amount: 15, thickness: 1.0, brightness: 50, contrast: 50 };
+  const DEFAULT_RING_SETTINGS: RingSettings = { amount: 30, thickness: 0.5, brightness: 40, contrast: 40 };
   const [ringSettings, setRingSettings] = useState<RingSettings>(() => {
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('auradiochat_ring_settings');
