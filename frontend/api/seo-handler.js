@@ -33,15 +33,13 @@ export default async function handler(req, res) {
     
     try {
         if (!fs.existsSync(indexPath)) {
-          // Development or local fallback
-          indexPath = path.join(process.cwd(), 'dist', 'index.html');
-          if (!fs.existsSync(indexPath)) {
-             indexPath = path.join(process.cwd(), 'index.html');
-          }
+            const filesInCwd = fs.readdirSync(process.cwd());
+            const filesInDist = fs.existsSync(path.join(process.cwd(), 'dist')) ? fs.readdirSync(path.join(process.cwd(), 'dist')) : ['dist-not-found'];
+            return res.status(500).send(`Template not found at ${indexPath}. \nCWD: ${process.cwd()}\nFiles in CWD: ${filesInCwd.join(', ')}\nFiles in dist: ${filesInDist.join(', ')}`);
         }
         htmlContent = fs.readFileSync(indexPath, 'utf8');
     } catch (err) {
-        return res.status(500).send('Error loading HTML template from ' + indexPath);
+        return res.status(500).send(`Error reading template: ${err.message}`);
     }
 
     // SEO Configurations (Mirrored from DynamicRadioHub.tsx)
