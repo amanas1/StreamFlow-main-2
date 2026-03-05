@@ -15,6 +15,14 @@
       "destination": "/api/seo-handler"
     },
     {
+      "source": "/",
+      "destination": "/api/seo-handler"
+    },
+    {
+      "source": "/(ru|es|fr|de|zh)",
+      "destination": "/api/seo-handler"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
