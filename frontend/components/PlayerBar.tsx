@@ -99,6 +99,15 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                     ))}
                 </div>
 
+                {/* ROW 2.5 (Mobile Only): VISUALIZERS */}
+                <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
+                    {VISUALIZERS_LIST.map(viz => (
+                        <button key={viz.id} onClick={() => setVisualizerVariant(viz.id)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border ${visualizerVariant === viz.id ? 'bg-purple-500 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                            <span className={visualizerVariant === viz.id ? 'shimmering-text-active' : 'shimmering-text'}>{t[viz.labelKey] || viz.id}</span>
+                        </button>
+                    ))}
+                </div>
+
                 {/* ROW 3: CONTROLS */}
                 <div className="flex items-center justify-between w-full md:w-auto md:gap-4 z-10 px-2 md:px-0 md:mx-4">
                     <div className="flex items-center gap-2 md:gap-6">
@@ -126,10 +135,25 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                             <HeartIcon className={`w-6 h-6 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
                         </button>
                         <button onClick={() => setIsRandomMode(!isRandomMode)} className={`p-2 transition-all hover:scale-110 active:scale-95 ${isRandomMode ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`} title={t.randomMode}><ShuffleIcon className="w-5 h-5" /></button>
+                        
+                        <div className="hidden 2xl:flex flex-col items-center gap-1">
+                            <div className="flex items-center gap-1.5 bg-black/20 p-1.5 rounded-xl border border-white/5">
+                                {GLOBAL_PRESETS.map(preset => (
+                                    <button key={preset.id} onClick={() => handleApplyPreset(preset.id)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${activePresetId === preset.id ? 'bg-primary text-black shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)] scale-105' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}>{preset.name}</button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-black/20 p-1.5 rounded-xl border border-white/5">
+                                {VISUALIZERS_LIST.map(viz => (
+                                    <button key={viz.id} onClick={() => setVisualizerVariant(viz.id)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${visualizerVariant === viz.id ? 'bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)] scale-105' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}>
+                                        <span className={visualizerVariant === viz.id ? 'shimmering-text-active' : 'shimmering-text'}>{t[viz.labelKey] || viz.id}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* ROW 4: DESKTOP EXTRAS */}
+                {/* ROW 3: DESKTOP EXTRAS */}
                 <div className="hidden md:flex flex-1 justify-end items-center gap-2 md:gap-4 z-10 pr-6 md:pr-2">
                     {!sidebarOpen && (
                         <div className="hidden md:block w-14 h-14 group cursor-pointer transition-all hover:scale-110 active:scale-95 mr-1" onClick={() => setSidebarOpen(true)} title="Show Sidebar">
