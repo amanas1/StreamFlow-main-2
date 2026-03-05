@@ -56,9 +56,30 @@ const StationPage: React.FC<StationPageProps> = ({
     if (!station) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                <div className={`relative group mb-8 flex items-center justify-center ${uiMode === 'modern' ? 'w-64 h-64 sm:w-80 sm:h-80' : 'w-64 h-64'}`}>
+                    {uiMode === 'modern' ? (
+                        <>
+                            <div className="absolute -inset-4 bg-gradient-to-r from-primary to-secondary opacity-10 blur-[60px] transition-opacity z-0 pointer-events-none"></div>
+                            <RingVisualizer 
+                                analyserNode={audioEngine.getAnalyser()} 
+                                isPlaying={!!isPlaying}
+                                settings={ringSettings}
+                                className="w-full h-full drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] bg-slate-900/40 rounded-full"
+                            />
+                        </>
+                    ) : (
+                        <div className="w-40 h-40 relative z-10 shadow-2xl border-4 border-white/10 rounded-3xl bg-slate-800 flex items-center justify-center">
+                            <svg className="w-16 h-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
                 <h1 className="text-4xl font-black text-white mb-4 uppercase italic">Station Not Found</h1>
                 <p className="text-slate-400 mb-8 max-w-md">The radio station you are looking for might have moved or is no longer available.</p>
-                <Link to="/" className="px-8 py-4 bg-primary text-white font-black rounded-2xl uppercase italic hover:scale-105 transition-transform">Back to Home</Link>
+                <Link to="/" className="px-6 py-3 bg-primary text-white rounded-xl font-bold uppercase tracking-wider hover:bg-primary/80 transition-colors">
+                    Back to Home
+                </Link>
             </div>
         );
     }
