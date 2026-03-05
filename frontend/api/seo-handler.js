@@ -47,7 +47,17 @@ export default async function handler(req, res) {
     }
     
     if (!htmlContent) {
-        return res.status(500).send(`Error loading index.html. Paths tried: ${possiblePaths.join(', ')}`);
+        let dirInfo = '';
+        try {
+            dirInfo = `\nCWD: ${process.cwd()}\nDIRNAME: ${__dirname}\nFiles in CWD: ${fs.readdirSync(process.cwd()).join(', ')}\nFiles in __dirname: ${fs.readdirSync(__dirname).join(', ')}`;
+            const parentDir = path.join(__dirname, '..');
+            if (fs.existsSync(parentDir)) {
+                dirInfo += `\nFiles in parent: ${fs.readdirSync(parentDir).join(', ')}`;
+            }
+        } catch (e) {
+            dirInfo = `\nError gathering dir info: ${e.message}`;
+        }
+        return res.status(500).send(`Error loading index.html. Paths tried: ${possiblePaths.join(', ')}${dirInfo}`);
     }
 
     res.setHeader('X-SEO-Handler', 'true');
