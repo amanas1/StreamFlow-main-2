@@ -1032,8 +1032,8 @@ export default function App(): React.JSX.Element {
     if (currentStation) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentStation.name,
-        artist: currentStation.tags || 'AU Radio Radio',
-        album: 'AU Radio Live',
+        artist: 'AU Radio',
+        album: currentStation.genre || 'Various',
         artwork: [
           { src: currentStation.favicon || '/logo192.png', sizes: '96x96', type: 'image/png' },
           { src: currentStation.favicon || '/logo128.png', sizes: '128x128', type: 'image/png' },
@@ -1072,26 +1072,11 @@ export default function App(): React.JSX.Element {
       },
       nexttrack: () => {
           console.log('[MediaSession] Next Track Triggered');
-          if (isRandomModeRef.current) handleNextStationRef.current();
-          else {
-              const s = stationsRef.current;
-              const c = currentStationRef.current;
-              if (s.length > 0) {
-                  const idx = c ? s.findIndex(st => st.stationuuid === c.stationuuid) : -1;
-                  const next = (idx + 1) % s.length;
-                  handlePlayStationRef.current(s[next]);
-              }
-          }
+          if (handleNextStationRef.current) handleNextStationRef.current();
       },
       previoustrack: () => {
           console.log('[MediaSession] Previous Track Triggered');
-          const s = stationsRef.current;
-          const c = currentStationRef.current;
-          if (s.length > 0) {
-              const idx = c ? s.findIndex(st => st.stationuuid === c.stationuuid) : -1;
-              const prev = (idx - 1 + s.length) % s.length;
-              handlePlayStationRef.current(s[prev]);
-          }
+          if (handlePreviousStationRef.current) handlePreviousStationRef.current();
       }
     };
 
