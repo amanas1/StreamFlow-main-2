@@ -27,14 +27,31 @@ export default async function handler(req, res) {
     }
 
     // Load base index.html
-    const filePath = path.join(process.cwd(), 'dist', 'index.html');
-    let htmlContent = '';
+    // In Vercel, files included via includeFiles are often available at these locations
+    const possiblePaths = [
+        path.join(process.cwd(), 'dist', 'index.html'),
+        path.join(process.cwd(), 'frontend', 'dist', 'index.html'),
+        path.join(process.cwd(), 'index.html'),
+        path.join(__dirname, '..', 'dist', 'index.html')
+    ];
     
-    try {
-        htmlContent = fs.readFileSync(filePath, 'utf8');
-    } catch (err) {
-        return res.status(500).send('Error loading index.html');
+    let htmlContent = '';
+    let foundPath = '';
+
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            htmlContent = fs.readFileSync(p, 'utf8');
+            foundPath = p;
+            break;
+        }
     }
+    
+    if (!htmlContent) {
+        return res.status(500).send(`Error loading index.html. Paths tried: ${possiblePaths.join(', ')}`);
+    }
+
+    res.setHeader('X-SEO-Handler', 'true');
+    res.setHeader('X-SEO-Path', foundPath);
 
     // SEO Configurations (Replicated from DynamicRadioHub.tsx)
     const SEO_SLUG_MAP = {
