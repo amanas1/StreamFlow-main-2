@@ -7,6 +7,10 @@
   },
   "rewrites": [
     {
+      "source": "/index.html",
+      "destination": "/api/seo-handler"
+    },
+    {
       "source": "/",
       "destination": "/api/seo-handler"
     },
