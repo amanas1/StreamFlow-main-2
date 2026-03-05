@@ -44,6 +44,19 @@ const StationPage: React.FC<StationPageProps> = ({
         }
     }, [slug, onPlayStation]);
 
+    // Auto-hide settings after 20 seconds of inactivity
+    useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+        if (showSettings) {
+            timeoutId = setTimeout(() => {
+                setShowSettings(false);
+            }, 20000);
+        }
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [showSettings, particleSettings, ringSettings]);
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
