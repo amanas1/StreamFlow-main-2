@@ -8,11 +8,12 @@ interface DancingAvatarProps {
   variant?: 'simple' | 'complex';
   visualMode?: VisualMode;
   energySaver?: boolean;
+  isVisible?: boolean;
 }
 
-const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = '', variant = 'simple', visualMode = 'medium', energySaver = false }) => {
-  // If Energy Saver is ON, we disable animations entirely
-  const shouldAnimate = isPlaying && !energySaver;
+const DancingAvatar: React.FC<DancingAvatarProps> = ({ isPlaying, className = '', variant = 'simple', visualMode = 'medium', energySaver = false, isVisible = true }) => {
+  // If Energy Saver is ON or App is Not Visible, we disable animations entirely
+  const shouldAnimate = isPlaying && !energySaver && isVisible;
   
   // Downgrade complex variant on low end devices to simple, or if animations disabled
   const effectiveVariant = (visualMode === 'low' || !shouldAnimate) ? 'simple' : variant;

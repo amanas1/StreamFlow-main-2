@@ -3,9 +3,10 @@ import React, { useRef, useEffect } from 'react';
 interface MusicStormProps {
   analyserNode: AnalyserNode | null;
   isPlaying: boolean;
+  isVisible?: boolean;
 }
 
-const MusicStorm: React.FC<MusicStormProps> = ({ analyserNode, isPlaying }) => {
+const MusicStorm: React.FC<MusicStormProps> = ({ analyserNode, isPlaying, isVisible = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number>(0);
   const particles = useRef<any[]>([]);
@@ -44,6 +45,10 @@ const MusicStorm: React.FC<MusicStormProps> = ({ analyserNode, isPlaying }) => {
     initParticles();
 
     const animate = () => {
+      if (!isVisible) {
+          animationFrameId.current = requestAnimationFrame(animate);
+          return;
+      }
       ctx.clearRect(0, 0, w, h);
       
       let bassBoost = 0;
@@ -79,7 +84,7 @@ const MusicStorm: React.FC<MusicStormProps> = ({ analyserNode, isPlaying }) => {
       window.removeEventListener('resize', handleResize);
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [analyserNode, isPlaying]);
+  }, [analyserNode, isPlaying, isVisible]);
 
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none opacity-20" />;
 };

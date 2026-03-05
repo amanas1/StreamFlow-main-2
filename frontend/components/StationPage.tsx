@@ -21,10 +21,11 @@ interface StationPageProps {
     setParticleSettings?: React.Dispatch<React.SetStateAction<ParticleSettings>>;
     ringSettings?: RingSettings;
     setRingSettings?: React.Dispatch<React.SetStateAction<RingSettings>>;
+    isVisible?: boolean;
 }
 
 const StationPage: React.FC<StationPageProps> = ({ 
-    language, onPlayStation, currentStationId, isPlaying, favorites, onToggleFavorite, uiMode, particleSettings, setParticleSettings, ringSettings, setRingSettings 
+    language, onPlayStation, currentStationId, isPlaying, favorites, onToggleFavorite, uiMode, particleSettings, setParticleSettings, ringSettings, setRingSettings, isVisible = true
 }) => {
     const { slug } = useParams<{ slug: string }>();
     const [station, setStation] = useState<RadioStation | null>(null);
@@ -78,6 +79,7 @@ const StationPage: React.FC<StationPageProps> = ({
                                 isPlaying={!!isPlaying}
                                 settings={ringSettings}
                                 className="w-full h-full drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] bg-slate-900/40 rounded-full"
+                                isVisible={isVisible}
                             />
                         </>
                     ) : (
@@ -132,9 +134,10 @@ const StationPage: React.FC<StationPageProps> = ({
                             <div className="absolute -inset-4 bg-gradient-to-r from-primary to-secondary opacity-10 blur-[60px] transition-opacity z-0 pointer-events-none"></div>
                             <RingVisualizer 
                                 analyserNode={audioEngine.getAnalyser()} 
-                                isPlaying={!!isPlaying && currentStationId === station.stationuuid} 
+                                isPlaying={!!isPlaying} 
                                 settings={ringSettings}
                                 className="w-full h-full drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] bg-slate-900/40 rounded-full"
+                                isVisible={isVisible}
                             />
                         </>
                     ) : (

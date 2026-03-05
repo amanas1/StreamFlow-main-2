@@ -6,9 +6,10 @@ interface ParticleVisualizerProps {
     isPlaying: boolean;
     settings: ParticleSettings;
     className?: string;
+    isVisible?: boolean;
 }
 
-export default function ParticleVisualizer({ analyserNode, isPlaying, settings, className = '' }: ParticleVisualizerProps) {
+export default function ParticleVisualizer({ analyserNode, isPlaying, settings, className = '', isVisible = true }: ParticleVisualizerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationRef = useRef<number>();
     const starsRef = useRef<any[]>([]);
@@ -57,8 +58,10 @@ export default function ParticleVisualizer({ analyserNode, isPlaying, settings, 
         initParticles();
 
         const renderFrame = () => {
-            if (!ctx) return;
-            
+            if (!ctx || !isVisible) {
+                animationRef.current = requestAnimationFrame(renderFrame);
+                return;
+            }
             ctx.clearRect(0, 0, width, height);
 
             const bufferLength = analyserNode?.frequencyBinCount || 128;
@@ -117,7 +120,7 @@ export default function ParticleVisualizer({ analyserNode, isPlaying, settings, 
             window.removeEventListener('resize', resize);
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
         };
-    }, [analyserNode, isPlaying, settings.amount, settings.speed, settings.colorSync]);
+    }, [analyserNode, isPlaying, settings.amount, settings.speed, settings.colorSync, isVisible]);
 
     return (
         <canvas 

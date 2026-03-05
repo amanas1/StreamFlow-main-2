@@ -3,9 +3,10 @@ import React, { useRef, useEffect } from 'react';
 
 interface RainEffectProps {
   intensity: number; // 0 to 1
+  isVisible?: boolean;
 }
 
-const RainEffect: React.FC<RainEffectProps> = ({ intensity }) => {
+const RainEffect: React.FC<RainEffectProps> = ({ intensity, isVisible = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intensityRef = useRef(intensity);
 
@@ -48,6 +49,10 @@ const RainEffect: React.FC<RainEffectProps> = ({ intensity }) => {
     }
 
     const animate = () => {
+      if (!isVisible) {
+          animationFrameId = requestAnimationFrame(animate);
+          return;
+      }
       ctx.clearRect(0, 0, width, height);
       
       const currentIntensity = intensityRef.current;

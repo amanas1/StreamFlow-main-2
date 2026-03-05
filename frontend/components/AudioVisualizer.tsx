@@ -9,6 +9,7 @@ interface AudioVisualizerProps {
   settings?: VisualizerSettings;
   visualMode?: VisualMode;
   danceStyle?: number;
+  isVisible?: boolean;
 }
 
 interface CelestialObject {
@@ -33,7 +34,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   variant = 'segmented',
   settings = { scaleX: 1, scaleY: 1, brightness: 100, contrast: 100, saturation: 100, hue: 0, opacity: 1, speed: 1, autoIdle: true, performanceMode: true, isDisabled: false, energySaver: false },
   visualMode = 'medium',
-  danceStyle = 1
+  danceStyle = 1,
+  isVisible = true
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -92,8 +94,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 
     const renderFrame = (timestamp: number) => {
       // --- BACKGROUND OPTIMIZATION ---
-      // Completely stop rendering if tab is hidden to save battery
-      if (document.hidden) {
+      // Completely stop rendering if tab is hidden or isVisible is false to save battery
+      if (document.hidden || !isVisible) {
           setTimeout(() => requestAnimationFrame(renderFrame), 200); // Check again in 200ms
           return;
       }

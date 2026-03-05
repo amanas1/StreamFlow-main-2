@@ -3,9 +3,10 @@ import React, { useRef, useEffect } from 'react';
 
 interface FireEffectProps {
   intensity: number; // 0 to 1
+  isVisible?: boolean;
 }
 
-const FireEffect: React.FC<FireEffectProps> = ({ intensity }) => {
+const FireEffect: React.FC<FireEffectProps> = ({ intensity, isVisible = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intensityRef = useRef(intensity);
 
@@ -56,6 +57,10 @@ const FireEffect: React.FC<FireEffectProps> = ({ intensity }) => {
     }
 
     const animate = () => {
+      if (!isVisible) {
+          animationFrameId = requestAnimationFrame(animate);
+          return;
+      }
       ctx.clearRect(0, 0, width, height);
       
       const currentIntensity = intensityRef.current;

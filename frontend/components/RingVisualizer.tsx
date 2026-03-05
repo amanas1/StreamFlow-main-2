@@ -6,9 +6,10 @@ interface RingVisualizerProps {
     isPlaying: boolean;
     className?: string;
     settings?: RingSettings;
+    isVisible?: boolean;
 }
 
-export default function RingVisualizer({ analyserNode, isPlaying, className = '', settings }: RingVisualizerProps) {
+export default function RingVisualizer({ analyserNode, isPlaying, className = '', settings, isVisible = true }: RingVisualizerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationRef = useRef<number>();
     const dataArrayRef = useRef<Uint8Array>(new Uint8Array(0));
@@ -40,8 +41,10 @@ export default function RingVisualizer({ analyserNode, isPlaying, className = ''
         window.addEventListener('resize', resize);
 
         const renderFrame = () => {
-            if (!ctx) return;
-            
+            if (!ctx || !isVisible) {
+                animationRef.current = requestAnimationFrame(renderFrame);
+                return;
+            }
             ctx.clearRect(0, 0, width, height);
 
             const bufferLength = analyserNode?.frequencyBinCount || 128;
@@ -116,7 +119,7 @@ export default function RingVisualizer({ analyserNode, isPlaying, className = ''
             window.removeEventListener('resize', resize);
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
         };
-    }, [analyserNode, isPlaying]);
+    }, [analyserNode, isPlaying, isVisible]);
 
     return (
         <canvas 

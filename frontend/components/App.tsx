@@ -611,35 +611,54 @@ export default function App(): React.JSX.Element {
 
   // Handle visibility change for suspension + mobile wake recovery
   useEffect(() => {
-      const handleVisChange = () => {
-          const hidden = document.hidden;
-          setIsAppVisible(!hidden);
-          if (hidden && !isPlaying) {
-              audioEngine.suspend();
-          } else if (!hidden) {
-              audioEngine.resume();
-              // Mobile wake recovery: restart stalled audio after sleep
-              const isMobile = window.innerWidth < 1024;
-              if (isMobile && isPlaying && audioRef.current) {
-                  const audio = audioRef.current;
-                  // If audio is stalled/paused after wake, reload it
-                  setTimeout(() => {
-                      if (audio.paused && isPlaying) {
-                          audio.load();
-                          audio.play().catch(() => {});
-                      } else if (audio.readyState < 3 && isPlaying) {
-                          // Stalled — force reload
-                          const src = audio.src;
-                          audio.src = '';
-                          audio.src = src;
-                          audio.play().catch(() => {});
-                      }
-                  }, 300);
-              }
+    const handleVisChange = async () => {
+      const hidden = document.hidden;
+      setIsAppVisible(!hidden);
+      
+      if (!hidden) {
+        console.log('[SleepOptimization] App became visible, resuming audio context and checking playback...');
+        
+        // 1. Resume Audio Engine Context
+        await audioEngine.resume();
+        
+        // 2. Mobile wake recovery: restart stalled audio after sleep
+        const isMobile = window.innerWidth < 1024;
+        if (isMobile && isPlaying && audioRef.current) {
+          const audio = audioRef.current;
+          
+          // Re-sync Media Session
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
           }
-      };
-      document.addEventListener('visibilitychange', handleVisChange);
-      return () => document.removeEventListener('visibilitychange', handleVisChange);
+
+          // If audio is stalled/paused after wake, reload it
+          setTimeout(() => {
+            if (audio.paused && isPlaying) {
+              console.log('[SleepOptimization] Audio was paused after wake, resuming...');
+              audio.play().catch(() => {
+                console.log('[SleepOptimization] Auto-play failed, forcing reload');
+                audio.load();
+                audio.play().catch(() => {});
+              });
+            } else if (audio.readyState < 3 && isPlaying) {
+              console.log('[SleepOptimization] Audio stalled after wake, forcing reload');
+              const src = audio.src;
+              audio.src = '';
+              audio.src = src;
+              audio.load();
+              audio.play().catch(() => {});
+            }
+          }, 300);
+        }
+      } else {
+        // App backgrounded
+        if (!isPlaying) {
+          audioEngine.suspend();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisChange);
+    return () => document.removeEventListener('visibilitychange', handleVisChange);
   }, [isPlaying]);
 
   useEffect(() => {
@@ -1322,7 +1341,7 @@ export default function App(): React.JSX.Element {
             <div ref={visualizerRef} className="mb-8">
                 <div className="p-10 h-56 rounded-[2.5rem] relative overflow-hidden flex flex-col justify-end animated-player-border">
                     <div className={`absolute inset-0 bg-gradient-to-r ${selectedCategory.color} opacity-20 mix-blend-overlay`}></div>
-                    <div className="absolute inset-x-0 bottom-0 top-0 z-0 opacity-40"><AudioVisualizer analyserNode={audioEngine.getAnalyser()} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} danceStyle={danceStyle} /></div>
+                    <div className="absolute inset-x-0 bottom-0 top-0 z-0 opacity-40"><AudioVisualizer analyserNode={audioEngine.getAnalyser()} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} danceStyle={danceStyle} isVisible={isAppVisible} /></div>
                     {/* Category name removed for clean visualizer look */}
                 </div>
                 {/* Trust Line */}
@@ -1348,20 +1367,46 @@ export default function App(): React.JSX.Element {
   );
 
 
+  const handleSwitchRecovery = () => {
+    const station = currentStationRef.current;
+    if (station && streamRetryCountRef.current < 2) {
+        streamRetryCountRef.current++;
+        console.log(`[StreamRecovery] Recovery attempt #${streamRetryCountRef.current} for ${station.name}...`);
+        if (audioRef.current) {
+            // Force reload and play
+            const src = audioRef.current.src;
+            audioRef.current.src = '';
+            audioRef.current.src = src;
+            audioRef.current.load();
+            audioRef.current.play().catch(() => {});
+        }
+    } else if (station) {
+        console.log('[StreamRecovery] Max retries reached, skipping station');
+        streamRetryCountRef.current = 0;
+        handleNextStation();
+    }
+  };
+
   return (
     <ErrorBoundary>
     <div className={`relative flex h-screen font-sans overflow-hidden bg-[var(--base-bg)] text-[var(--text-base)] transition-all duration-700`}>
       <SEOHead language={language} />
-      <RainEffect intensity={ambience.rainVolume} />
-      <FireEffect intensity={ambience.fireVolume} />
+      <RainEffect intensity={ambience.rainVolume} isVisible={isAppVisible} />
+      <FireEffect intensity={ambience.fireVolume} isVisible={isAppVisible} />
       {/* Global Dimming Overlay for "Stage Mode" */}
       <div className={`absolute inset-0 bg-black/80 z-[80] transition-opacity duration-1000 pointer-events-none ${isGlobalLightsOn ? 'opacity-100' : 'opacity-0'}`} />
       <audio 
         ref={audioRef} 
         crossOrigin="anonymous"
         preload="auto"
+        className="hidden"
         playsInline
         webkit-playsinline="true"
+        onCanPlayThrough={() => {
+            if (isPlaying && audioRef.current?.paused) {
+                audioRef.current.play().catch(() => {});
+            }
+        }}
         onPlay={() => {
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         }}
@@ -1370,68 +1415,27 @@ export default function App(): React.JSX.Element {
             setIsBuffering(false); 
             setIsPlaying(true); 
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+            streamRetryCountRef.current = 0;
         }} 
         onPause={() => {
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsPlaying(false);
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         }} 
-        onWaiting={() => setIsBuffering(true)} 
-        onEnded={() => { 
-            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            // Stream Recovery: auto-restart on stream end
-            const station = currentStationRef.current;
-            if (station && streamRetryCountRef.current < 2) {
-                streamRetryCountRef.current++;
-                console.log(`[StreamRecovery] Stream ended, retry #${streamRetryCountRef.current}`);
-                if (audioRef.current) {
-                    audioRef.current.src = station.url_resolved;
-                    audioRef.current.play().catch(() => {});
-                }
-            } else if (station && streamRetryCountRef.current >= 2) {
-                console.log('[StreamRecovery] Max retries reached, switching to next station');
-                streamRetryCountRef.current = 0;
-                if (handleNextStationRef.current) handleNextStationRef.current();
-            }
-        }} 
-        onError={() => {
-            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            // Stream Recovery: retry on error
-            const station = currentStationRef.current;
-            if (station && streamRetryCountRef.current < 2) {
-                streamRetryCountRef.current++;
-                console.log(`[StreamRecovery] Error detected, retry #${streamRetryCountRef.current}`);
-                setTimeout(() => {
-                    if (audioRef.current && currentStationRef.current?.stationuuid === station.stationuuid) {
-                        audioRef.current.src = station.url_resolved;
-                        audioRef.current.play().catch(() => {});
-                    }
-                }, 2000);
-            } else if (station && streamRetryCountRef.current >= 2) {
-                console.log('[StreamRecovery] Max retries after error, switching to next station');
-                streamRetryCountRef.current = 0;
-                if (handleNextStationRef.current) handleNextStationRef.current();
-            }
-        }}
+        onWaiting={() => setIsBuffering(true)}
         onStalled={() => {
-            // Stream Recovery: start a 5-second timer on stalled
-            if (stalledTimerRef.current) clearTimeout(stalledTimerRef.current);
-            stalledTimerRef.current = window.setTimeout(() => {
-                const station = currentStationRef.current;
-                if (station && streamRetryCountRef.current < 2) {
-                    streamRetryCountRef.current++;
-                    console.log(`[StreamRecovery] Stalled for 5s, retry #${streamRetryCountRef.current}`);
-                    if (audioRef.current) {
-                        audioRef.current.src = station.url_resolved;
-                        audioRef.current.play().catch(() => {});
-                    }
-                } else if (station && streamRetryCountRef.current >= 2) {
-                    console.log('[StreamRecovery] Max retries after stall, switching to next station');
-                    streamRetryCountRef.current = 0;
-                    if (handleNextStationRef.current) handleNextStationRef.current();
+            console.warn('[StreamStability] Stream stalled, monitoring for 5s...');
+            setIsBuffering(true);
+            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+            loadTimeoutRef.current = window.setTimeout(() => {
+                if (isPlaying && audioRef.current && audioRef.current.readyState < 3) {
+                    handleSwitchRecovery();
                 }
             }, 5000);
         }}
+        onAbort={() => handleSwitchRecovery()}
+        onEnded={() => handleSwitchRecovery()} 
+        onError={() => handleSwitchRecovery()} 
       />
       
 
@@ -1480,6 +1484,7 @@ export default function App(): React.JSX.Element {
                     isPlaying={isPlaying} 
                     settings={particleSettings}
                     className="w-full h-full"
+                    isVisible={isAppVisible}
                 />
             </div>
         )}
@@ -1614,6 +1619,7 @@ export default function App(): React.JSX.Element {
                         setParticleSettings={setParticleSettings}
                         ringSettings={ringSettings}
                         setRingSettings={setRingSettings}
+                        isVisible={isAppVisible}
                     />
                 } />
             </Routes>
