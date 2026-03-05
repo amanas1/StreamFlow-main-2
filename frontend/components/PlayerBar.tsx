@@ -42,6 +42,8 @@ interface PlayerBarProps {
     setVolume: (v: number) => void;
     uiMode: UIMode;
     setUiMode: (mode: UIMode) => void;
+    is8DEnabled: boolean;
+    onToggle8D: () => void;
 }
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -50,7 +52,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
     language, setLanguage, t, toolsOpen, setToolsOpen, shareOpen, setShareOpen,
     activePresetId, handleApplyPreset, VISUALIZERS_LIST, handlePreviousStation,
     handleNextStation, togglePlay, playButtonRef, locationStatus, favorites,
-    toggleFavorite, isRandomMode, setIsRandomMode, volume, setVolume, uiMode, setUiMode
+    toggleFavorite, isRandomMode, setIsRandomMode, volume, setVolume, uiMode, setUiMode,
+    is8DEnabled, onToggle8D
 }) => {
     return (
         <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
@@ -80,6 +83,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1 absolute right-1.5 top-1/2 -translate-y-1/2">
+                        <button onClick={onToggle8D} className={`px-2 py-1 text-[9px] font-black rounded-lg border transition-all ${is8DEnabled ? 'bg-primary text-black border-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 border-white/10 bg-white/5 hover:bg-white/10'}`}>8D</button>
                         <button onClick={() => setShareOpen(true)} className="p-2 text-slate-400 hover:text-white transition-colors hover:bg-white/10 rounded-full"><ShareIcon className="w-4 h-4" /></button>
                         <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2 text-slate-400 hover:text-white transition-colors hover:bg-white/10 rounded-full`}><AdjustmentsIcon className="w-4 h-4" /></button>
                     </div>
@@ -160,6 +164,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                             <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-full h-full" visualMode={visualMode} />
                         </div>
                     )}
+                    <button onClick={onToggle8D} className={`px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all hover:scale-105 ${is8DEnabled ? 'bg-primary text-black border-primary shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 border-white/10 bg-white/5 hover:bg-white/10'}`} title="8D Audio">8D</button>
                     <button onClick={() => setShareOpen(true)} className="p-2 text-slate-400 hover:text-primary transition-colors hover:scale-110" title="Share"><ShareIcon className="w-5 h-5" /></button>
                     <button onClick={() => setToolsOpen(!toolsOpen)} className={`p-2.5 text-[var(--text-base)] hover:text-primary transition-colors ${isIdleView ? 'hidden' : ''}`}><AdjustmentsIcon className="w-6 h-6" /></button>
                     <div className="flex items-center gap-3 ml-2">

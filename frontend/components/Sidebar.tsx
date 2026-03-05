@@ -96,7 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 >
                     <HeartIcon className="w-4 h-4 inline mr-2" filled={viewMode === 'favorites'} /> {t.favorites}
                 </button>
-                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 gap-1">
+                <div className="hidden md:flex bg-white/5 p-1 rounded-2xl border border-white/5 gap-1">
                     <button 
                         onClick={() => setUiMode('classic')}
                         className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${uiMode === 'classic' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-slate-300'}`}

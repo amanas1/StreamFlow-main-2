@@ -304,12 +304,18 @@ export default function App(): React.JSX.Element {
 
   const [uiMode, setUiMode] = useState<UIMode>(() => {
       const saved = localStorage.getItem('auradiochat_ui_mode') as UIMode;
+      // Force classic on mobile — modern uses too much battery/traffic
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) return 'classic';
       return saved === 'modern' ? 'modern' : 'classic';
   });
 
   const currentStationRef = useRef<RadioStation | null>(null);
 
   const handleUiModeChange = useCallback((mode: UIMode) => {
+      // Force classic mode on mobile — modern consumes too much battery/traffic
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile && mode === 'modern') mode = 'classic';
+
       setUiMode(mode);
       localStorage.setItem('auradiochat_ui_mode', mode);
 
@@ -318,7 +324,7 @@ export default function App(): React.JSX.Element {
       } else if (mode === 'classic') {
           navigate('/');
       }
-      if (window.innerWidth < 1024) setSidebarOpen(false);
+      if (isMobile) setSidebarOpen(false);
   }, [navigate, currentStationRef]);
   const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>(() => {
     if (typeof window !== 'undefined') {
@@ -583,7 +589,7 @@ export default function App(): React.JSX.Element {
     audioEngine.setSafeMode(isSafeMode);
   }, [isSafeMode]);
 
-  // Handle visibility change for suspension
+  // Handle visibility change for suspension + mobile wake recovery
   useEffect(() => {
       const handleVisChange = () => {
           const hidden = document.hidden;
@@ -592,6 +598,24 @@ export default function App(): React.JSX.Element {
               audioEngine.suspend();
           } else if (!hidden) {
               audioEngine.resume();
+              // Mobile wake recovery: restart stalled audio after sleep
+              const isMobile = window.innerWidth < 1024;
+              if (isMobile && isPlaying && audioRef.current) {
+                  const audio = audioRef.current;
+                  // If audio is stalled/paused after wake, reload it
+                  setTimeout(() => {
+                      if (audio.paused && isPlaying) {
+                          audio.load();
+                          audio.play().catch(() => {});
+                      } else if (audio.readyState < 3 && isPlaying) {
+                          // Stalled — force reload
+                          const src = audio.src;
+                          audio.src = '';
+                          audio.src = src;
+                          audio.play().catch(() => {});
+                      }
+                  }, 300);
+              }
           }
       };
       document.addEventListener('visibilitychange', handleVisChange);
@@ -1630,6 +1654,8 @@ export default function App(): React.JSX.Element {
             setVolume={setVolume} 
             uiMode={uiMode}
             setUiMode={setUiMode}
+            is8DEnabled={ambience.is8DEnabled}
+            onToggle8D={() => setAmbience(prev => ({ ...prev, is8DEnabled: !prev.is8DEnabled }))}
         />
 
         <Suspense fallback={null}>
