@@ -329,9 +329,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
         if (countryId) return `/radio-${countryId}`;
         return '/';
     }, [pageContext]);
-    const canonicalUrl = activeLanguage === 'en' 
-        ? `https://auradiochat.com${canonicalPath}`
-        : `https://auradiochat.com/${activeLanguage}${canonicalPath}`;
+    const canonicalUrl = `https://auradiochat.com${canonicalPath}`;
 
     const languages: Language[] = ['en', 'ru', 'es', 'fr', 'de', 'zh'];
 
@@ -419,7 +417,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                 <title>{localizedData.title} | AU Radio</title>
                 <meta name="description" content={localizedData.desc} />
                 <link rel="canonical" href={canonicalUrl} />
-                <link rel="alternate" hrefLang="x-default" href={`https://auradiochat.com${canonicalPath}`} />
+                <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
                 
                 {/* hreflang Support */}
                 {languages.map(l => (
@@ -427,7 +425,7 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                         key={l} 
                         rel="alternate" 
                         hrefLang={l} 
-                        href={getHreflangUrl(l)} 
+                        href={l === 'en' ? canonicalUrl : `https://auradiochat.com/${l}${canonicalPath}`}
                     />
                 ))}
 
