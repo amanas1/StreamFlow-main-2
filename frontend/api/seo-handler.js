@@ -1,10 +1,13 @@
-
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Final Serverless SEO Handler
- * Injects Title, Description, Canonical, and Hreflang into index.html
+ * Injects Title, Description, Canonical, and Hreflang into app-template.html
  */
 export default async function handler(req, res) {
     const url = req.url || '/';
