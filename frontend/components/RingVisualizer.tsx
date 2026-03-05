@@ -65,7 +65,8 @@ export default function RingVisualizer({ analyserNode, isPlaying, className = ''
             
             const numRings = settings?.amount || 15;
             const thickness = settings?.thickness || 1.5;
-            const brightnessBoost = settings?.brightness ? settings.brightness / 100 : 0.5;
+            const brightnessBoost = settings?.brightness !== undefined ? settings.brightness / 100 : 0.5;
+            const contrastFactor = settings?.contrast !== undefined ? settings.contrast / 100 : 0.5;
             
             const time = Date.now() / 1000;
 
@@ -89,13 +90,19 @@ export default function RingVisualizer({ analyserNode, isPlaying, className = ''
                 
                 ctx.lineWidth = thickness + (freqVal * 4); 
                 
-                const opacity = 0.4 + (freqVal * 0.6);
+                const baseOpacity = 0.1 + (contrastFactor * 0.6); // Scales from 0.1 to 0.7 depending on contrast
+                const dynamicOpacity = baseOpacity + (freqVal * (0.2 + contrastFactor * 0.4));
+                const opacity = Math.min(1, dynamicOpacity);
                 
                 ctx.strokeStyle = `hsla(${hue}, 80%, ${lightness}%, ${opacity})`;
                 
-                // Optional: Add glow effect for "modern" look
-                ctx.shadowBlur = 10 * freqVal;
-                ctx.shadowColor = `hsla(${hue}, 80%, 50%, ${opacity})`;
+                // Optional: Add glow effect for "modern" look. Glow intensity also affected by contrast.
+                if (contrastFactor > 0.1) {
+                    ctx.shadowBlur = (5 + 10 * freqVal) * contrastFactor;
+                    ctx.shadowColor = `hsla(${hue}, 80%, 50%, ${opacity})`;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
                 
                 ctx.stroke();
             }

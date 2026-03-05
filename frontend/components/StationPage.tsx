@@ -234,6 +234,16 @@ const StationPage: React.FC<StationPageProps> = ({
                                                     className="w-full accent-primary"
                                                 />
                                             </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Contrast & Glow: {ringSettings.contrast ?? 50}%</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="0" max="100" step="5"
+                                                    value={ringSettings.contrast ?? 50}
+                                                    onChange={(e) => setRingSettings(s => ({ ...s, contrast: parseInt(e.target.value) }))}
+                                                    className="w-full accent-primary"
+                                                />
+                                            </div>
                                         </>
                                     )}
                                 </div>
