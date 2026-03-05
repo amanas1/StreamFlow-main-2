@@ -187,7 +187,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
              {activeTab === 'viz' && (
                 <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {VISUALIZERS.map(v => (
+                        {VISUALIZERS.filter(v => typeof window === 'undefined' || window.innerWidth >= 1024 || ['stage-dancer', 'mixed-rings', 'galaxy'].includes(v.id)).map(v => (
                             <button 
                                 key={v.id} 
                                 onClick={() => setVisualizerVariant(v.id)}

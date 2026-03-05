@@ -329,17 +329,37 @@ export default function App(): React.JSX.Element {
   const [visualizerVariant, setVisualizerVariant] = useState<VisualizerVariant>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('auradiochat_visualizer_variant') as VisualizerVariant;
+        const isMobile = window.innerWidth < 1024;
+        const safeVisualizers = ['stage-dancer', 'mixed-rings', 'galaxy'];
+        
+        if (isMobile && saved && !safeVisualizers.includes(saved)) return 'stage-dancer';
         if (saved) return saved;
+        if (isMobile) return 'stage-dancer';
     }
-    if (typeof window !== 'undefined' && window.innerWidth < 768) return 'stage-dancer';
     return 'rainbow-lines';
   });
+
+  // Strict enforcement for mobile: prevent sync/storage from loading heavy visualizers
+  useEffect(() => {
+    const isMobile = window.innerWidth < 1024;
+    const safeVisualizers = ['stage-dancer', 'mixed-rings', 'galaxy'];
+    
+    if (isMobile && !safeVisualizers.includes(visualizerVariant)) {
+        console.log(`[MobileGuard] Clamping heavy visualizer "${visualizerVariant}" to "stage-dancer"`);
+        setVisualizerVariant('stage-dancer');
+    }
+    localStorage.setItem('auradiochat_visualizer_variant', visualizerVariant);
+  }, [visualizerVariant]);
 
   const DEFAULT_PARTICLE_SETTINGS: ParticleSettings = { variant: 'galaxy', amount: 120, speed: 1.0, colorSync: true };
   const [particleSettings, setParticleSettings] = useState<ParticleSettings>(() => {
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('auradiochat_particle_settings');
-          if (saved) return JSON.parse(saved);
+          if (saved) {
+             try {
+                return JSON.parse(saved);
+             } catch(e) {}
+          }
       }
       return DEFAULT_PARTICLE_SETTINGS;
   });
