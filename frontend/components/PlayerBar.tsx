@@ -105,7 +105,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
                 {/* ROW 2.5 (Mobile Only): VISUALIZERS */}
                 <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
-                    {VISUALIZERS_LIST.map(viz => (
+                    {VISUALIZERS_LIST.filter(v => ['stage-dancer', 'mixed-rings', 'galaxy'].includes(v.id)).map(viz => (
                         <button key={viz.id} onClick={() => setVisualizerVariant(viz.id)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border ${visualizerVariant === viz.id ? 'bg-purple-500 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
                             <span className={visualizerVariant === viz.id ? 'shimmering-text-active' : 'shimmering-text'}>{t[viz.labelKey] || viz.id}</span>
                         </button>

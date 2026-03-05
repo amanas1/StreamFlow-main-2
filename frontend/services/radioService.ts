@@ -1,8 +1,7 @@
-
 import { RadioStation } from '../types';
 import { RADIO_BROWSER_MIRRORS } from '../types/constants';
 
-const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v15_strict_dedupe_'; // Strict dedupe bump
+const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v20_hq_';
 const CACHE_TTL_MINUTES = 30;
 
 interface CacheEntry {
@@ -10,10 +9,6 @@ interface CacheEntry {
     timestamp: number; 
 }
 
-// HQ Hardcoded Fallback (128k+)
-const HARDCODED_STATIONS: RadioStation[] = [];
-
-// Memory Cache to bypass localStorage JSON.parse on every navigation
 const MEMORY_CACHE = new Map<string, { data: RadioStation[], expiry: number }>();
 
 const slugify = (text: string) => {
@@ -25,7 +20,6 @@ const slugify = (text: string) => {
 const mapToGenre = (tags: string, name: string): { genre: string; subGenre: string } => {
     const combined = (tags + ' ' + name).toLowerCase();
     
-    // Check specific genres first
     if (combined.includes('hip hop') || combined.includes('hip-hop') || combined.includes('rap')) return { genre: 'Hip-Hop', subGenre: '' };
     if (combined.includes('r&b') || combined.includes('rnb')) return { genre: 'R&B', subGenre: '' };
     if (combined.includes('pop')) return { genre: 'Pop', subGenre: '' };
@@ -59,7 +53,7 @@ const mapToGenre = (tags: string, name: string): { genre: string; subGenre: stri
     if (combined.includes('soul')) return { genre: 'Soul', subGenre: '' };
     if (combined.includes('edm') || combined.includes('dance')) return { genre: 'EDM', subGenre: '' };
 
-    return { genre: 'Alternative', subGenre: '' }; // Default
+    return { genre: 'Alternative', subGenre: '' };
 };
 
 const getFromCache = (key: string): RadioStation[] | null => {
@@ -84,6 +78,7 @@ const getFromCache = (key: string): RadioStation[] | null => {
 };
 
 const setToCache = (key: string, data: RadioStation[]) => {
+    if (!Array.isArray(data)) return // Protection against crash
     const now = Date.now();
     try {
         const entry: CacheEntry = { data, timestamp: now };
@@ -92,7 +87,6 @@ const setToCache = (key: string, data: RadioStation[]) => {
     } catch (e) {}
 };
 
-// Update keywords for even stricter exclusion
 const RELIGIOUS_KEYWORDS = [
     'islam', 'quran', 'koran', 'muslim', 'sheikh', 'imam', 'allah', 'prophet', 'hadith', 'sunnah', 'mecca', 'medina',
     'religio', 'catholic', 'christian', 'church', 'bible', 'vatican', 'gospel', 'jesus', 'christ', 'pastor', 'shrine',
@@ -105,7 +99,7 @@ const RELIGIOUS_KEYWORDS = [
 
 const NON_MUSIC_KEYWORDS = [
     'news', 'talk', 'politics', 'political', 'government', 'sport', 'debate', 'opinion', 'podcast', 'lecture', 'education',
-    'weather', 'traffic', 'finance', 'business', 'economy', 'science', 'history', 'philosophy', 'meditation', 'story',
+    'weather', 'traffic', 'finance', 'business', 'economy', 'science', 'history', ' философия', 'philosophy', 'meditation', 'story',
     'пропаганда', 'политика', 'политик', 'правительство', 'выборы', 'агитация', 'патриот', 'patriot', 'military', 'army', 'война', 'war',
     'новости', 'спорт', 'инфо', 'лекция', 'интервью', 'передача',
     '宣传', '政治', '政府', '共产党', '军队', '新闻', '访谈', '财经', '体育',
@@ -113,28 +107,10 @@ const NON_MUSIC_KEYWORDS = [
     'radio parahumans', 'parahumans', 'audiobook'
 ];
 
-const getQualityScore = (station: any): number => {
-    const bitrate = station.bitrate || 0;
-    const codec = (station.codec || '').toLowerCase();
-    
-    // sorting priority: AAC 128 > AAC 96 > MP3 192 > MP3 128 > MP3 96
-    if (codec.includes('aac')) {
-        if (bitrate >= 128) return 100;
-        if (bitrate >= 96) return 90;
-        if (bitrate >= 64) return 70;
-    } else if (codec.includes('mp3')) {
-        if (bitrate >= 256) return 85;
-        if (bitrate >= 192) return 80;
-        if (bitrate >= 128) return 60;
-        if (bitrate >= 96) return 40;
-    }
-    return bitrate > 0 ? 20 : 0;
-};
-
 const fetchFromMirror = async (mirror: string, path: string, query: string): Promise<any[]> => {
     const url = `${mirror}/json/stations/${path}${query}`;
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 6000); // Tighter timeout per mirror
+    const id = setTimeout(() => controller.abort(), 8000);
     
     try {
         const response = await fetch(url, {
@@ -142,7 +118,7 @@ const fetchFromMirror = async (mirror: string, path: string, query: string): Pro
             signal: controller.signal,
             headers: { 
                 'Accept': 'application/json',
-                'User-Agent': 'AURadio/1.1 (https://auradiochat.com; contact@auradiochat.com)'
+                'User-Agent': 'AURadio/2.0 (https://auradiochat.com; contact@auradiochat.com)'
             }
         });
         clearTimeout(id);
@@ -156,79 +132,96 @@ const fetchFromMirror = async (mirror: string, path: string, query: string): Pro
     return [];
 };
 
-const filterStations = (data: any[], minVotes: number = 10) => {
+const filterStations = (data: any[]): RadioStation[] => {
     if (!Array.isArray(data)) return [];
     
-    const uniqueByUuid = new Map<string, RadioStation>();
-    const uniqueByUrl = new Map<string, RadioStation>();
-    const uniqueByName = new Map<string, RadioStation>();
+    // 2. Объединение и нормализация станций
+    const uniqueStations = new Map<string, RadioStation>();
 
     data.forEach(apiStation => {
         if (!apiStation || !apiStation.url_resolved) return;
-        if (apiStation.lastcheckok !== 1) return;
         
+        // 3. Фильтр качества потока (min 64 kbps + lastcheckok = 1)
+        const bitrate = Number(apiStation.bitrate || 0);
+        if (!apiStation.bitrate || bitrate < 64) return;
+        if (apiStation.lastcheckok !== 1) return;
+
+        // 5. Исключение плохих потоков (pls, asx)
+        const codec = (apiStation.codec || '').toLowerCase();
+        const urlLower = apiStation.url_resolved.toLowerCase();
+        if (codec.includes('pls') || codec.includes('asx') || urlLower.endsWith('.pls') || urlLower.endsWith('.asx')) return;
+
+        // 6. Фильтрация нежелательного контента (Music only)
         const n = (apiStation.name || '').toLowerCase();
         const t = (apiStation.tags || '').toLowerCase();
         
-        // Music Only (Strict Keywords)
         if (RELIGIOUS_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) return;
         if (NON_MUSIC_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) return;
 
-        // Adaptive Quality Filter
-        const codec = (apiStation.codec || '').toLowerCase();
-        const isAAC = codec.includes('aac');
-        const isSecure = apiStation.url_resolved.charCodeAt(4) === 115;
-        
-        // Basic Quality Check
-        if (apiStation.bitrate > 0 && apiStation.bitrate < 48) return; // Very low
-        if (apiStation.votes < minVotes) return;
-        if (!isSecure && apiStation.votes < 50) return; // Popular insecure is okay as fallback
-
         const { genre, subGenre } = mapToGenre(apiStation.tags || '', apiStation.name || '');
-        const qualityScore = getQualityScore(apiStation);
-        const popularityScore = Math.log10(Math.max(1, apiStation.votes)) * 10;
         
+        // Sorting score to prioritize AAC/MP3 + Bitrate
+        let formatMultiplier = 1;
+        if (codec.includes('aac')) formatMultiplier = 1.5;
+        if (codec.includes('ogg')) formatMultiplier = 1.2;
+        const qualityScore = bitrate * formatMultiplier;
+
         const station: RadioStation = {
             ...apiStation,
             slug: slugify(apiStation.name) + '-' + apiStation.stationuuid.substring(0, 5),
             genre,
             subGenre,
             qualityScore,
-            popularityScore: qualityScore + popularityScore,
+            popularityScore: apiStation.votes || 0,
             favicon: apiStation.favicon && apiStation.favicon.charCodeAt(4) === 115 ? apiStation.favicon : ''
         };
 
-        const normUrl = apiStation.url_resolved.toLowerCase().replace(/\/$/, '');
-        const normName = n.trim();
+        // Deduplication using exact unique keys (User requested: stationuuid, url_resolved, name)
+        const nTrim = n.trim();
+        const dedupeKey = `${station.stationuuid}_${urlLower}_${nTrim}`;
 
-        if (!uniqueByUuid.has(station.stationuuid) && !uniqueByUrl.has(normUrl) && !uniqueByName.has(normName)) {
-            uniqueByUuid.set(station.stationuuid, station);
-            uniqueByUrl.set(normUrl, station);
-            uniqueByName.set(normName, station);
+        if (!uniqueStations.has(dedupeKey)) {
+            uniqueStations.set(dedupeKey, station);
         }
     });
 
-    return Array.from(uniqueByUuid.values())
-        .sort((a, b) => (b as any).popularityScore - (a as any).popularityScore);
+    const result = Array.from(uniqueStations.values());
+
+    // 4. Предпочтение более качественных потоков
+    return result.sort((a, b) => {
+        const bitA = Number(a.bitrate || 0);
+        const bitB = Number(b.bitrate || 0);
+        return bitB - bitA; // Highest bitrate first
+    });
 };
 
 export const fetchStationsByTag = async (tag: string, limit: number = 200): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v18_hq_${lowerTag}_l${limit}`; // Version bump v18
+    const cacheKey = `tag_v20_hq_${lowerTag}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     try {
-        const fetchLimit = 800;
-        const baseQuery = `?limit=${fetchLimit}&order=votes&reverse=true&hidebroken=true&lastcheckok=1`;
+        const fetchLimit = 300; // Pull more to ensure we have enough post-filtering
+        const baseQuery = `?limit=${fetchLimit}&order=votes&reverse=true&hidebroken=true`;
         
-        // Parallel Aggregation Strategies
-        const searchStrategies = [
-            { path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(lowerTag)}` },
-            { path: 'search', query: `${baseQuery}&name=${encodeURIComponent(lowerTag)}` },
-            { path: `bytag/${encodeURIComponent(lowerTag)}`, query: baseQuery }
-        ];
+        // 7. Расширение каталога станций (поиск bytag, byname и related tags)
+        // Add permutations and variations for better discovery
+        let searchTags = [lowerTag];
+        if (lowerTag.includes('hip')) searchTags.push('hip-hop', 'hiphop', 'rap', 'trap');
+        if (lowerTag.includes('r&b')) searchTags.push('rnb');
+        if (lowerTag.includes('electronic')) searchTags.push('dance', 'techno', 'house', 'edm');
+        if (lowerTag.includes('jazz')) searchTags.push('smooth-jazz');
+
+        const searchStrategies: {path: string, query: string}[] = [];
         
+        searchTags.forEach(t => {
+            searchStrategies.push({ path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(t)}` });
+            searchStrategies.push({ path: 'search', query: `${baseQuery}&name=${encodeURIComponent(t)}` });
+            searchStrategies.push({ path: `bytag/${encodeURIComponent(t)}`, query: baseQuery });
+        });
+        
+        // 1. Использовать несколько API зеркал RadioBrowser
         const mirrors = RADIO_BROWSER_MIRRORS;
         const fetchPromises: Promise<any[]>[] = [];
         
@@ -238,6 +231,7 @@ export const fetchStationsByTag = async (tag: string, limit: number = 200): Prom
             });
         });
 
+        // Promise.allSettled guarantees parallel resolution and prevents single-mirror crash
         const results = await Promise.allSettled(fetchPromises);
         const allFetched = results
             .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
@@ -245,65 +239,72 @@ export const fetchStationsByTag = async (tag: string, limit: number = 200): Prom
             
         if (allFetched.length === 0) return [];
 
-        let filtered = filterStations(allFetched, 15) || []; // Semi-Popular
+        const filtered = filterStations(allFetched) || [];
+        const result = filtered.slice(0, Math.max(limit, 200)); // Ensure we return AT LEAST requested or 200+
         
-        if (filtered.length < 100) {
-            filtered = filterStations(allFetched, 5) || []; // Allow less popular
-        }
-        
-        if (filtered.length < 50) {
-            filtered = filterStations(allFetched, 1) || []; // Desperate
-        }
-
-        const result = filtered.slice(0, limit);
         if (result.length > 0) setToCache(cacheKey, result);
-        return result;
+        return result || []; // 9. Всегда возвращать []
     } catch (e) {
         return [];
     }
 };
 
 export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
-    const cacheKey = 'global_music_v16_curated';
+    const cacheKey = 'global_music_v20_strict';
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
-    const genres = ['pop', 'rock', 'jazz', 'edm', 'hip hop'];
-    const results = await Promise.allSettled(genres.map(g => fetchStationsByTag(g, 100)));
-    const all = results
-        .filter((r): r is PromiseFulfilledResult<RadioStation[]> => r.status === 'fulfilled')
-        .flatMap(r => r.value);
-    
-    // Second pass dedupe
-    const seen = new Set();
-    const final = all.filter(s => {
-        if (seen.has(s.stationuuid)) return false;
-        seen.add(s.stationuuid);
-        return true;
-    }).slice(0, 300);
+    try {
+        const genres = ['pop', 'rock', 'jazz', 'edm', 'hip-hop'];
+        const results = await Promise.allSettled(genres.map(g => fetchStationsByTag(g, 100)));
+        const all = results
+            .filter((r): r is PromiseFulfilledResult<RadioStation[]> => r.status === 'fulfilled')
+            .flatMap(r => r.value);
+        
+        // Second pass deduplication to combine cross-genre repeats
+        const seen = new Set();
+        const final = all.filter(s => {
+            if (seen.has(s.stationuuid)) return false;
+            seen.add(s.stationuuid);
+            return true;
+        }).slice(0, 300);
 
-    if (final.length > 0) setToCache(cacheKey, final);
-    return final;
+        if (final.length > 0) setToCache(cacheKey, final);
+        return final || [];
+    } catch (e) {
+        return [];
+    }
 };
 
 export const fetchStationBySlug = async (slug: string): Promise<RadioStation | null> => {
-    const global = await fetchGlobalMusicStations();
-    const found = global.find(s => s.slug === slug);
-    if (found) return found;
+    try {
+        const global = await fetchGlobalMusicStations();
+        const found = global.find(s => s.slug === slug);
+        if (found) return found;
 
-    const namePart = slug.split('-').slice(0, -1).join(' ');
-    const results = await fetchStationsByTag(namePart, 50);
-    return results.find(s => s.slug === slug) || null;
+        const namePart = slug.split('-').slice(0, -1).join(' ');
+        const results = await fetchStationsByTag(namePart, 50);
+        return results.find(s => s.slug === slug) || null;
+    } catch (e) {
+        return null;
+    }
 };
 
 export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStation[]> => {
     if (!uuids || uuids.length === 0) return [];
     try {
-        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2);
-        const fetchPromises = uuids.map(uuid => fetchFromMirror(mirrors[0], `byuuid/${uuid}`, ''));
+        const mirrors = RADIO_BROWSER_MIRRORS;
+        const fetchPromises = uuids.map(uuid => {
+             // Hit multiple mirrors for reliability, grab the first successful one
+             return mirrors.map(mirror => fetchFromMirror(mirror, `byuuid/${uuid}`, ''));
+        }).flat();
+        
         const results = await Promise.allSettled(fetchPromises);
-        const all = results.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap(r => r.value);
-        return filterStations(all, 0) || [];
+        const all = results
+            .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
+            .flatMap(r => r.value);
+            
+        return filterStations(all) || [];
     } catch (e) {
         return [];
     }
@@ -311,24 +312,26 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
 
 export const fetchStationsByCountry = async (country: string, limit: number = 200): Promise<RadioStation[]> => {
     if (!country) return [];
-    const cacheKey = `country_v16_${country.toLowerCase()}_l${limit}`;
+    const cacheKey = `country_v20_${country.toLowerCase()}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData && cachedData.length > 0) return cachedData;
 
     try {
         const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 3);
-        const query = `?limit=500&order=votes&reverse=true&hidebroken=true&lastcheckok=1`;
-        const results = await Promise.allSettled(mirrors.map(m => fetchFromMirror(m, `bycountry/${encodeURIComponent(country)}`, query)));
-        const all = results.filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled').flatMap(r => r.value);
+        const query = `?limit=500&order=votes&reverse=true&hidebroken=true`;
         
-        let filtered = filterStations(all, 50) || [];
-        if (filtered.length < 50) filtered = filterStations(all, 10) || [];
+        const fetchPromises = mirrors.map(m => fetchFromMirror(m, `bycountry/${encodeURIComponent(country)}`, query));
+        const results = await Promise.allSettled(fetchPromises);
+        const all = results
+            .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
+            .flatMap(r => r.value);
+            
+        const filtered = filterStations(all) || [];
+        const result = filtered.slice(0, Math.max(limit, 200)); // Ensure robust array length
         
-        const result = filtered.slice(0, limit);
         if (result.length > 0) setToCache(cacheKey, result);
-        return result;
+        return result || [];
     } catch (e) {
         return [];
     }
 };
-
