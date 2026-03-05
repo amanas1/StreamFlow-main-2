@@ -197,13 +197,13 @@ const StationPage: React.FC<StationPageProps> = ({
                             onClick={() => setShowSettings(!showSettings)}
                             className="text-xs text-slate-300 hover:text-white uppercase tracking-widest font-bold flex items-center gap-2 transition-colors mb-4 bg-black/50 px-5 py-2.5 rounded-full backdrop-blur-xl border border-white/10 shadow-lg"
                         >                          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
-                            Visualizer Settings
+                            {t.vizSettings || 'Visualizer Settings'}
                         </button>
                                                 {showSettings && (
                                 <div className="w-full bg-black/40 backdrop-blur-2xl shadow-2xl border border-white/10 rounded-[2rem] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
                                     <div className="space-y-6">
                                     <div>
-                                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Star Variant</label>
+                                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{t.starVariant || 'Star Variant'}</label>
                                         <div className="grid grid-cols-2 gap-2">
                                             {['galaxy', 'viz-journey', 'stage-dancer'].map(variant => (
                                                 <button 
@@ -211,13 +211,13 @@ const StationPage: React.FC<StationPageProps> = ({
                                                     onClick={() => setParticleSettings(s => ({ ...s, variant: variant as any }))}
                                                     className={`px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${particleSettings.variant === variant ? 'bg-primary/20 border-primary text-white' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
                                                 >
-                                                    {variant.replace('-', ' ')}
+                                                    {t[variant === 'viz-journey' ? 'vizJourney' : variant === 'stage-dancer' ? 'vizStageDancer' : 'vizGalaxy'] || variant.replace('-', ' ')}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Density: {particleSettings.amount}</label>
+                                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{(t.vizDensity || 'Density')}: {particleSettings.amount}</label>
                                         <input 
                                             type="range" 
                                             min="20" max="300" step="10"
@@ -227,7 +227,7 @@ const StationPage: React.FC<StationPageProps> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Speed: {particleSettings.speed.toFixed(1)}x</label>
+                                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{(t.vizSpeed || 'Speed')}: {particleSettings.speed.toFixed(1)}x</label>
                                         <input 
                                             type="range" 
                                             min="0.1" max="3.0" step="0.1"
@@ -239,7 +239,7 @@ const StationPage: React.FC<StationPageProps> = ({
                                     {ringSettings && setRingSettings && (
                                         <>
                                             <div className="pt-4 border-t border-white/5">
-                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Rings Amount: {ringSettings.amount}</label>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{(t.ringsAmount || 'Rings Amount')}: {ringSettings.amount}</label>
                                                 <input 
                                                     type="range" 
                                                     min="5" max="40" step="1"
@@ -249,7 +249,7 @@ const StationPage: React.FC<StationPageProps> = ({
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Ring Thickness: {ringSettings.thickness.toFixed(1)}</label>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{(t.ringThickness || 'Ring Thickness')}: {ringSettings.thickness.toFixed(1)}</label>
                                                 <input 
                                                     type="range" 
                                                     min="0.5" max="5.0" step="0.5"
@@ -259,7 +259,7 @@ const StationPage: React.FC<StationPageProps> = ({
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Neon Brightness: {ringSettings.brightness}%</label>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{(t.neonBrightness || 'Neon Brightness')}: {ringSettings.brightness}%</label>
                                                 <input 
                                                     type="range" 
                                                     min="20" max="100" step="5"
@@ -269,7 +269,7 @@ const StationPage: React.FC<StationPageProps> = ({
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Contrast & Glow: {ringSettings.contrast ?? 50}%</label>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">{(t.contrastGlow || 'Contrast & Glow')}: {ringSettings.contrast ?? 50}%</label>
                                                 <input 
                                                     type="range" 
                                                     min="0" max="100" step="5"

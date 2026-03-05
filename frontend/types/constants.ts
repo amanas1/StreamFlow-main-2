@@ -668,6 +668,7 @@ export const TRANSLATIONS: Record<string, any> = {
         bitrate: 'Bitrate', codec: 'Codec', votes: 'Votes', status: 'Status', online: 'Online',
         favorited: 'Favorited', addToFavorites: 'Add to Favorites', discoverMore: 'Discover More Stations',
         stationNotFound: 'Station Not Found', stationNotFoundDesc: 'The radio station you are looking for might have moved or is no longer available.',
+        vizSettings: 'Visualizer Settings', starVariant: 'Star Variant', vizDensity: 'Density', vizSpeed: 'Speed', ringsAmount: 'Rings Amount', ringThickness: 'Ring Thickness', neonBrightness: 'Neon Brightness', contrastGlow: 'Contrast & Glow',
         // Category Translations
         jazz: 'Jazz', blues: 'Blues', rock: 'Rock', classical: 'Classical', electronic: 'Electronic', hiphop: 'Hip Hop', pop: 'Pop', rnb: 'R&B', reggae: 'Reggae', soul: 'Soul', world: 'World',
         indie: 'Indie', edm: 'EDM', house: 'House', deephouse: 'Deep House', techno: 'Techno', trance: 'Trance', dnb: 'Drum & Bass', instrumental: 'Instrumental', lofi: 'Lo-fi', chillout: 'Chillout', lounge: 'Lounge', latin: 'Latin', reggaeton: 'Reggaeton', afrobeat: 'Afrobeat', kpop: 'K-pop', jpop: 'J-pop', synthwave: 'Synthwave', disco: 'Disco', funk: 'Funk', alternative: 'Alternative', ambient: 'Ambient',
@@ -783,6 +784,7 @@ export const TRANSLATIONS: Record<string, any> = {
         bitrate: 'Битрейт', codec: 'Кодек', votes: 'Голоса', status: 'Статус', online: 'В сети',
         favorited: 'В избранном', addToFavorites: 'В избранное', discoverMore: 'Найти еще станции',
         stationNotFound: 'Станция не найдена', stationNotFoundDesc: 'Радиостанция, которую вы ищете, возможно, сменила адрес или более не доступна.',
+        vizSettings: 'Настройки Визуала', starVariant: 'Тип Звезд', vizDensity: 'Плотность', vizSpeed: 'Скорость', ringsAmount: 'Количество Колец', ringThickness: 'Толщина Колец', neonBrightness: 'Яркость Неона', contrastGlow: 'Контраст и Свечение',
         // Category Translations
         jazz: 'Джаз', blues: 'Блюз', rock: 'Рок', classical: 'Классика', electronic: 'Электроника', hiphop: 'Хип-хоп', pop: 'Поп', rnb: 'R&B', reggae: 'Регги', soul: 'Соул',
         indie: 'Инди', edm: 'EDM', house: 'Хаус', deephouse: 'Дип-хаус', techno: 'Техно', trance: 'Транс', dnb: 'Drum & Bass', instrumental: 'Инструментал', lofi: 'Лоу-фай', chillout: 'Чилаут', lounge: 'Лаундж', latin: 'Латино', reggaeton: 'Реггетон', afrobeat: 'Афробит', kpop: 'K-pop', jpop: 'J-pop', synthwave: 'Синтвейв', disco: 'Диско', funk: 'Фанк', alternative: 'Альтернатива', ambient: 'Эмбиент',
@@ -896,6 +898,7 @@ export const TRANSLATIONS: Record<string, any> = {
         manual: 'Manual', soundProfiles: 'Perfiles de sonido', oneClickSetup: 'Configuración en un clic',
         vizStageDancer: 'Bailarín', vizTrioDancers: 'Trío de bailarines', vizJourney: 'Viaje', vizDigital: 'Digital', vizNeon: 'Neón', vizRings: 'Anillos', vizBubbles: 'Burbujas',
         spatialMixer: 'Mezclador espacial',
+        vizSettings: 'Ajustes de Visualizador', starVariant: 'Variante de Estrella', vizDensity: 'Densidad', vizSpeed: 'Velocidad', ringsAmount: 'Cantidad de Anillos', ringThickness: 'Grosor de Anillo', neonBrightness: 'Brillo de Neón', contrastGlow: 'Contraste y Brillo',
         jazz: 'Jazz', blues: 'Blues', rock: 'Rock', classical: 'Clásica', electronic: 'Electrónica', hiphop: 'Hip Hop', pop: 'Pop', rnb: 'R&B', reggae: 'Reggae', soul: 'Soul', world: 'Mundo',
         '60s': '60s', '70s': '70s', '80s': '80s', '90s': '90s', '00s': '00s', '10s': '10s', '20s': '20s',
         chill: 'Chill', energy: 'Energía', romantic: 'Romántico', dark: 'Club',
@@ -913,6 +916,7 @@ export const TRANSLATIONS: Record<string, any> = {
         infiniteTracks: 'Pistas infinitas', noAuth: 'Sin registro', searchLib: 'Buscar biblioteca...', all: 'Todo', moodChill: 'Relax', moodEnergy: 'Energía', moodPhonk: 'Phonk', moodJazz: 'Jazz', moodParty: 'Fiesta',
         feedbackTitle: "Comentarios", writeDev: "Escribir al desarrollador", rating: "Calificar", tellUs: "Dinos qué mejorar...", sendSuccess: "¡Mensaje enviado!", manualTooltip: "Manual", showWhere: "Mostrar dónde", helpImprove: "Ayúdanos a mejorar AU Radio.",
         randomMode: 'Modo aleatorio', randomModeDesc: 'Reproduce estaciones aleatorias al pulsar Siguiente.', ecoMode: 'Modo Eco',
+        classicView: 'Clásico', modernView: 'Moderno',
     },
     fr: {
         genres: 'Genres', eras: 'Époques', moods: 'Humeurs', effects: 'Effets', favorites: 'Favoris',
@@ -934,6 +938,7 @@ export const TRANSLATIONS: Record<string, any> = {
         manual: 'Manuel', soundProfiles: 'Profils sonores', oneClickSetup: 'Config en un clic',
         vizStageDancer: 'Danseur', vizTrioDancers: 'Trio de danseurs', vizJourney: 'Voyage', vizDigital: 'Digital', vizNeon: 'Néon', vizRings: 'Anneaux', vizBubbles: 'Bulles',
         spatialMixer: 'Mixeur spatial',
+        vizSettings: 'Paramètres du Visualiseur', starVariant: 'Variante d\'Étoile', vizDensity: 'Densité', vizSpeed: 'Vitesse', ringsAmount: 'Nombre d\'Anneaux', ringThickness: 'Épaisseur d\'Anneau', neonBrightness: 'Luminosité Néon', contrastGlow: 'Contraste et Éclat',
         jazz: 'Jazz', blues: 'Blues', rock: 'Rock', classical: 'Classique', electronic: 'Électronique', hiphop: 'Hip Hop', pop: 'Pop', rnb: 'R&B', reggae: 'Reggae', soul: 'Soul', world: 'Monde',
         '60s': '60s', '70s': '70s', '80s': '80s', '90s': '90s', '00s': '00s', '10s': '10s', '20s': '20s',
         chill: 'Chill', energy: 'Énergie', romantic: 'Romantique', dark: 'Club',
@@ -1047,6 +1052,7 @@ export const TRANSLATIONS: Record<string, any> = {
         ageRestrictionNotice: 'Désolé, le chat est réservé aux plus de 18 ans.',
         free: 'Libre', noActiveChatsDesc: 'Vos discussions apparaîtront ici. Commencez-en une !',
         restrictedDueToReport: 'Restreint suite à un signalement : {reason}', violation: 'Violation',
+        classicView: 'Classique', modernView: 'Moderne',
     },
     zh: {
         genres: '流派', eras: '时代', moods: '情感', effects: '音效', favorites: '收藏夹',
@@ -1068,6 +1074,7 @@ export const TRANSLATIONS: Record<string, any> = {
         manual: '手册', soundProfiles: '声音配置文件', oneClickSetup: '一键设置',
         vizStageDancer: '舞者', vizTrioDancers: '三人舞', vizJourney: '旅程', vizDigital: '数字', vizNeon: '霓虹', vizRings: '圆环', vizBubbles: '气泡',
         spatialMixer: '空间混合器',
+        vizSettings: '可视化设置', starVariant: '恒星变体', vizDensity: '密度', vizSpeed: '速度', ringsAmount: '光环数量', ringThickness: '光环厚度', neonBrightness: '霓虹亮度', contrastGlow: '对比度与发光',
         jazz: '爵士', blues: '布鲁斯', rock: '摇滚', classical: '古典', electronic: '电子', hiphop: '嘻哈', pop: '流行', rnb: 'R&B', reggae: '雷鬼', soul: '灵魂乐', world: '世界音乐',
         '60s': '60年代', '70s': '70年代', '80s': '80年代', '90s': '90年代', '00s': '00年代', '10s': '10年代', '20s': '20年代',
         chill: '放松', energy: '能量', romantic: '浪漫', dark: '夜店',
@@ -1097,6 +1104,7 @@ export const TRANSLATIONS: Record<string, any> = {
         contactText: '联系我们',
         directoryText: '目录',
         copyRight: '© 2026 AU Radio — 全球在线广播播放器',
+        classicView: '经典', modernView: '现代',
     },
     de: {
         genres: 'Genres', eras: 'Ären', moods: 'Stimmungen', effects: 'Effekte', favorites: 'Favoriten',
@@ -1118,6 +1126,7 @@ export const TRANSLATIONS: Record<string, any> = {
         manual: 'Handbuch', soundProfiles: 'Sound-Profile', oneClickSetup: 'Ein-Klick-Setup',
         vizStageDancer: 'Tänzer', vizTrioDancers: 'Trio-Tänzer', vizJourney: 'Reise', vizDigital: 'Digital', vizNeon: 'Neon', vizRings: 'Ringe', vizBubbles: 'Blasen',
         spatialMixer: 'Räumlicher Mixer',
+        vizSettings: 'Visualizer-Einstellungen', starVariant: 'Sternvariante', vizDensity: 'Dichte', vizSpeed: 'Geschwindigkeit', ringsAmount: 'Ringe Anzahl', ringThickness: 'Ringdicke', neonBrightness: 'Neonhelligkeit', contrastGlow: 'Kontrast & Leuchten',
         jazz: 'Jazz', blues: 'Blues', rock: 'Rock', classical: 'Klassik', electronic: 'Elektronik', hiphop: 'Hip Hop', pop: 'Pop', rnb: 'R&B', reggae: 'Reggae', soul: 'Soul', world: 'Welt',
         '60s': '60er', '70s': '70er', '80s': '80er', '90s': '90er', '00s': '00er', '10s': '10er', '20s': '20er',
         chill: 'Chill', energy: 'Energie', romantic: 'Romantisch', dark: 'Club',
@@ -1147,6 +1156,7 @@ export const TRANSLATIONS: Record<string, any> = {
         contactText: 'Kontakt',
         directoryText: 'Verzeichnis',
         copyRight: '© 2026 AU Radio — Globaler Online-Radio-Streaming-Player',
+        classicView: 'Klassisch', modernView: 'Modern',
     },
 };
 export const GLOBAL_PRESETS = [
