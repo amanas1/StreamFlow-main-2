@@ -344,9 +344,18 @@ export default function App(): React.JSX.Element {
 
   const DEFAULT_RING_SETTINGS: RingSettings = { amount: 30, thickness: 0.5, brightness: 40, contrast: 40 };
   const [ringSettings, setRingSettings] = useState<RingSettings>(() => {
+      // Forcing reset to the new defaults if we see the old fat ring amount
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('auradiochat_ring_settings');
-          if (saved) return JSON.parse(saved);
+          if (saved) {
+              try {
+                  const parsed = JSON.parse(saved);
+                  if (parsed.amount === 15 && parsed.thickness === 1.0) {
+                      return DEFAULT_RING_SETTINGS;
+                  }
+                  return parsed;
+              } catch (e) {}
+          }
       }
       return DEFAULT_RING_SETTINGS;
   });
