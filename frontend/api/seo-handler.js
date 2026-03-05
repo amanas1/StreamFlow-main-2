@@ -28,15 +28,31 @@ export default async function handler(req, res) {
     }
 
     // Load base template (ESM safe path resolution)
+    // In Vercel, includeFiles places them relative to the function's execution context
     let indexPath = path.join(process.cwd(), 'dist', 'app-template.html');
     let htmlContent = '';
     
     try {
         if (!fs.existsSync(indexPath)) {
-            const filesInCwd = fs.readdirSync(process.cwd());
-            const filesInDist = fs.existsSync(path.join(process.cwd(), 'dist')) ? fs.readdirSync(path.join(process.cwd(), 'dist')) : ['dist-not-found'];
-            return res.status(500).send(`Template not found at ${indexPath}. \nCWD: ${process.cwd()}\nFiles in CWD: ${filesInCwd.join(', ')}\nFiles in dist: ${filesInDist.join(', ')}`);
+            // Try __dirname relative path
+            indexPath = path.join(__dirname, '..', 'dist', 'app-template.html');
+            if (!fs.existsSync(indexPath)) {
+                 // Try root path if running directly in dist
+                 indexPath = path.join(process.cwd(), 'app-template.html');
+                 if (!fs.existsSync(indexPath)) {
+                     // Development or local fallback
+                     indexPath = path.join(process.cwd(), 'dist', 'index.html');
+                     if (!fs.existsSync(indexPath)) {
+                        indexPath = path.join(process.cwd(), 'index.html');
+                     }
+                 }
+            }
         }
+        
+        if (!fs.existsSync(indexPath)) {
+             return res.status(500).send(`Template not found. Paths tried. CWD: ${process.cwd()}, DIRNAME: ${__dirname}`);
+        }
+        
         htmlContent = fs.readFileSync(indexPath, 'utf8');
     } catch (err) {
         return res.status(500).send(`Error reading template: ${err.message}`);
