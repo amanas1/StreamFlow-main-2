@@ -1,12 +1,14 @@
 import React, { useEffect, useRef } from 'react';
+import { RingSettings } from '../types';
 
 interface RingVisualizerProps {
     analyserNode: AnalyserNode | null;
     isPlaying: boolean;
     className?: string;
+    settings?: RingSettings;
 }
 
-export default function RingVisualizer({ analyserNode, isPlaying, className = '' }: RingVisualizerProps) {
+export default function RingVisualizer({ analyserNode, isPlaying, className = '', settings }: RingVisualizerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationRef = useRef<number>();
     const dataArrayRef = useRef<Uint8Array>(new Uint8Array(0));
@@ -59,9 +61,12 @@ export default function RingVisualizer({ analyserNode, isPlaying, className = ''
 
             const centerX = width / 2;
             const centerY = height / 2;
-            const maxRadius = Math.min(width, height) / 2 - 5;
+            const maxRadius = Math.min(width, height) / 2 - 35; // added padding to prevent clipping
             
-            const numRings = 15; // "много колец"
+            const numRings = settings?.amount || 15;
+            const thickness = settings?.thickness || 1.5;
+            const brightnessBoost = settings?.brightness ? settings.brightness / 100 : 0.5;
+            
             const time = Date.now() / 1000;
 
             for (let i = 0; i < numRings; i++) {
@@ -74,14 +79,15 @@ export default function RingVisualizer({ analyserNode, isPlaying, className = ''
                 // Intense pulse on bass hits
                 const pulse = baseRadius + (freqVal * 25) + Math.sin(time * 3 + i * 0.5) * 4;
                 
-                // Dynamic Neon Colors
+                // Dynamic Neon Colors. Adjust lightness using brightness slider mapping.
                 const hue = (time * 80 + i * 25 + freqVal * 50) % 360;
-                const lightness = 50 + (freqVal * 25); 
+                const baseLightness = 30 + (brightnessBoost * 40); 
+                const lightness = baseLightness + (freqVal * 25); 
                 
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, Math.max(0.1, pulse), 0, Math.PI * 2);
                 
-                ctx.lineWidth = 1.5 + (freqVal * 4); 
+                ctx.lineWidth = thickness + (freqVal * 4); 
                 
                 const opacity = 0.4 + (freqVal * 0.6);
                 

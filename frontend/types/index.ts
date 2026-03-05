@@ -45,6 +45,12 @@ export interface ParticleSettings {
   colorSync: boolean; // Sync with theme primary/secondary
 }
 
+export interface RingSettings {
+  amount: number; // Number of rings (e.g. 5 to 30)
+  thickness: number; // Line width (e.g. 0.5 to 5)
+  brightness: number; // Brightness boost (e.g. 0 to 100)
+}
+
 export interface VisualizerSettings {
   scaleX: number;
   scaleY: number;

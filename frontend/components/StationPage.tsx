@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { RadioStation, Language, UIMode, ParticleSettings } from '../types';
+import { RadioStation, Language, UIMode, ParticleSettings, RingSettings } from '../types';
 import { fetchStationBySlug } from '../services/radioService';
 import StationCard from './StationCard';
 import { TRANSLATIONS } from '../types/constants';
@@ -19,10 +19,12 @@ interface StationPageProps {
     uiMode: UIMode;
     particleSettings?: ParticleSettings;
     setParticleSettings?: React.Dispatch<React.SetStateAction<ParticleSettings>>;
+    ringSettings?: RingSettings;
+    setRingSettings?: React.Dispatch<React.SetStateAction<RingSettings>>;
 }
 
 const StationPage: React.FC<StationPageProps> = ({ 
-    language, onPlayStation, currentStationId, isPlaying, favorites, onToggleFavorite, uiMode, particleSettings, setParticleSettings 
+    language, onPlayStation, currentStationId, isPlaying, favorites, onToggleFavorite, uiMode, particleSettings, setParticleSettings, ringSettings, setRingSettings 
 }) => {
     const { slug } = useParams<{ slug: string }>();
     const [station, setStation] = useState<RadioStation | null>(null);
@@ -97,7 +99,8 @@ const StationPage: React.FC<StationPageProps> = ({
                             <RingVisualizer 
                                 analyserNode={audioEngine.getAnalyser()} 
                                 isPlaying={!!isPlaying && currentStationId === station.stationuuid} 
-                                className="w-full h-full drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                                settings={ringSettings}
+                                className="w-full h-full drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] bg-slate-900/40 rounded-full"
                             />
                         </>
                     ) : (
@@ -199,6 +202,40 @@ const StationPage: React.FC<StationPageProps> = ({
                                             className="w-full accent-primary"
                                         />
                                     </div>
+                                    {ringSettings && setRingSettings && (
+                                        <>
+                                            <div className="pt-4 border-t border-white/5">
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Rings Amount: {ringSettings.amount}</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="5" max="40" step="1"
+                                                    value={ringSettings.amount}
+                                                    onChange={(e) => setRingSettings(s => ({ ...s, amount: parseInt(e.target.value) }))}
+                                                    className="w-full accent-primary"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Ring Thickness: {ringSettings.thickness.toFixed(1)}</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="0.5" max="5.0" step="0.5"
+                                                    value={ringSettings.thickness}
+                                                    onChange={(e) => setRingSettings(s => ({ ...s, thickness: parseFloat(e.target.value) }))}
+                                                    className="w-full accent-primary"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block text-left">Neon Brightness: {ringSettings.brightness}%</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="20" max="100" step="5"
+                                                    value={ringSettings.brightness}
+                                                    onChange={(e) => setRingSettings(s => ({ ...s, brightness: parseInt(e.target.value) }))}
+                                                    className="w-full accent-primary"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
