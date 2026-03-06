@@ -181,6 +181,65 @@ export default async function handler(req, res) {
         htmlContent = parts[0] + metaTags + headTagEnd + parts.slice(1).join(headTagEnd);
     }
 
+    // Helper function to generate rich SEO content to prevent Soft 404s
+    function generateRichContent(t, d, pType, pGenre, pCountry, l, fallback) {
+        let html = `      <h1>${t}</h1>\n      <p>${d}</p>\n`;
+        const gName = pGenre ? cap(pGenre) : '';
+        const cName = pCountry ? cap(pCountry) : '';
+        const fbName = fallback || '';
+
+        if (l === 'ru') {
+            html += `      <p>Добро пожаловать на AU Radio — платформу премиум-класса для потокового вещания, где вы можете наслаждаться лучшими музыкальными подборками. Наш глобальный каталог предлагает сотни радиостанций, вещающих круглосуточно. Откройте для себя новые треки, наслаждайтесь любимыми хитами и слушайте музыку в высоком качестве.</p>\n`;
+            if (pType === 'genre') {
+                html += `      <p>Слушать ${gName} онлайн бесплатно без регистрации. Мы собрали для вас лучшие ${gName} радиостанции, чтобы вы могли погрузиться в атмосферу любимого жанра. Будь то классические хиты или современные новинки, наша платформа обеспечивает непрерывное воспроизведение кристально чистого звука.</p>\n`;
+                html += `      <p>Присоединяйтесь к тысячам слушателей и откройте для себя новые грани ${gName} музыки. Наш умный плеер автоматически подстраивается под ваше соединение, а удобный интерфейс позволяет легко находить и сохранять любимые станции в избранное.</p>\n`;
+            } else if (pType === 'country') {
+                html += `      <p>Ищете радиостанции региона: ${cName}? Вы попали по адресу. Слушайте местные новости, популярные ток-шоу и лучшие музыкальные хиты прямо из ${cName}. Узнавайте первыми о том, что происходит, и наслаждайтесь колоритом местной культуры.</p>\n`;
+                html += `      <p>Наша директория постоянно обновляется, чтобы предложить вам самые актуальные и стабильные трансляции из ${cName}. Просто выберите станцию из списка и наслаждайтесь эфиром мгновенно, с любого устройства.</p>\n`;
+            } else if (pType === 'combo') {
+                html += `      <p>Лучшая комбинация: ${gName} музыка и трансляции из региона ${cName}. Эта страница создана специально для ценителей жанра, желающих слушать локальные станции. Погрузитесь в уникальное звучание и наслаждайтесь качественным аудио потоком без перерывов.</p>\n`;
+                html += `      <p>Вне зависимости от того, ищете ли вы расслабляющий фон для работы или зажигательные ритмы для вечеринки, станции региона ${cName} в жанре ${gName} не оставят вас равнодушными. Наслаждайтесь бесплатным доступом ко всем функциям AU Radio.</p>\n`;
+            } else {
+                html += `      <p>Изучайте огромную коллекцию интернет-радио со всего мира. Мы предлагаем удобный поиск, категоризацию по жанрам и странам, а также быструю загрузку потоков. Музыка без границ всегда доступна для вас на AU Radio.</p>\n`;
+                html += `      <p>Слушайте тысячи бесплатных онлайн-радиостанций с кристально чистым звуком. Сохраняйте любимые эфиры, открывайте для себя новые станции ежедневно и наслаждайтесь музыкой любого настроения и эпохи вместе с нами.</p>\n`;
+            }
+        } else if (l === 'es') {
+            html += `      <p>Bienvenido a AU Radio, una plataforma de transmisión premium donde puedes disfrutar de las mejores selecciones musicales. Nuestro directorio global ofrece cientos de estaciones de radio que transmiten las 24 horas del día. Descubre nuevas pistas, disfruta de tus éxitos favoritos y escucha música en alta calidad.</p>\n`;
+            if (pType === 'genre') {
+                html += `      <p>Escucha ${gName} en línea gratis sin registrarte. Hemos recopilado las mejores estaciones de radio de ${gName} para que puedas sumergirte en la atmósfera de tu género favorito. Ya sean éxitos clásicos o nuevos lanzamientos, nuestra plataforma garantiza una reproducción continua con un sonido cristalino.</p>\n`;
+                html += `      <p>Únete a miles de oyentes y descubre nuevas facetas de la música ${gName}. Nuestro reproductor inteligente se adapta automáticamente a tu conexión, y la interfaz intuitiva facilita la búsqueda y el guardado de tus estaciones favoritas.</p>\n`;
+            } else if (pType === 'country') {
+                html += `      <p>¿Buscas estaciones de radio de la región: ${cName}? Estás en el lugar correcto. Escucha noticias locales, programas de entrevistas populares y los mejores éxitos musicales directamente desde ${cName}. Sé el primero en saber lo que sucede y disfruta del sabor de la cultura local.</p>\n`;
+                html += `      <p>Nuestro directorio se actualiza constantemente para ofrecerte las transmisiones más relevantes y estables de ${cName}. Simplemente selecciona una estación de la lista y disfruta de la transmisión al instante, desde cualquier dispositivo.</p>\n`;
+            } else if (pType === 'combo') {
+                html += `      <p>La mejor combinación: música ${gName} y transmisiones de la región de ${cName}. Esta página fue creada especialmente para los conocedores del género que desean escuchar emisoras locales. Sumérgete en un sonido único y disfruta de una transmisión de audio de alta calidad sin interrupciones.</p>\n`;
+                html += `      <p>Ya sea que busques un fondo relajante para trabajar o ritmos enérgicos para una fiesta, las estaciones de ${cName} en el género de ${gName} no te dejarán indiferente. Disfruta de acceso gratuito a todas las funciones de AU Radio.</p>\n`;
+            } else {
+                html += `      <p>Explora una gran colección de radio por Internet de todo el mundo. Ofrecemos búsqueda conveniente, categorización por géneros y países, y carga rápida de transmisiones. La música sin fronteras siempre está disponible para ti en AU Radio.</p>\n`;
+                html += `      <p>Escucha miles de estaciones de radio en línea gratuitas con un sonido cristalino. Guarda tus transmisiones favoritas, descubre nuevas estaciones todos los días y disfruta de música de cualquier estado de ánimo y época con nosotros.</p>\n`;
+            }
+        } else {
+            // English and fallback
+            html += `      <p>Welcome to AU Radio, a premium streaming platform where you can enjoy the best musical selections. Our global directory offers hundreds of radio stations broadcasting 24/7. Discover new tracks, enjoy your favorite hits, and listen to high-quality audio streaming seamlessly.</p>\n`;
+            if (pType === 'genre') {
+                html += `      <p>Listen to ${gName} online for free without registration. We have collected the best ${gName} radio stations so you can immerse yourself in the atmosphere of your favorite genre. Whether it's classical hits or modern releases, our platform ensures continuous playback with crystal-clear sound quality.</p>\n`;
+                html += `      <p>Join thousands of listeners and discover new facets of ${gName} music. Our smart player automatically adjusts to your network connection, and the user-friendly interface makes it incredibly easy to find and save your favorite stations for later.</p>\n`;
+            } else if (pType === 'country') {
+                html += `      <p>Looking for radio stations from ${cName}? You have come to the right place. Listen to local news, popular talk shows, and the greatest musical hits directly from ${cName}. Be the first to know what is happening and enjoy the rich flavor of local culture.</p>\n`;
+                html += `      <p>Our comprehensive directory is constantly updated to offer you the most relevant and stable broadcasts from ${cName}. Simply select a station from the list below and enjoy instant live broadcasting on any device, anywhere in the world.</p>\n`;
+            } else if (pType === 'combo') {
+                html += `      <p>The perfect blend: ${gName} music combined with live broadcasts from ${cName}. This page is specially curated for connoisseurs of the genre who want to listen to authentic local stations. Dive into a unique listening experience with high-quality, uninterrupted audio streaming.</p>\n`;
+                html += `      <p>Whether you need a relaxing background for work or energetic beats for a party, the ${cName} stations playing ${gName} will perfectly match your mood. Enjoy free and unlimited access to all features provided by the AU Radio platform.</p>\n`;
+            } else {
+                const targetName = fbName || "internet radio";
+                html += `      <p>Explore a massive collection of ${targetName} stations from across the globe. We offer a convenient search engine, intuitive categorization by genres and countries, and incredibly fast stream loading times. Music without borders is always accessible to you on AU Radio.</p>\n`;
+                html += `      <p>Listen to thousands of free online radio stations with crystal-clear sound. Save your favorite broadcasts, discover new stations everyday, and enjoy music from any era and for any mood. Start your auditory journey with us right now.</p>\n`;
+            }
+        }
+
+        return html;
+    }
+
     // Inject visible HTML content into body before <div id="root"> exactly once
     const rootTagStart = '<div id="root">';
     if (!htmlContent.includes('class="seo-content"') && !htmlContent.includes('class="error-page"')) {
@@ -197,11 +256,11 @@ export default async function handler(req, res) {
     </section>
     `;
             } else if (isKnownSeo || isSeoFallback) {
+                const fallbackTitleText = isSeoFallback ? title : '';
+                const richContent = generateRichContent(title, description, parsedType, parsedGenre, parsedCountry, lang, fallbackTitleText);
                 injectedHtml = `
     <section class="seo-content">
-      <h1>${title}</h1>
-      <p>${description}</p>
-    </section>
+${richContent}    </section>
     `;
             }
             
