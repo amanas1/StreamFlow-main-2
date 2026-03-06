@@ -137,15 +137,26 @@ export default async function handler(req, res) {
                 description = `Listen to ${gName || ''} ${cName || ''} radio stations live. Best online radio streaming player.`;
             }
         }
+    } else if (slug) {
+        // Fallback for unknown slugs
+        const fallbackTitle = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        title = fallbackTitle;
+        description = `Listen to ${fallbackTitle} radio stations online with AU Radio streaming player.`;
     }
 
     const baseUrl = 'https://auradiochat.com';
-    const canonicalPath = slug ? `/${slug}` : '/';
+    
+    // Exact requested canonical logic including language path
+    const canonicalPath = slug
+        ? (lang === 'en' ? `/${slug}` : `/${lang}/${slug}`)
+        : (lang === 'en' ? '/' : `/${lang}`);
     const canonicalUrl = `${baseUrl}${canonicalPath}`;
     
-    const hreflangs = [`<link rel="alternate" hreflang="x-default" href="${canonicalUrl}" />`];
+    // Hreflang logic remains based on the base slug without the requested language
+    const baseCanonicalPath = slug ? `/${slug}` : '/';
+    const hreflangs = [`<link rel="alternate" hreflang="x-default" href="${baseUrl}${baseCanonicalPath}" />`];
     ['en', 'ru', 'es', 'fr', 'de', 'zh'].forEach(l => {
-        const href = l === 'en' ? canonicalUrl : `${baseUrl}/${l}${canonicalPath}`;
+        const href = l === 'en' ? `${baseUrl}${baseCanonicalPath}` : `${baseUrl}/${l}${baseCanonicalPath}`;
         hreflangs.push(`<link rel="alternate" hreflang="${l}" href="${href}" />`);
     });
 
@@ -162,6 +173,21 @@ export default async function handler(req, res) {
     if (parts.length >= 2) {
         // Find existing meta/title and remove them if simple, or just prepend
         htmlContent = parts[0] + metaTags + headTagEnd + parts.slice(1).join(headTagEnd);
+    }
+
+    // Inject visible SEO content into body before <div id="root">, exactly once
+    if (!htmlContent.includes('class="seo-content"')) {
+        const rootTagStart = '<div id="root">';
+        const rootParts = htmlContent.split(rootTagStart);
+        if (rootParts.length >= 2) {
+            const seoHtmlContent = `
+    <section class="seo-content">
+      <h1>${title}</h1>
+      <p>${description}</p>
+    </section>
+    `;
+            htmlContent = rootParts[0] + seoHtmlContent + rootTagStart + rootParts.slice(1).join(rootTagStart);
+        }
     }
 
     res.setHeader('Content-Type', 'text/html');
