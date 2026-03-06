@@ -61,51 +61,56 @@ export default async function handler(req, res) {
         return res.status(500).send(`Error reading template: ${err.message}`);
     }
 
-    // SEO Configurations (Mirrored from DynamicRadioHub.tsx)
-    const SEO_SLUG_MAP = {
-        "radio-russia": { type: "country", tag: "Russia" },
-        "radio-kazakhstan": { type: "country", tag: "Kazakhstan" },
-        "radio-ukraine": { type: "country", tag: "Ukraine" },
-        "radio-belarus": { type: "country", tag: "Belarus" },
-        "radio-uzbekistan": { type: "country", tag: "Uzbekistan" },
-        "radio-kyrgyzstan": { type: "country", tag: "Kyrgyzstan" },
-        "radio-tajikistan": { type: "country", tag: "Tajikistan" },
-        "pop-radio": { type: "genre", tag: "pop" },
-        "jazz-radio": { type: "genre", tag: "jazz" },
-        "rock-radio": { type: "genre", tag: "rock" },
-        "electronic-radio": { type: "genre", tag: "electronic" },
-        "hip-hop-radio": { type: "genre", tag: "hip-hop" },
-        "lounge-radio": { type: "genre", tag: "lounge" },
-        "classical-radio": { type: "genre", tag: "classical" },
-        "slushat-radio-online": { type: "landing" },
-        "radio-online": { type: "landing" },
-        "internet-radio": { type: "landing" },
-        "free-online-radio": { type: "landing" },
-        "free-internet-radio": { type: "landing" },
-        "jazz-radio-russia": { type: "combo", genre: "jazz", country: "Russia" },
-        "electronic-radio-germany": { type: "combo", genre: "electronic", country: "Germany" }
-    };
+    // Dynamic Slug Parsing (replaces huge hardcoded maps)
+    // Structure examples: 'radio-russia', 'jazz-radio', 'jazz-radio-russia', 'slushat-radio-online'
+    
+    let isKnownSeo = false;
+    let parsedGenre = '';
+    let parsedCountry = '';
+    let parsedType = ''; // 'genre', 'country', 'combo', 'landing'
 
-    const GENRE_NAMES = {
-        pop: { en: "Pop", ru: "Поп", es: "Pop", fr: "Pop", de: "Pop", zh: "流行" },
-        jazz: { en: "Jazz", ru: "Джаз", es: "Jazz", fr: "Jazz", de: "Jazz", zh: "爵士" },
-        rock: { en: "Rock", ru: "Рок", es: "Rock", fr: "Rock", de: "Rock", zh: "摇滚" },
-        electronic: { en: "Electronic", ru: "Электроника", es: "Electrónica", fr: "Électronique", de: "Elektronik", zh: "电子" },
-        "hip-hop": { en: "Hip-Hop", ru: "Хип-хоп", es: "Hip Hop", fr: "Hip Hop", de: "Hip Hop", zh: "嘻哈" },
-        lounge: { en: "Lounge", ru: "Лаунж", es: "Lounge", fr: "Lounge", de: "Lounge", zh: "休闲" },
-        classical: { en: "Classical", ru: "Классика", es: "Clásica", fr: "Classique", de: "Klassik", zh: "古典" }
-    };
+    const landingSlugs = ['slushat-radio-online', 'radio-online', 'internet-radio', 'free-online-radio', 'free-internet-radio'];
+    
+    if (landingSlugs.includes(slug)) {
+        isKnownSeo = true;
+        parsedType = 'landing';
+    } else if (slug.startsWith('radio-')) {
+        isKnownSeo = true;
+        parsedType = 'country';
+        parsedCountry = slug.replace('radio-', '').replace(/-/g, ' ');
+    } else if (slug.endsWith('-radio')) {
+        isKnownSeo = true;
+        parsedType = 'genre';
+        parsedGenre = slug.replace('-radio', '').replace(/-/g, ' ');
+    } else if (slug.includes('-radio-')) {
+        isKnownSeo = true;
+        parsedType = 'combo';
+        const parts = slug.split('-radio-');
+        parsedGenre = parts[0].replace(/-/g, ' ');
+        parsedCountry = parts[1].replace(/-/g, ' ');
+    }
 
-    const COUNTRY_NAMES = {
-        Russia: { en: "Russia", ru: "Россия", es: "Rusia", fr: "Russie", de: "Russland", zh: "俄罗斯" },
-        Kazakhstan: { en: "Kazakhstan", ru: "Казахстан", es: "Kazajistán", fr: "Kazakhstan", de: "Kasachstan", zh: "哈萨克斯坦" },
-        Ukraine: { en: "Ukraine", ru: "Украина", es: "Ucrania", fr: "Ukraine", de: "Ukraine", zh: "乌克兰" },
-        Belarus: { en: "Belarus", ru: "Беларусь", es: "Bielorrusia", fr: "Biélorussie", de: "Belarus", zh: "白俄罗斯" },
-        Uzbekistan: { en: "Uzbekistan", ru: "Узбекистан", es: "Uzbekistán", fr: "Ouzbékistan", de: "Usbekistan", zh: "乌兹别克斯坦" },
-        Kyrgyzstan: { en: "Kyrgyzstan", ru: "Кыргызстан", es: "Kirguistán", fr: "Kirghizistan", de: "Kirgisistan", zh: "吉尔吉斯斯坦" },
-        Tajikistan: { en: "Tajikistan", ru: "Таджикистан", es: "Tayikistán", fr: "Tadjikistan", de: "Tadschikistan", zh: "塔吉克斯坦" },
-        Germany: { en: "Germany", ru: "Германия", es: "Alemania", fr: "Allemagne", de: "Deutschland", zh: "德国" }
-    };
+    // Route Classification
+    const VALID_REACT_ROUTES = ['favorites', 'about', 'privacy-policy', 'contact', 'genres', 'directory', 'station'];
+    
+    let is404 = false;
+    let isReactRoute = false;
+    let isSeoFallback = false;
+
+    if (!slug || slug === 'index.html') {
+        isReactRoute = true; // Home or language root
+    } else if (VALID_REACT_ROUTES.includes(slug)) {
+        isReactRoute = true;
+    } else if (isKnownSeo) {
+        // Handled by dynamic parser
+    } else if (slug.includes('radio')) {
+        isSeoFallback = true;
+    } else {
+        is404 = true;
+    }
+
+    // capitalize helper
+    const cap = (str) => str ? str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
 
     const LANDING_TITLES = {
         en: 'Listen to Radio Online Free',
@@ -120,28 +125,30 @@ export default async function handler(req, res) {
     let title = LANDING_TITLES[lang] || LANDING_TITLES.en;
     let description = 'Listen to thousands of internet radio stations online for free. Best online radio streaming player.';
 
-    const mapping = SEO_SLUG_MAP[slug];
-    if (mapping) {
-        const gName = mapping.genre ? (GENRE_NAMES[mapping.genre]?.[lang] || mapping.genre) : (mapping.type === 'genre' ? GENRE_NAMES[mapping.tag]?.[lang] : '');
-        const cName = mapping.country ? (COUNTRY_NAMES[mapping.country]?.[lang] || mapping.country) : (mapping.type === 'country' ? COUNTRY_NAMES[mapping.tag]?.[lang] : '');
+    if (isKnownSeo) {
+        const gName = cap(parsedGenre);
+        const cName = cap(parsedCountry);
         
-        if (mapping.type !== 'landing') {
+        if (parsedType !== 'landing') {
             if (lang === 'ru') {
-                title = mapping.genre && mapping.country ? `${gName} радио ${cName}` : gName ? `Лучшее ${gName} радио` : `Радио ${cName}`;
-                description = `Слушайте ${gName || ''} ${cName || ''} радио онлайн. Лучший плеер для интернет-радио.`;
+                title = parsedType === 'combo' ? `${gName} радио ${cName}` : parsedType === 'genre' ? `Лучшее ${gName} радио` : `Радио ${cName}`;
+                description = `Слушайте ${gName ? gName + ' ' : ''}${cName ? cName + ' ' : ''}радио онлайн. Лучший плеер для интернет-радио.`;
             } else if (lang === 'es') {
-                title = mapping.genre && mapping.country ? `Radio ${gName} en ${cName}` : gName ? `Mejor Radio ${gName}` : `Radio en ${cName}`;
-                description = `Escucha radio ${gName || ''} ${cName || ''} en vivo. El mejor reproductor de radio online.`;
+                title = parsedType === 'combo' ? `Radio ${gName} en ${cName}` : parsedType === 'genre' ? `Mejor Radio ${gName}` : `Radio en ${cName}`;
+                description = `Escucha radio ${gName ? gName + ' ' : ''}${cName ? cName + ' ' : ''}en vivo. El mejor reproductor de radio online.`;
             } else {
-                title = mapping.genre && mapping.country ? `${gName} Radio in ${cName}` : gName ? `Best ${gName} Radio` : `Radio in ${cName}`;
-                description = `Listen to ${gName || ''} ${cName || ''} radio stations live. Best online radio streaming player.`;
+                title = parsedType === 'combo' ? `${gName} Radio in ${cName}` : parsedType === 'genre' ? `Best ${gName} Radio` : `Radio in ${cName}`;
+                description = `Listen to ${gName ? gName + ' ' : ''}${cName ? cName + ' ' : ''}radio stations live. Best online radio streaming player.`;
             }
         }
-    } else if (slug) {
-        // Fallback for unknown slugs
+    } else if (isSeoFallback) {
+        // Fallback for unknown radio slugs
         const fallbackTitle = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         title = fallbackTitle;
         description = `Listen to ${fallbackTitle} radio stations online with AU Radio streaming player.`;
+    } else if (is404) {
+        title = '404 - Page Not Found';
+        description = 'The page you requested does not exist. Listen to live internet radio on AU Radio.';
     }
 
     const baseUrl = 'https://auradiochat.com';
@@ -171,27 +178,48 @@ export default async function handler(req, res) {
     const headTagEnd = '</head>';
     const parts = htmlContent.split(headTagEnd);
     if (parts.length >= 2) {
-        // Find existing meta/title and remove them if simple, or just prepend
         htmlContent = parts[0] + metaTags + headTagEnd + parts.slice(1).join(headTagEnd);
     }
 
-    // Inject visible SEO content into body before <div id="root">, exactly once
-    if (!htmlContent.includes('class="seo-content"')) {
-        const rootTagStart = '<div id="root">';
+    // Inject visible HTML content into body before <div id="root"> exactly once
+    const rootTagStart = '<div id="root">';
+    if (!htmlContent.includes('class="seo-content"') && !htmlContent.includes('class="error-page"')) {
         const rootParts = htmlContent.split(rootTagStart);
         if (rootParts.length >= 2) {
-            const seoHtmlContent = `
+            let injectedHtml = '';
+
+            if (is404) {
+                injectedHtml = `
+    <section class="error-page">
+      <h1>404 - Page Not Found</h1>
+      <p>The page you requested does not exist.</p>
+      <a href="/">Return to AU Radio</a>
+    </section>
+    `;
+            } else if (isKnownSeo || isSeoFallback) {
+                injectedHtml = `
     <section class="seo-content">
       <h1>${title}</h1>
       <p>${description}</p>
     </section>
     `;
-            htmlContent = rootParts[0] + seoHtmlContent + rootTagStart + rootParts.slice(1).join(rootTagStart);
+            }
+            
+            // For valid React routes (!isKnownSeo && !isSeoFallback && !is404),
+            // we do NOT inject standard SEO fallback visible text, letting React render naturally.
+
+            htmlContent = rootParts[0] + injectedHtml + rootTagStart + rootParts.slice(1).join(rootTagStart);
         }
     }
 
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('X-SEO-Handler', 'active');
-    res.setHeader('Cache-Control', 's-maxage=1, stale-while-revalidate=59');
-    return res.status(200).send(htmlContent);
+    
+    if (is404) {
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=60');
+        return res.status(404).send(htmlContent);
+    } else {
+        res.setHeader('Cache-Control', 's-maxage=1, stale-while-revalidate=59');
+        return res.status(200).send(htmlContent);
+    }
 }
