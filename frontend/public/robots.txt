@@ -2,3 +2,8 @@ User-agent: *
 Allow: /
 
 Sitemap: https://auradiochat.com/sitemap.xml
+Sitemap: https://auradiochat.com/sitemap-main.xml
+Sitemap: https://auradiochat.com/sitemap-genres.xml
+Sitemap: https://auradiochat.com/sitemap-countries.xml
+Sitemap: https://auradiochat.com/sitemap-combos.xml
+Sitemap: https://auradiochat.com/sitemap-stations.xml
