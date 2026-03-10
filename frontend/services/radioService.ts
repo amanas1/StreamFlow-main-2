@@ -195,34 +195,27 @@ const filterStations = (data: any[]): RadioStation[] => {
     });
 };
 
-export const fetchStationsByTag = async (tag: string, limit: number = 200): Promise<RadioStation[]> => {
+export const fetchStationsByTag = async (tag: string, limit: number = 100): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v20_hq_${lowerTag}_l${limit}`;
+    const cacheKey = `tag_v21_hq_${lowerTag}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     try {
-        const fetchLimit = 300; // Pull more to ensure we have enough post-filtering
-        const baseQuery = `?limit=${fetchLimit}&order=votes&reverse=true&hidebroken=true`;
+        const fetchLimit = limit > 100 ? limit + 50 : 150; 
+        const baseQuery = `?limit=${fetchLimit}&order=clickcount&reverse=true&hidebroken=true`;
         
-        // 7. Расширение каталога станций (поиск bytag, byname и related tags)
-        // Add permutations and variations for better discovery
+        // Optimized search strategies
         let searchTags = [lowerTag];
-        if (lowerTag.includes('hip')) searchTags.push('hip-hop', 'hiphop', 'rap', 'trap');
-        if (lowerTag.includes('r&b')) searchTags.push('rnb');
-        if (lowerTag.includes('electronic')) searchTags.push('dance', 'techno', 'house', 'edm');
+        if (lowerTag.includes('hip')) searchTags.push('hip-hop', 'rap');
         if (lowerTag.includes('jazz')) searchTags.push('smooth-jazz');
 
-        const searchStrategies: {path: string, query: string}[] = [];
+        const searchStrategies: {path: string, query: string}[] = [
+            { path: `bytag/${encodeURIComponent(lowerTag)}`, query: baseQuery },
+            { path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(lowerTag)}` }
+        ];
         
-        searchTags.forEach(t => {
-            searchStrategies.push({ path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(t)}` });
-            searchStrategies.push({ path: 'search', query: `${baseQuery}&name=${encodeURIComponent(t)}` });
-            searchStrategies.push({ path: `bytag/${encodeURIComponent(t)}`, query: baseQuery });
-        });
-        
-        // 1. Использовать несколько API зеркал RadioBrowser
-        const mirrors = RADIO_BROWSER_MIRRORS;
+        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2); // Use top 2 mirrors for speed
         const fetchPromises: Promise<any[]>[] = [];
         
         searchStrategies.forEach(strategy => {
@@ -231,7 +224,6 @@ export const fetchStationsByTag = async (tag: string, limit: number = 200): Prom
             });
         });
 
-        // Promise.allSettled guarantees parallel resolution and prevents single-mirror crash
         const results = await Promise.allSettled(fetchPromises);
         const allFetched = results
             .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
@@ -240,10 +232,10 @@ export const fetchStationsByTag = async (tag: string, limit: number = 200): Prom
         if (allFetched.length === 0) return [];
 
         const filtered = filterStations(allFetched) || [];
-        const result = filtered.slice(0, Math.max(limit, 200)); // Ensure we return AT LEAST requested or 200+
+        const result = filtered.slice(0, limit);
         
         if (result.length > 0) setToCache(cacheKey, result);
-        return result || []; // 9. Всегда возвращать []
+        return result;
     } catch (e) {
         return [];
     }
@@ -324,15 +316,15 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
     }
 };
 
-export const fetchStationsByCountry = async (country: string, limit: number = 200): Promise<RadioStation[]> => {
+export const fetchStationsByCountry = async (country: string, limit: number = 100): Promise<RadioStation[]> => {
     if (!country) return [];
-    const cacheKey = `country_v20_${country.toLowerCase()}_l${limit}`;
+    const cacheKey = `country_v21_${country.toLowerCase()}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData && cachedData.length > 0) return cachedData;
 
     try {
-        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 3);
-        const query = `?limit=500&order=votes&reverse=true&hidebroken=true`;
+        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2);
+        const query = `?limit=${limit + 50}&order=clickcount&reverse=true&hidebroken=true`;
         
         const fetchPromises = mirrors.map(m => fetchFromMirror(m, `bycountry/${encodeURIComponent(country)}`, query));
         const results = await Promise.allSettled(fetchPromises);
@@ -341,10 +333,10 @@ export const fetchStationsByCountry = async (country: string, limit: number = 20
             .flatMap(r => r.value);
             
         const filtered = filterStations(all) || [];
-        const result = filtered.slice(0, Math.max(limit, 200)); // Ensure robust array length
+        const result = filtered.slice(0, limit);
         
         if (result.length > 0) setToCache(cacheKey, result);
-        return result || [];
+        return result;
     } catch (e) {
         return [];
     }

@@ -498,8 +498,9 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
                     <div 
                         key={station.stationuuid}
                         onClick={() => onPlay(station)}
-                        className={`group relative rounded-[2rem] p-5 cursor-pointer transition-all border-2 
-                            ${currentStation?.stationuuid === station.stationuuid ? 'border-primary bg-primary/10' : 'border-white/5 bg-black/40 hover:border-white/20 hover:bg-black/60'}`}
+                        className={`group relative flex items-center p-3 rounded-xl border transition-all cursor-pointer overflow-hidden
+                            ${String(currentStation?.stationuuid) === String(station.stationuuid) ? 'border-primary bg-primary/10' : 'border-white/5 bg-black/40 hover:border-white/20 hover:bg-black/60'}
+                        `}
                     >
                         <div className="flex justify-between mb-4">
                             <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden">
