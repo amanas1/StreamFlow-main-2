@@ -32,7 +32,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  let url;
+  try {
+    url = new URL(event.request.url);
+  } catch (e) {
+    return; // Don't crash the SW, just don't intercept this request
+  }
 
   // Never cache audio streams, API calls, or websocket requests
   if (

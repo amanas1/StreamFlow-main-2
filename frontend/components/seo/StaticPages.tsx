@@ -70,7 +70,7 @@ export const PrivacyPage: React.FC<{ language: Language }> = ({ language }) => {
                     {t.privacyDataIntro}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                    {t.privacyDataList.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                    {(Array.isArray(t.privacyDataList) ? t.privacyDataList : []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                 </ul>
                 <h2 className="text-2xl font-bold text-white uppercase tracking-wide pt-6">{t.privacyUsageTitle}</h2>
                 <p>

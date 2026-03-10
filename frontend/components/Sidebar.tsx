@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }
                 }}
             >
-                {viewMode !== 'favorites' && (viewMode === 'genres' ? GENRES : viewMode === 'eras' ? ERAS : viewMode === 'moods' ? MOODS : EFFECTS).map((cat) => (
+                {viewMode !== 'favorites' && ((viewMode === 'genres' ? GENRES : viewMode === 'eras' ? ERAS : viewMode === 'moods' ? MOODS : EFFECTS) || []).map((cat) => (
                     <button 
                         key={cat.id} 
                         onClick={(e) => { e.stopPropagation(); loadCategory(cat, viewMode, true); }} 

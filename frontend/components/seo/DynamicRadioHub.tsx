@@ -204,6 +204,13 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
         return () => observer.disconnect();
     }, [stations.length, visibleCount]);
 
+    // Auto-play the first station on first load for better UX
+    useEffect(() => {
+        if (!currentStation && stations.length > 0 && !isLoading) {
+            onPlay(stations[0]);
+        }
+    }, [stations, isLoading, currentStation, onPlay]);
+
     const visibleStations = useMemo(() => stations.slice(0, visibleCount), [stations, visibleCount]);
 
     if (!pageContext) {

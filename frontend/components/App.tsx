@@ -7,6 +7,7 @@ import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENT
 import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioService';
 const generateUUID = () => Math.random().toString(36).substring(2, 11);
 import { audioEngine } from '../services/AudioEngine';
+import { safeURL } from '../services/urlUtils';
 import AudioVisualizer from './AudioVisualizer';
 import ParticleVisualizer from './ParticleVisualizer';
 import DancingAvatar from './DancingAvatar';
@@ -807,7 +808,7 @@ export default function App(): React.JSX.Element {
     }
     
     if (audioRef.current) {
-        audioRef.current.src = station.url_resolved;
+        audioRef.current.src = station.url_resolved || station.url;
         audioRef.current.crossOrigin = "anonymous";
         audioRef.current.playbackRate = fxSettings.speed; 
         audioRef.current.play().catch(() => {});
@@ -1024,10 +1025,10 @@ export default function App(): React.JSX.Element {
           let url = '';
           if (key === 'rain') {
               const rawUrl = ambience.rainVariant === 'roof' ? AMBIENCE_URLS.rain_roof : AMBIENCE_URLS.rain_soft;
-              url = rawUrl.startsWith('http') ? rawUrl : new URL(rawUrl, window.location.origin).href;
+              url = rawUrl.startsWith('http') ? rawUrl : (safeURL(rawUrl, window.location.origin)?.href || '');
           } else {
               const rawUrl = (AMBIENCE_URLS as any)[key];
-              url = rawUrl.startsWith('http') ? rawUrl : new URL(rawUrl, window.location.origin).href;
+              url = rawUrl.startsWith('http') ? rawUrl : (safeURL(rawUrl, window.location.origin)?.href || '');
           }
           let el = ambienceRefs.current[key];
           if (!el) { 
@@ -1037,7 +1038,7 @@ export default function App(): React.JSX.Element {
               if (url.includes('stream')) { el.crossOrigin = "anonymous"; }
               ambienceRefs.current[key] = el; 
           } else {
-              const currentSrc = new URL(el.src, window.location.origin).pathname;
+              const currentSrc = safeURL(el.src, window.location.origin)?.pathname || '';
               const targetSrc = url.startsWith('http') ? url : (url.startsWith('/') ? url : '/' + url);
               
               if (currentSrc !== targetSrc && el.src !== url) {
@@ -1388,7 +1389,7 @@ export default function App(): React.JSX.Element {
   };
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary key={location.pathname}>
     <div className={`relative flex h-screen font-sans overflow-hidden bg-[var(--base-bg)] text-[var(--text-base)] transition-all duration-700`}>
       <SEOHead language={language} />
       <RainEffect intensity={ambience.rainVolume} isVisible={isAppVisible} />

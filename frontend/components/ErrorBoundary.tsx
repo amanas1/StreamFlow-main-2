@@ -35,12 +35,20 @@ class ErrorBoundary extends Component<Props, State> {
                         {this.state.error.toString()}
                     </pre>
                 )}
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="px-6 py-2 bg-primary rounded-full hover:bg-primary/80 transition-colors"
-                >
-                    Reload Page
-                </button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-primary rounded-full hover:bg-primary/80 transition-colors font-bold uppercase tracking-wider text-sm"
+                    >
+                        Reload Page
+                    </button>
+                    <button 
+                        onClick={() => this.setState({ hasError: false, error: null })}
+                        className="px-6 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors font-bold uppercase tracking-wider text-sm border border-white/10"
+                    >
+                        Try Again
+                    </button>
+                </div>
             </div>
         </div>
       );

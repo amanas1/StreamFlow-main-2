@@ -59,7 +59,7 @@ export const DirectoryPage: React.FC<DirectoryPageProps> = ({ language = 'en' })
                     {t.browseByGenre}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {topGenres.map(genre => (
+                    {(topGenres || []).map(genre => (
                         <Link 
                             key={genre.id} 
                             to={`/radio/${genre.id}-radio`}
@@ -80,7 +80,7 @@ export const DirectoryPage: React.FC<DirectoryPageProps> = ({ language = 'en' })
                     {t.browseByCountry}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {topCountries.map(country => {
+                    {(topCountries || []).map(country => {
                         const slug = country.name.toLowerCase().replace(/\s+/g, '-');
                         return (
                             <Link 

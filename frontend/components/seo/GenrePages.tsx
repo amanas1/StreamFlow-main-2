@@ -42,7 +42,7 @@ export const JazzRadioPage: React.FC<{ language: Language }> = ({ language }) =>
                 </p>
                 <h2 className="text-2xl font-bold text-white uppercase tracking-wide pt-6">{t.jazzPageWhyTitle}</h2>
                 <ul className="list-disc pl-6 space-y-2">
-                    {t.jazzPageWhyList.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                    {(Array.isArray(t.jazzPageWhyList) ? t.jazzPageWhyList : []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                 </ul>
                 <p className="pt-6">
                     {t.jazzPageFooter}
@@ -73,7 +73,7 @@ export const RockRadioPage: React.FC<{ language: Language }> = ({ language }) =>
                     {t.rockPageSubBody}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                    {t.rockPageList.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                    {(Array.isArray(t.rockPageList) ? t.rockPageList : []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                 </ul>
                 <p className="pt-6">
                     {t.rockPageFooter}
@@ -107,7 +107,7 @@ export const ElectronicRadioPage: React.FC<{ language: Language }> = ({ language
                     {t.electronicPageSubBody}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                    {t.electronicPageList.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                    {(Array.isArray(t.electronicPageList) ? t.electronicPageList : []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                 </ul>
                 <p>
                     {t.electronicPageFooter}
@@ -141,7 +141,7 @@ export const HipHopRadioPage: React.FC<{ language: Language }> = ({ language }) 
                     {t.hiphopPageSubBody}
                 </p>
                 <ul className="list-disc pl-6 space-y-2">
-                    {t.hiphopPageList.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                    {(Array.isArray(t.hiphopPageList) ? t.hiphopPageList : []).map((item: string, i: number) => <li key={i}>{item}</li>)}
                 </ul>
                 <p>
                     {t.hiphopPageFooter}

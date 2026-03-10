@@ -11,8 +11,8 @@ interface CacheEntry {
 
 const MEMORY_CACHE = new Map<string, { data: RadioStation[], expiry: number }>();
 
-const slugify = (text: string) => {
-    return text.toLowerCase()
+const slugify = (text: string | undefined | null) => {
+    return (text || '').toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '');
 };
@@ -244,6 +244,20 @@ export const fetchStationsByTag = async (tag: string, limit: number = 200): Prom
         
         if (result.length > 0) setToCache(cacheKey, result);
         return result || []; // 9. Всегда возвращать []
+    } catch (e) {
+        return [];
+    }
+};
+
+export const fetchRelatedStations = async (station: RadioStation, limit: number = 10): Promise<RadioStation[]> => {
+    if (!station || !station.tags) return [];
+    try {
+        const firstTag = station.tags.split(',')[0].trim();
+        const results = await fetchStationsByTag(firstTag, limit + 5);
+        // Filter out the current station
+        return (results || [])
+            .filter(s => s.stationuuid !== station.stationuuid)
+            .slice(0, limit);
     } catch (e) {
         return [];
     }

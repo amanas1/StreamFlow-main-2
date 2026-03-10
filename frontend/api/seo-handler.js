@@ -240,10 +240,10 @@ export default async function handler(req, res) {
         return html;
     }
 
-    // Inject visible HTML content into body before <div id="root"> exactly once
-    const rootTagStart = '<div id="root">';
+    // Inject visible HTML content into body AFTER <div id="root"></div> exactly once
+    const rootTagFull = '<div id="root"></div>';
     if (!htmlContent.includes('class="seo-content"') && !htmlContent.includes('class="error-page"')) {
-        const rootParts = htmlContent.split(rootTagStart);
+        const rootParts = htmlContent.split(rootTagFull);
         if (rootParts.length >= 2) {
             let injectedHtml = '';
 
@@ -267,7 +267,7 @@ ${richContent}    </section>
             // For valid React routes (!isKnownSeo && !isSeoFallback && !is404),
             // we do NOT inject standard SEO fallback visible text, letting React render naturally.
 
-            htmlContent = rootParts[0] + injectedHtml + rootTagStart + rootParts.slice(1).join(rootTagStart);
+            htmlContent = rootParts[0] + rootTagFull + injectedHtml + rootParts.slice(1).join(rootTagFull);
         }
     }
 

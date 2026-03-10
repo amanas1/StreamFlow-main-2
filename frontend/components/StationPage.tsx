@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { RadioStation, Language, UIMode, ParticleSettings, RingSettings } from '../types';
-import { fetchStationBySlug } from '../services/radioService';
+import { fetchStationBySlug, fetchRelatedStations } from '../services/radioService';
 import StationCard from './StationCard';
 import { TRANSLATIONS } from '../types/constants';
 import ParticleVisualizer from './ParticleVisualizer';
 import RingVisualizer from './RingVisualizer';
 import { audioEngine } from '../services/AudioEngine';
+import { safeURL, safeHostname } from '../services/urlUtils';
 
 interface StationPageProps {
     language: Language;
@@ -29,20 +30,39 @@ const StationPage: React.FC<StationPageProps> = ({
 }) => {
     const { slug } = useParams<{ slug: string }>();
     const [station, setStation] = useState<RadioStation | null>(null);
+    const [relatedStations, setRelatedStations] = useState<RadioStation[]>([]);
+    const [similarStations, setSimilarStations] = useState<RadioStation[]>([]);
     const [loading, setLoading] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const t = TRANSLATIONS[language];
 
     useEffect(() => {
-        if (slug) {
-            setLoading(true);
-            fetchStationBySlug(slug).then(s => {
-                setStation(s);
-                setLoading(false);
-                // Optionally auto-play if found
-                // if (s) onPlayStation(s);
-            }).catch(() => setLoading(false));
-        }
+        const fetchStationData = async () => {
+            if (slug) {
+                setLoading(true);
+                try {
+                    const data = await fetchStationBySlug(slug);
+                    if (data) {
+                        setStation(data);
+                        // Fetch related/similar stations based on genre/tags
+                        const related = await fetchRelatedStations(data, 10);
+                        setRelatedStations(Array.isArray(related) ? related : []);
+                        // For "similar", we can try another niche tag or just same genre
+                        setSimilarStations(Array.isArray(related) ? related.slice().reverse() : []); 
+                        // Optionally auto-play if found
+                        // if (data) onPlayStation(data);
+                    } else {
+                        setStation(null);
+                    }
+                } catch (error) {
+                    console.error('Error fetching station:', error);
+                    setStation(null);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        fetchStationData();
     }, [slug, onPlayStation]);
 
     // Auto-hide settings after 20 seconds of inactivity
@@ -102,45 +122,45 @@ const StationPage: React.FC<StationPageProps> = ({
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": ["RadioStation", "MusicStreamingService"],
-        "name": station.name,
-        "url": `https://auradiochat.com/station/${station.slug}`,
-        "description": `Listen ${station.name} online. Free internet radio streaming.`,
+        "name": station?.name || 'Radio Station',
+        "url": `https://auradiochat.com/station/${station?.slug || ''}`,
+        "description": `Listen ${station?.name || ''} online. Free internet radio streaming.`,
         "applicationCategory": "MultimediaApplication",
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "USD"
         },
-        "genre": station.genre,
+        "genre": station?.genre || 'Music',
         "address": {
             "@type": "PostalAddress",
-            "addressCountry": station.countryCode || "Global"
+            "addressCountry": station?.countryCode || (station as any)?.countrycodes || "Global"
         },
-        "image": station.favicon || "https://auradiochat.com/og-image.png"
+        "image": station?.favicon || "https://auradiochat.com/og-image.png"
     };
 
     return (
         <div className="max-w-4xl mx-auto px-6 py-12">
             <Helmet>
-                <title>{`${station.name} — Listen Online Radio`}</title>
-                <meta name="description" content={`Listen ${station.name} online. Free internet radio streaming.`} />
+                <title>{`${station?.name || 'Radio'} — Listen Online Radio`}</title>
+                <meta name="description" content={`Listen ${station?.name || ''} online. Free internet radio streaming.`} />
                 
                 {/* Open Graph / Facebook */}
                 <meta property="og:type" content="music.radio_station" />
-                <meta property="og:url" content={`https://auradiochat.com/station/${station.slug}`} />
+                <meta property="og:url" content={`https://auradiochat.com/station/${station?.slug || ''}`} />
                 <meta property="og:site_name" content="AU Radio" />
-                <meta property="og:title" content={`${station.name} — Listen Online Radio`} />
-                <meta property="og:description" content={`Streaming ${station.genre} music from ${station.country || 'around the world'}.`} />
-                <meta property="og:image" content={station.favicon || "https://auradiochat.com/og-image.png"} />
+                <meta property="og:title" content={`${station?.name || 'Radio'} — Listen Online Radio`} />
+                <meta property="og:description" content={`Streaming ${station?.genre || ''} music from ${station?.country || 'around the world'}.`} />
+                <meta property="og:image" content={station?.favicon || "https://auradiochat.com/og-image.png"} />
                 
                 {/* Twitter */}
                 <meta property="twitter:card" content="summary_large_image" />
-                <meta property="twitter:url" content={`https://auradiochat.com/station/${station.slug}`} />
-                <meta property="twitter:title" content={`${station.name} — Listen Online Radio`} />
-                <meta property="twitter:description" content={`Streaming ${station.genre} music from ${station.country || 'around the world'}.`} />
-                <meta property="twitter:image" content={station.favicon || "https://auradiochat.com/og-image.png"} />
+                <meta property="twitter:url" content={`https://auradiochat.com/station/${station?.slug}`} />
+                <meta property="twitter:title" content={`${station?.name} — Listen Online Radio`} />
+                <meta property="twitter:description" content={`Streaming ${station?.genre} music from ${station?.country || 'around the world'}.`} />
+                <meta property="twitter:image" content={station?.favicon || "https://auradiochat.com/og-image.png"} />
 
-                <link rel="canonical" href={`https://auradiochat.com/station/${station.slug}`} />
+                <link rel="canonical" href={`https://auradiochat.com/station/${station?.slug}`} />
                 <script type="application/ld+json">
                     {JSON.stringify(jsonLd)}
                 </script>
@@ -161,8 +181,11 @@ const StationPage: React.FC<StationPageProps> = ({
                         </>
                     ) : (
                         <img 
-                            src={station.favicon || 'https://www.google.com/s2/favicons?domain=' + new URL(station.url_resolved).hostname + '&sz=128'} 
-                            alt={station.name}
+                            src={station?.favicon || (() => { 
+                                const hostname = safeHostname(station?.url_resolved || station?.url);
+                                return hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=128` : 'https://cdn-icons-png.flaticon.com/512/3103/3103181.png';
+                            })()} 
+                            alt={station?.name}
                             className={`w-40 h-40 relative z-10 shadow-2xl border-4 border-white/10 rounded-3xl`}
                             loading="lazy"
                             onError={(e) => { (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/3103/3103181.png'; }}
@@ -181,12 +204,24 @@ const StationPage: React.FC<StationPageProps> = ({
                 
                 <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
                     <span className="px-5 py-2 rounded-full bg-primary/20 text-primary uppercase text-xs font-black tracking-widest border border-primary/30 backdrop-blur-md">
-                        {station.genre || 'Various'}
+                        {station?.genre || 'Various'}
                     </span>
                     <span className="px-5 py-2 rounded-full bg-white/10 text-slate-300 uppercase text-xs font-bold tracking-widest border border-white/5 backdrop-blur-md flex items-center gap-2">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                        {station.country || 'Global'}
+                        {station?.country || 'Global'}
                     </span>
+                    {/* Safe Tag Rendering */}
+                    {(station?.tags ? station.tags.split(',') : []).map((tag, i) => (
+                        <span key={i} className="px-3 py-1 rounded-md bg-white/5 text-slate-500 uppercase text-[9px] font-bold tracking-widest border border-white/5">
+                            {tag.trim()}
+                        </span>
+                    ))}
+                    {/* Safe Language Rendering */}
+                    {((station as any)?.languages ? (station as any).languages.split(',') : (station?.language ? [station.language] : [])).map((lang: string, i: number) => (
+                        <span key={`lang-${i}`} className="px-3 py-1 rounded-md bg-blue-500/10 text-blue-400/80 uppercase text-[9px] font-bold tracking-widest border border-blue-500/20">
+                            {lang.trim()}
+                        </span>
+                    ))}
                 </div>
 
                 <button 
@@ -315,8 +350,8 @@ const StationPage: React.FC<StationPageProps> = ({
                     <div className="space-y-6">
                         <h2 className="text-2xl font-black text-white uppercase italic">{t.aboutStation}</h2>
                         <p className="text-slate-400 leading-relaxed">
-                            {station.name} — {language === 'ru' ? 'популярная радиостанция, вещающая из' : 'popular radio station broadcasting from'} {station.country}. 
-                            {language === 'ru' ? 'Специализируется на' : 'Specializing in'} {station.genre} {language === 'ru' ? 'и предлагает качественный аудиопоток для слушателей по всему миру.' : 'and offering high-quality audio stream for listeners worldwide.'}
+                            {station?.name || 'This station'} — {language === 'ru' ? 'популярная радиостанция, вещающая из' : 'popular radio station broadcasting from'} {station?.country || 'Global'}. 
+                            {language === 'ru' ? 'Специализируется на' : 'Specializing in'} {station?.genre || 'Music'} {language === 'ru' ? 'и предлагает качественный аудиопоток для слушателей по всему миру.' : 'and offering high-quality audio stream for listeners worldwide.'}
                         </p>
                         <div className="flex items-center gap-4 pt-4">
                             <button 
@@ -345,15 +380,15 @@ const StationPage: React.FC<StationPageProps> = ({
                     <div className="space-y-4">
                         <div className="flex justify-between items-center py-2 border-b border-white/5">
                             <span className="text-[10px] uppercase font-bold text-slate-500">{t.bitrate}</span>
-                            <span className="text-sm font-black text-slate-300">{station.bitrate} kbps</span>
+                            <span className="text-sm font-black text-slate-300">{station?.bitrate || 0} kbps</span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-white/5">
                             <span className="text-[10px] uppercase font-bold text-slate-500">{t.codec}</span>
-                            <span className="text-sm font-black text-slate-300">{(station as any).codec || 'MP3'}</span>
+                            <span className="text-sm font-black text-slate-300">{(station as any)?.codec || 'MP3'}</span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-white/5">
                             <span className="text-[10px] uppercase font-bold text-slate-500">{t.votes}</span>
-                            <span className="text-sm font-black text-slate-300">{station.votes}</span>
+                            <span className="text-sm font-black text-slate-300">{station?.votes || 0}</span>
                         </div>
                         <div className="flex justify-between items-center py-2">
                             <span className="text-[10px] uppercase font-bold text-slate-500">{t.status}</span>
@@ -362,6 +397,59 @@ const StationPage: React.FC<StationPageProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Related Stations Section */}
+            {(relatedStations.length > 0 || similarStations.length > 0) && (
+                <div className="mt-20 space-y-12">
+                    {relatedStations.length > 0 && (
+                        <div>
+                            <h2 className="text-2xl font-black text-white uppercase italic mb-8 flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+                                </span>
+                                {language === 'ru' ? 'Похожие станции' : 'Related Stations'}
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                                {(Array.isArray(relatedStations) ? relatedStations : []).map((s, i) => (
+                                    <StationCard 
+                                        key={s.stationuuid} 
+                                        station={s} 
+                                        index={i} 
+                                        isSelected={currentStationId === s.stationuuid} 
+                                        isFavorite={favorites.includes(s.stationuuid)} 
+                                        onPlay={onPlayStation} 
+                                        onToggleFavorite={onToggleFavorite} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {similarStations.length > 0 && (
+                        <div>
+                            <h2 className="text-2xl font-black text-white uppercase italic mb-8 flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-lg bg-secondary/20 flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m12-10a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                </span>
+                                {language === 'ru' ? 'Рекомендуемое' : 'Recommended For You'}
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                                {(Array.isArray(similarStations) ? similarStations : []).map((s, i) => (
+                                    <StationCard 
+                                        key={s.stationuuid} 
+                                        station={s} 
+                                        index={i} 
+                                        isSelected={currentStationId === s.stationuuid} 
+                                        isFavorite={favorites.includes(s.stationuuid)} 
+                                        onPlay={onPlayStation} 
+                                        onToggleFavorite={onToggleFavorite} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div className="mt-20 pt-12 text-center">
                 <Link to="/" className="text-slate-500 hover:text-primary transition-colors text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">

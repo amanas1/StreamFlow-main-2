@@ -317,7 +317,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
              {activeTab === 'eq' && (
                  <div className="h-full flex flex-col animate-in slide-in-from-bottom-4 duration-500">
                      <div className="flex justify-between items-end mb-8 h-56 px-2 pb-8">
-                         {eqGains.map((gain, i) => (
+                         {(Array.isArray(eqGains) ? eqGains : []).map((gain, i) => (
                              <div key={i} className="relative flex flex-col items-center h-full w-8 group">
                                  <div className="relative flex-1 w-1.5 bg-white/10 rounded-full overflow-visible group-hover:bg-white/20 transition-colors">
                                      <div 
