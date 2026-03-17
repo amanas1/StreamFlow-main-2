@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { RadioStation } from '../types';
+import { Station } from '../types';
 import { MusicNoteIcon, HeartIcon } from './Icons';
 import { Link } from 'react-router-dom';
 
 interface StationCardProps {
-  station: RadioStation;
+  station: Station;
   isSelected: boolean;
   isFavorite: boolean;
-  onPlay: (s: RadioStation) => void;
+  onPlay: (s: Station) => void;
   onToggleFavorite: (id: string) => void;
   index: number;
+  displayCountry?: string | null;
 }
 
 const StationCard: React.FC<StationCardProps> = React.memo(({ 
-  station, isSelected, isFavorite, onPlay, onToggleFavorite, index 
+  station, isSelected, isFavorite, onPlay, onToggleFavorite, index, displayCountry 
 }) => {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -43,7 +44,7 @@ const StationCard: React.FC<StationCardProps> = React.memo(({
           )}
         </div>
         <button 
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(station.stationuuid); }} 
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(station.id); }} 
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           className={`p-2 rounded-full transition-all active:scale-150 ${isFavorite ? 'text-secondary bg-secondary/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
         >
@@ -53,10 +54,13 @@ const StationCard: React.FC<StationCardProps> = React.memo(({
       <button 
         onClick={(e) => { e.stopPropagation(); onPlay(station); }}
         className={`block text-left w-full font-bold truncate text-sm transition-colors ${isSelected ? 'text-primary' : 'text-[var(--text-base)] group-hover:text-primary'}`}
+        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
       >
         {station.name}
       </button>
-      <p className="text-[9px] font-black text-slate-500 mt-1 uppercase tracking-widest truncate">{station.genre || station.tags || 'Music'} • {station.bitrate || 128}K</p>
+      <p className="text-[9px] font-black text-slate-500 mt-1 uppercase tracking-widest truncate">
+        {station.genre} • {station.bitrate}K {displayCountry ? `• ${displayCountry}` : ''}
+      </p>
     </div>
   );
 });

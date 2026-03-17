@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings, UIMode, ParticleSettings, RingSettings } from '../types';
+import { Station, RadioStation, CategoryInfo, ViewMode, ThemeName, BaseTheme, Language, VisualizerVariant, VisualizerSettings, AmbienceState, PassportData, BottleMessage, AlarmConfig, FxSettings, AudioProcessSettings, UIMode, ParticleSettings, RingSettings } from '../types';
 import { GENRES, ERAS, MOODS, EFFECTS, DEFAULT_VOLUME, TRANSLATIONS, ACHIEVEMENTS_LIST, GLOBAL_PRESETS } from '../types/constants';
 import { fetchStationsByTag, fetchStationsByUuids } from '../services/radioService';
 const generateUUID = () => Math.random().toString(36).substring(2, 11);
@@ -14,6 +14,12 @@ import DancingAvatar from './DancingAvatar';
 import RainEffect from './RainEffect';
 import FireEffect from './FireEffect';
 import { geolocationService, LocationData } from '../services/geolocationService';
+
+// New Hooks
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
+import { useStations } from '../hooks/useStations';
+import { useLocation as useAppLocation } from '../hooks/useLocation';
+
 import { 
   PauseIcon, VolumeIcon, LoadingIcon, MusicNoteIcon, HeartIcon, MenuIcon, AdjustmentsIcon,
   PlayIcon, ChatBubbleIcon, NextIcon, PreviousIcon, XMarkIcon, DownloadIcon,
@@ -202,22 +208,29 @@ export default function App(): React.JSX.Element {
     migrateStorage();
   }, []);
 
-  // Radio State
+  const { 
+    detectedLocation, locationStatus, triggerLocationDetection 
+  } = useAppLocation();
+
+  const { 
+    currentStation, isPlaying, isLoading: isPlayerLoading, playStation, togglePlay, setVolume, volume, error: playerError, isBuffering 
+  } = useAudioPlayer();
+  
+  const { 
+    stations, loading: areStationsLoading, loadStations, filterStationsByCountry 
+  } = useStations();
+
   const [viewMode, setViewMode] = useState<ViewMode>('genres');
   const [selectedCategory, setSelectedCategory] = useState<CategoryInfo | null>(GENRES[0]);
-  const [stations, setStations] = useState<RadioStation[]>([]);
   const [visibleCount, setVisibleCount] = useState(INITIAL_CHUNK);
-  const [currentStation, setCurrentStation] = useState<RadioStation | null>(null);
 
   // AI State
   const [isAiCurating, setIsAiCurating] = useState(false);
   const [aiNotification, setAiNotification] = useState<string | null>(null);
 
-  // Common Player State
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isBuffering, setIsBuffering] = useState(false);
-  const [volume, setVolume] = useState(DEFAULT_VOLUME);
+  const isLoading = isPlayerLoading || areStationsLoading;
+
+  // UI State
 
   // UI State
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -229,12 +242,37 @@ export default function App(): React.JSX.Element {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
+  const handlePlayStation = useCallback((station: Station) => {
+    playStation(station);
+    
+    // --- Resume Listening: Save last station ---
+    try {
+      localStorage.setItem('auradio_last_station', JSON.stringify(station));
+    } catch (e) {}
+
+    // --- Recently Played: Update history ---
+    try {
+      const recentRaw = localStorage.getItem('auradio_recent_stations');
+      let recent: Station[] = recentRaw ? JSON.parse(recentRaw) : [];
+      recent = recent.filter(s => s.id !== station.id);
+      recent.unshift(station);
+      if (recent.length > 20) recent = recent.slice(0, 20);
+      localStorage.setItem('auradio_recent_stations', JSON.stringify(recent));
+    } catch (e) {}
+
+    setTimeout(() => {
+        if (visualizerRef.current) {
+            visualizerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (mainContentRef.current) {
+            mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 150);
+  }, [playStation]);
+
   useEffect(() => {
     if (location.pathname === '/favorites') {
         loadCategory(null, 'favorites', true, true);
-    } else if (location.pathname === '/genres') {
-        // Just ensure we are in a genre-like mode if we navigate here, 
-        // though GenresPage has its own content.
     }
   }, [location.pathname]);
   const visualizerRef = useRef<HTMLDivElement>(null);
@@ -310,7 +348,7 @@ export default function App(): React.JSX.Element {
       return saved === 'modern' ? 'modern' : 'classic';
   });
 
-  const currentStationRef = useRef<RadioStation | null>(null);
+  const currentStationRef = useRef<Station | null>(null);
 
   const handleUiModeChange = useCallback((mode: UIMode) => {
       // Force classic mode on mobile — modern consumes too much battery/traffic
@@ -452,9 +490,6 @@ export default function App(): React.JSX.Element {
 
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [fxSettings, setFxSettings] = useState<FxSettings>({ reverb: 0, speed: 1.0 });
-  const [isAuthorized, setIsAuthorized] = useState(true);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  
   const [audioEnhancements, setAudioEnhancements] = useState<AudioProcessSettings>({
       compressorEnabled: false,
       compressorThreshold: -24,
@@ -463,8 +498,9 @@ export default function App(): React.JSX.Element {
       loudness: 0
   });
 
-  const [detectedLocation, setDetectedLocation] = useState<LocationData | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'detecting' | 'ready' | 'error'>('detecting');
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  
   const [isGlobalLightsOn, setIsGlobalLightsOn] = useState(false);
   
   // Automatic Safe Mode logic
@@ -509,14 +545,14 @@ export default function App(): React.JSX.Element {
   const playButtonRef = useRef<HTMLButtonElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<number | null>(null);
-  const stationsRef = useRef<RadioStation[]>([]);
+  const stationsRef = useRef<Station[]>([]);
 
   const isPlayingRef = useRef(false);
   const isRandomModeRef = useRef(false);
   const isMountedRef = useRef(true);
   const handleNextStationRef = useRef<() => void>(() => {});
   const handlePreviousStationRef = useRef<() => void>(() => {});
-  const handlePlayStationRef = useRef<(s: RadioStation) => void>(() => {});
+  const handlePlayStationRef = useRef<(s: Station) => void>(() => {});
   const togglePlayRef = useRef<() => void>(() => {});
   const streamRetryCountRef = useRef(0);
   const stalledTimerRef = useRef<number | null>(null);
@@ -578,21 +614,6 @@ export default function App(): React.JSX.Element {
       window.removeEventListener('resize', resetHideTimer);
     };
   }, [sidebarOpen]);
-
-  // Idempotent Audio Engine Initialization
-  const initAudioContextFn = useCallback(async () => {
-    if (!audioRef.current) return;
-    try {
-        await audioEngine.init(audioRef.current);
-        audioEngine.setVolume(volume);
-        audioEngine.setFX(fxSettings.reverb);
-        audioEngine.setSafeMode(isSafeMode);
-    } catch (e) {
-        console.error("Audio Engine Init Failed", e);
-    }
-  }, [volume, fxSettings.reverb, isSafeMode]);
-  
-  const initAudioContext = initAudioContextFn; 
 
   // Engine Synchronizers
   useEffect(() => {
@@ -679,205 +700,42 @@ export default function App(): React.JSX.Element {
           if (prev !== null && prev > 0) {
             const next = prev - 1;
             if (next <= 0) {
-              setIsPlaying(false);
-              if (audioRef.current) audioRef.current.pause();
+              if (isPlaying) togglePlay();
               return null;
             }
             return next;
           }
           return null;
         });
-      }, 60000); 
+      }, 60000);
     } else {
       if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current);
     }
     return () => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); };
-  }, [sleepTimer]);
-
-  const triggerLocationDetection = useCallback(async () => {
-    console.log('[GEO] Triggering detection...');
-    if (!detectedLocation) setLocationStatus('detecting'); // Only show loading if we don't have data
-    
-    try {
-      const loc = await geolocationService.detectLocation();
-      const cached = geolocationService.getCachedLocation();
-      console.log('[GEO] Detection result:', loc);
-      
-      if (loc && loc.country && loc.country !== 'Unknown') {
-        console.log('[GEO] Valid location found, setting state:', loc);
-        setDetectedLocation(loc);
-        geolocationService.saveLocationToCache(loc);
-        setLocationStatus('ready');
-      } else if (cached && cached.country !== 'Unknown') {
-        console.log('[GEO] Fallback to cached location:', cached);
-        // Only update if we don't have a valid location already (or it matches cache)
-        setDetectedLocation(prev => prev?.country && prev.country !== 'Unknown' ? prev : cached);
-        setLocationStatus('ready');
-      } else {
-        console.log('[GEO] Ultimate fallback to Global');
-        // CRITICAL FIX: Only set to Global if we have NOTHING else. 
-        // If we already have a valid location in state (from a race condition or previous call), KEEP IT.
-        setDetectedLocation(prev => {
-            if (prev?.country && prev.country !== 'Unknown') {
-                console.log('[GEO] Keeping existing valid location instead of resetting to Global:', prev);
-                return prev;
-            }
-            return { country: 'Global', city: 'Global', countryCode: 'Global' };
-        });
-        setLocationStatus('ready');
-      }
-
-      // Auto-switch language logic remains...
-      if (!localStorage.getItem('auradiochat_language')) {
-         // ... (keep existing logic)
-         const target = loc?.country || cached?.country;
-         if (target && ['Russia', 'Ukraine', 'Kazakhstan', 'Belarus', 'Uzbekistan'].includes(target)) {
-             setLanguage('ru');
-         }
-      }
-
-    } catch (err) {
-      console.error('[GEO] Silent detection error:', err);
-      setLocationStatus('ready'); 
-    }
-  }, []);
-
-  useEffect(() => {
-    triggerLocationDetection();
-  }, [triggerLocationDetection]);
-
-  const handlePlayStation = useCallback((station: RadioStation) => {
-    const rid = ++loadRequestIdRef.current;
-    currentStationRef.current = station; 
-    
-    // --- Resume Listening: Save last station ---
-    try {
-      localStorage.setItem('auradio_last_station', JSON.stringify({
-        stationuuid: station.stationuuid,
-        name: station.name,
-        url_resolved: station.url_resolved,
-        genre: station.genre,
-        favicon: station.favicon,
-        slug: station.slug,
-        country: station.country,
-        bitrate: station.bitrate,
-        tags: station.tags,
-        votes: station.votes,
-        subGenre: station.subGenre,
-      }));
-    } catch (e) {}
-
-    // --- Recently Played: Update history ---
-    try {
-      const recentRaw = localStorage.getItem('auradio_recent_stations');
-      let recent: RadioStation[] = recentRaw ? JSON.parse(recentRaw) : [];
-      recent = recent.filter(s => s.stationuuid !== station.stationuuid);
-      recent.unshift(station);
-      if (recent.length > 10) recent = recent.slice(0, 10);
-      localStorage.setItem('auradio_recent_stations', JSON.stringify(recent));
-    } catch (e) {}
-
-    // --- Stream Recovery: Reset retry counter ---
-    streamRetryCountRef.current = 0;
-
-    setTimeout(() => {
-        if (rid !== loadRequestIdRef.current) return;
-        if (visualizerRef.current) {
-            visualizerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else if (mainContentRef.current) {
-            mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 150);
-
-    audioEngine.prepareForSwitch();
-    initAudioContext();
-    audioEngine.resume();
-    
-    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-
-    if (isMountedRef.current) {
-        setCurrentStation(station);
-        setIsPlaying(true);
-        
-        // Navigation logic for Modern UI
-        if (uiMode === 'modern') {
-            navigate(`/station/${station.slug}`);
-        }
-        setIsBuffering(true);
-    }
-    
-    if (audioRef.current) {
-        audioRef.current.src = station.url_resolved || station.url;
-        audioRef.current.crossOrigin = "anonymous";
-        audioRef.current.playbackRate = fxSettings.speed; 
-        audioRef.current.play().catch(() => {});
-
-        loadTimeoutRef.current = window.setTimeout(() => {
-            if (rid !== loadRequestIdRef.current) return;
-            console.warn(`[RADIO] Station ${station.name} is too slow. Filtering and skipping.`);
-            
-            if (isMountedRef.current) {
-                setStations(prev => {
-                    const currentIndex = prev.findIndex(s => s.stationuuid === station.stationuuid);
-                    const newList = prev.filter(s => s.stationuuid !== station.stationuuid);
-                    
-                    if (newList.length > 0) {
-                        const nextIndex = currentIndex % newList.length;
-                        setTimeout(() => handlePlayStation(newList[nextIndex]), 10);
-                    }
-                    return newList;
-                });
-                
-                if (audioRef.current) {
-                    audioRef.current.pause();
-                    audioRef.current.src = "";
-                }
-                setIsPlaying(false);
-                setIsBuffering(false);
-            }
-        }, 3000);
-    }
-  }, [initAudioContext, fxSettings.speed, uiMode, navigate]);
-  // Removed language from dependency because we no longer use it for notifications here
-
+  }, [sleepTimer, isPlaying, togglePlay]);
   useEffect(() => {
     const checkAlarm = setInterval(() => {
       if (alarm.enabled) {
         const now = new Date();
-        const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        const currentDay = now.getDay();
-        
-        if (currentTime === alarm.time && alarm.days.includes(currentDay)) {
-           if (!isPlaying && stations.length > 0) {
-             handlePlayStation(currentStation || stations[0]);
-           }
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        if (timeStr === alarm.time && !isPlaying) {
+          if (stations.length > 0) handlePlayStation(currentStation || stations[0]);
+          console.log('[ALARM] Active!');
         }
       }
     }, 1000);
     return () => clearInterval(checkAlarm);
   }, [alarm, isPlaying, currentStation, stations, handlePlayStation]);
 
-  // Idle View Removed as per request
-  useEffect(() => {
-    // Legacy cleanup
-    setIsIdleView(false);
-  }, []);
-
-  const togglePlay = useCallback(async () => {
-    if (!audioRef.current) return;
+  const togglePlayHandler = useCallback(async () => {
     if (!currentStation) {
         if (stations.length) handlePlayStation(stations[0]);
         return;
     }
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      initAudioContext(); // Ensure context is ready/resumed
-      await audioEngine.resume();
-      audioRef.current.play().catch(() => {});
-    }
-  }, [currentStation, isPlaying, handlePlayStation, stations]);
+    togglePlay();
+  }, [currentStation, handlePlayStation, stations, togglePlay]);
+
+  // VolumeDrum component is integrated in PlayerBar or elsewhere if needed.
 
     // Persistence and Effects
     useEffect(() => {
@@ -887,40 +745,31 @@ export default function App(): React.JSX.Element {
     const handleNextStation = useCallback(async () => {
       if (isRandomMode) {
           // RANDOM MODE LOGIC: Pick a random safe category
-          const safeGenres = GENRES;
-          const safeMoods = MOODS;
-          const safeEras = ERAS;
-          // Combine all "safe" categories
-          const allSafe = [...safeGenres, ...safeMoods, ...safeEras];
+          const allSafe = [...GENRES, ...MOODS, ...ERAS];
           const randomCat = allSafe[Math.floor(Math.random() * allSafe.length)];
           
-          setIsLoading(true);
           try {
-              const randomStations = await fetchStationsByTag(randomCat.id, 20);
-              if (randomStations.length > 0) {
-                  const randomStation = randomStations[Math.floor(Math.random() * randomStations.length)];
+              const loaded = await loadStations(randomCat.id);
+              if (loaded.length > 0) {
+                  const randomStation = loaded[Math.floor(Math.random() * loaded.length)];
                   handlePlayStation(randomStation);
-                  // Optionally update categories to reflect where we are
                   setSelectedCategory(randomCat);
-                  setStations(randomStations);
-                  // Determine mode
+                  
                   if (GENRES.some(g => g.id === randomCat.id)) setViewMode('genres');
                   else if (MOODS.some(m => m.id === randomCat.id)) setViewMode('moods');
                   else setViewMode('eras');
               }
           } catch (e) {
               console.error('Failed to fetch random station', e);
-          } finally {
-              setIsLoading(false);
           }
           return;
       }
 
       if (!stations.length) return;
-      const currentIndex = currentStation ? stations.findIndex(s => s.stationuuid === currentStation.stationuuid) : -1;
+      const currentIndex = currentStation ? stations.findIndex(s => s.id === currentStation.id) : -1;
       const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % stations.length;
       handlePlayStation(stations[nextIndex]);
-    }, [stations, currentStation, handlePlayStation, isRandomMode]);
+    }, [stations, currentStation, handlePlayStation, isRandomMode, loadStations]);
 
   // Play Button Visualization Effect
   useEffect(() => {
@@ -977,7 +826,7 @@ export default function App(): React.JSX.Element {
 
   const handlePreviousStation = useCallback(() => {
       if (!stations.length) return;
-      const currentIndex = currentStation ? stations.findIndex(s => s.stationuuid === currentStation.stationuuid) : -1;
+      const currentIndex = currentStation ? stations.findIndex(s => s.id === currentStation.id) : -1;
       const prevIndex = currentIndex === -1 ? stations.length - 1 : (currentIndex - 1 + stations.length) % stations.length;
       handlePlayStation(stations[prevIndex]);
   }, [stations, currentStation, handlePlayStation]);
@@ -1095,20 +944,14 @@ export default function App(): React.JSX.Element {
     localStorage.setItem('auradiochat_viz_settings_v3', JSON.stringify(vizSettingsMap));
   }, [vizSettingsMap]);
 
-  useEffect(() => {
-    localStorage.setItem('auradiochat_random_mode', isRandomMode.toString());
-  }, [isRandomMode]);
-
-  
-  const dedupeStations = (data: RadioStation[]) => {
-    // Service already dedupes aggressively, this is just a safety pass for UUID-based fetches
+  const dedupeStations = useCallback((data: Station[]) => {
     const seen = new Set();
     return data.filter(s => {
-      if (!s.stationuuid || seen.has(s.stationuuid)) return false;
-      seen.add(s.stationuuid);
+      if (!s.id || seen.has(s.id)) return false;
+      seen.add(s.id);
       return true;
     });
-  };
+  }, []);
 
   // Sync refs for stable handlers
   useEffect(() => { stationsRef.current = stations; }, [stations]);
@@ -1118,7 +961,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => { handleNextStationRef.current = handleNextStation; }, [handleNextStation]);
   useEffect(() => { handlePreviousStationRef.current = handlePreviousStation; }, [handlePreviousStation]);
   useEffect(() => { handlePlayStationRef.current = handlePlayStation; }, [handlePlayStation]);
-  useEffect(() => { togglePlayRef.current = togglePlay; }, [togglePlay]);
+  useEffect(() => { togglePlayRef.current = togglePlayHandler; }, [togglePlayHandler]);
 
   // Consolidate Media Session Logic for maximum cross-device compatibility
   useEffect(() => {
@@ -1129,7 +972,7 @@ export default function App(): React.JSX.Element {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentStation.name,
         artist: 'AU Radio',
-        album: currentStation.genre || 'Various',
+        album: (currentStation as any).genre || 'Various',
         artwork: [
           { src: currentStation.favicon || '/logo192.png', sizes: '96x96', type: 'image/png' },
           { src: currentStation.favicon || '/logo128.png', sizes: '128x128', type: 'image/png' },
@@ -1161,10 +1004,7 @@ export default function App(): React.JSX.Element {
       },
       stop: () => {
           console.log('[MediaSession] Stop Triggered');
-          if (audioRef.current) {
-              audioRef.current.pause();
-              setIsPlaying(false);
-          }
+          if (isPlaying) togglePlay();
       },
       nexttrack: () => {
           console.log('[MediaSession] Next Track Triggered');
@@ -1197,74 +1037,45 @@ export default function App(): React.JSX.Element {
     };
   }, []); // Only once
 
-
   const loadCategory = useCallback(async (category: CategoryInfo | null, mode: ViewMode, autoPlay: boolean = false, isModeSwitch: boolean = false) => { 
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
         if (isModeSwitch) {
-            // Explicitly set 5s timer for category switches to ensure it doesn't close immediately
             if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current);
             sidebarTimerRef.current = setTimeout(() => {
                 setSidebarOpen(false);
             }, 5000);
         } else {
-            // Style selection: close immediately
             if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current);
             setSidebarOpen(false);
-            // Scroll to top after sidebar closes
             setTimeout(() => {
                 if (mainContentRef.current) mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }, 300);
         }
     }
-    const rid = ++loadRequestIdRef.current;
     
-    // Clear previous state for a fresh start
     setViewMode(mode); 
     setSelectedCategory(category); 
-    setIsLoading(true); 
     setVisibleCount(INITIAL_CHUNK); 
-    setStations([]);
     setIsAiCurating(false); 
     
     try {
+      let loaded: Station[] = [];
       if (mode === 'favorites') {
         const savedFavs = localStorage.getItem('auradiochat_favorites');
         const favUuids = savedFavs ? JSON.parse(savedFavs) : [];
-        const data = favUuids.length ? await fetchStationsByUuids(favUuids) : [];
-        const dedupedPrev = dedupeStations(data);
-        if (rid === loadRequestIdRef.current && isMountedRef.current) { 
-            setStations(dedupedPrev); 
-            setIsLoading(false); 
-            if (dedupedPrev.length > 0 && autoPlay) handlePlayStation(dedupedPrev[0]); 
-        }
+        loaded = await loadStations('favorites', favUuids);
       } else if (category) {
-        // Parallel fetch strategy
-        fetchStationsByTag(category.id, 300).then(data => { 
-            if (rid !== loadRequestIdRef.current || !isMountedRef.current) return;
-            
-            const deduped = dedupeStations(data);
-            setStations(deduped);
-            setIsLoading(false);
-            
-            if (deduped.length > 0 && autoPlay) {
-                handlePlayStation(deduped[0]);
-            }
-        }).catch(err => {
-            if (rid === loadRequestIdRef.current && isMountedRef.current) {
-                setIsLoading(false);
-            }
-        });
-        
-        // Timeout safety
-        setTimeout(() => {
-            if (rid === loadRequestIdRef.current && isMountedRef.current && isLoading) {
-                setIsLoading(false);
-            }
-        }, 8000);
+        loaded = await loadStations(category.id);
       }
-    } catch (e) { if (rid === loadRequestIdRef.current && isMountedRef.current) setIsLoading(false); }
-  }, [handlePlayStation]);
+      
+      if (loaded.length > 0 && autoPlay) {
+        handlePlayStation(loaded[0]);
+      }
+    } catch (e) {
+      console.error('Failed to load category', e);
+    }
+  }, [handlePlayStation, loadStations]);
 
   // Initial Load - Only once
   useEffect(() => { 
@@ -1276,8 +1087,8 @@ export default function App(): React.JSX.Element {
       try {
         const saved = localStorage.getItem('auradio_last_station');
         if (saved) {
-          const station = JSON.parse(saved) as RadioStation;
-          if (station && station.url_resolved && station.stationuuid) {
+          const station = JSON.parse(saved) as Station;
+          if (station && station.streamUrl) {
             handlePlayStationRef.current(station);
           }
         }
@@ -1300,7 +1111,6 @@ export default function App(): React.JSX.Element {
     };
   }, []); 
 
-  
   useEffect(() => {
     if (!sidebarOpen && sidebarTimerRef.current) {
         clearTimeout(sidebarTimerRef.current);
@@ -1309,7 +1119,11 @@ export default function App(): React.JSX.Element {
   }, [sidebarOpen]);
 
   const toggleFavorite = useCallback((id: string) => {
-    setFavorites(p => { const n = p.includes(id) ? p.filter(fid => fid !== id) : [...p, id]; localStorage.setItem('auradiochat_favorites', JSON.stringify(n)); return n; });
+    setFavorites(p => { 
+        const n = p.includes(id) ? p.filter(fid => fid !== id) : [...p, id]; 
+        localStorage.setItem('auradiochat_favorites', JSON.stringify(n)); 
+        return n; 
+    });
   }, []);
   
 
@@ -1354,7 +1168,7 @@ export default function App(): React.JSX.Element {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 pb-32">
             {isLoading || isAiCurating ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="aspect-[1.2] rounded-[2rem] skeleton-loader"></div>) : (
                 (visibleStations || []).map((station, index) => (
-                    <StationCard key={station.stationuuid} station={station} index={index} isSelected={currentStation?.stationuuid === station.stationuuid} isFavorite={favorites.includes(station.stationuuid)} onPlay={handlePlayStation} onToggleFavorite={toggleFavorite} />
+                    <StationCard key={station.id} station={station} index={index} isSelected={currentStation?.id === station.id} isFavorite={favorites.includes(station.id)} onPlay={handlePlayStation} onToggleFavorite={toggleFavorite} />
                 ))
             )}
         </div>
@@ -1396,6 +1210,7 @@ export default function App(): React.JSX.Element {
       <FireEffect intensity={ambience.fireVolume} isVisible={isAppVisible} />
       {/* Global Dimming Overlay for "Stage Mode" */}
       <div className={`absolute inset-0 bg-black/80 z-[80] transition-opacity duration-1000 pointer-events-none ${isGlobalLightsOn ? 'opacity-100' : 'opacity-0'}`} />
+      
       <audio 
         ref={audioRef} 
         crossOrigin="anonymous"
@@ -1403,40 +1218,7 @@ export default function App(): React.JSX.Element {
         className="hidden"
         playsInline
         webkit-playsinline="true"
-        onCanPlayThrough={() => {
-            if (isPlaying && audioRef.current?.paused) {
-                audioRef.current.play().catch(() => {});
-            }
-        }}
-        onPlay={() => {
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        }}
-        onPlaying={() => { 
-            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            setIsBuffering(false); 
-            setIsPlaying(true); 
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-            streamRetryCountRef.current = 0;
-        }} 
-        onPause={() => {
-            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            setIsPlaying(false);
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-        }} 
-        onWaiting={() => setIsBuffering(true)}
-        onStalled={() => {
-            console.warn('[StreamStability] Stream stalled, monitoring for 5s...');
-            setIsBuffering(true);
-            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
-            loadTimeoutRef.current = window.setTimeout(() => {
-                if (isPlaying && audioRef.current && audioRef.current.readyState < 3) {
-                    handleSwitchRecovery();
-                }
-            }, 5000);
-        }}
-        onAbort={() => handleSwitchRecovery()}
-        onEnded={() => handleSwitchRecovery()} 
-        onError={() => handleSwitchRecovery()} 
+        // Most events now handled by useAudioPlayer
       />
       
 
@@ -1575,17 +1357,16 @@ export default function App(): React.JSX.Element {
             <Routes>
                 <Route path="/" element={renderHome()} />
                 <Route path="/:lang" element={<LanguageWrapper>{renderHome()}</LanguageWrapper>} />
-                {/* Legacy cleanup: Keep these temporarily if needed, but the main driver is /:slug and /:lang/:slug */}
                 <Route path="/favorites" element={
                     <>
                         <Helmet>
                             <title>My Favorite Radio Stations – AU Radio</title>
-                            <meta name="description" content="Access your personally curated list of global radio stations. Your favorite jazz, rock Park, and electronic streams in one place." />
+                            <meta name="description" content="Access your personally curated list of global radio stations." />
                         </Helmet>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 pb-32">
                             {isLoading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="aspect-[1.2] rounded-[2rem] skeleton-loader"></div>) : (
                                 (visibleStations || []).map((station, index) => (
-                                    <StationCard key={station.stationuuid} station={station} index={index} isSelected={currentStation?.stationuuid === station.stationuuid} isFavorite={favorites.includes(station.stationuuid)} onPlay={handlePlayStation} onToggleFavorite={toggleFavorite} />
+                                    <StationCard key={station.id} station={station} index={index} isSelected={currentStation?.id === station.id} isFavorite={favorites.includes(station.id)} onPlay={handlePlayStation} onToggleFavorite={toggleFavorite} />
                                 ))
                             )}
                             {visibleStations.length === 0 && !isLoading && (
@@ -1597,20 +1378,11 @@ export default function App(): React.JSX.Element {
                         </div>
                     </>
                 } />
-                <Route path="/about" element={<AboutPage language={language} />} />
-                <Route path="/privacy-policy" element={<PrivacyPage language={language} />} />
-                <Route path="/contact" element={<ContactPage language={language} />} />
-                <Route path="/genres" element={<GenresPage language={language} />} />
-                <Route path="/jazz-radio" element={<JazzRadioPage language={language} />} />
-                <Route path="/rock-radio" element={<RockRadioPage language={language} />} />
-                <Route path="/electronic-radio" element={<ElectronicRadioPage language={language} />} />
-                <Route path="/hip-hop-radio" element={<HipHopRadioPage language={language} />} />
-                <Route path="/directory" element={<DirectoryPage language={language} />} />
                 <Route path="/station/:slug" element={
                     <StationPage 
                         language={language} 
                         onPlayStation={handlePlayStation} 
-                        currentStationId={currentStation?.stationuuid}
+                        currentStationId={currentStation?.id}
                         isPlaying={isPlaying}
                         favorites={favorites}
                         onToggleFavorite={toggleFavorite}
@@ -1620,13 +1392,6 @@ export default function App(): React.JSX.Element {
                         ringSettings={ringSettings}
                         setRingSettings={setRingSettings}
                     />
-                } />
-
-                <Route path="/:lang/:slug" element={
-                    <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
-                } />
-                <Route path="/:slug" element={
-                    <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
                 } />
             </Routes>
                 <footer className="w-full pb-64 pt-20 flex flex-col items-center justify-center gap-10 opacity-80 z-0 relative border-t border-white/5 mt-20">
@@ -1697,7 +1462,7 @@ export default function App(): React.JSX.Element {
             VISUALIZERS_LIST={VISUALIZERS_LIST} 
             handlePreviousStation={handlePreviousStation} 
             handleNextStation={handleNextStation} 
-            togglePlay={togglePlay} 
+            togglePlay={togglePlayHandler} 
             playButtonRef={playButtonRef} 
             locationStatus={locationStatus} 
             favorites={favorites} 
@@ -1762,8 +1527,6 @@ export default function App(): React.JSX.Element {
             onClose={() => setShareOpen(false)} 
         />
       </Suspense>
-
-
     </div>
     </ErrorBoundary>
   );

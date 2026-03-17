@@ -5,7 +5,7 @@ import {
   PreviousIcon, PlayIcon, PauseIcon, LoadingIcon, NextIcon, 
   HeartIcon, ShuffleIcon, ShareIcon, AdjustmentsIcon, XMarkIcon, VolumeIcon 
 } from './Icons';
-import { RadioStation, Language, VisualizerVariant, CategoryInfo, VisualizerSettings, VisualMode, UIMode } from '../types';
+import { Station, RadioStation, Language, VisualizerVariant, CategoryInfo, VisualizerSettings, VisualMode, UIMode } from '../types';
 import { GLOBAL_PRESETS } from '../types/constants';
 
 interface PlayerBarProps {
@@ -18,7 +18,7 @@ interface PlayerBarProps {
     visualizerVariant: VisualizerVariant;
     setVisualizerVariant: (v: VisualizerVariant) => void;
     selectedCategory: CategoryInfo | null;
-    currentStation: RadioStation | null;
+    currentStation: Station | null;
     language: Language;
     setLanguage: (l: Language) => void;
     t: any;
@@ -135,8 +135,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 md:gap-4">
-                        <button onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.stationuuid); }} className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`} disabled={!currentStation}>
-                            <HeartIcon className={`w-6 h-6 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
+                        <button onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.id); }} className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.id) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`} disabled={!currentStation}>
+                            <HeartIcon className={`w-6 h-6 ${currentStation && favorites.includes(currentStation.id) ? 'fill-current' : ''}`} />
                         </button>
                         <button onClick={() => setIsRandomMode(!isRandomMode)} className={`p-2 transition-all hover:scale-110 active:scale-95 ${isRandomMode ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`} title={t.randomMode}><ShuffleIcon className="w-5 h-5" /></button>
                         

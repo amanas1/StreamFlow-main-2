@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { RadioStation, Language, UIMode, ParticleSettings, RingSettings } from '../types';
+import { Station, RadioStation, Language, UIMode, ParticleSettings, RingSettings } from '../types';
 import { fetchStationBySlug, fetchRelatedStations } from '../services/radioService';
 import StationCard from './StationCard';
 import { TRANSLATIONS } from '../types/constants';
@@ -12,7 +12,7 @@ import { safeURL, safeHostname } from '../services/urlUtils';
 
 interface StationPageProps {
     language: Language;
-    onPlayStation: (station: RadioStation) => void;
+    onPlayStation: (station: Station) => void;
     currentStationId?: string;
     isPlaying?: boolean;
     favorites: string[];
@@ -29,9 +29,9 @@ const StationPage: React.FC<StationPageProps> = ({
     language, onPlayStation, currentStationId, isPlaying, favorites, onToggleFavorite, uiMode, particleSettings, setParticleSettings, ringSettings, setRingSettings, isVisible = true
 }) => {
     const { slug } = useParams<{ slug: string }>();
-    const [station, setStation] = useState<RadioStation | null>(null);
-    const [relatedStations, setRelatedStations] = useState<RadioStation[]>([]);
-    const [similarStations, setSimilarStations] = useState<RadioStation[]>([]);
+    const [station, setStation] = useState<Station | null>(null);
+    const [relatedStations, setRelatedStations] = useState<Station[]>([]);
+    const [similarStations, setSimilarStations] = useState<Station[]>([]);
     const [loading, setLoading] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const t = TRANSLATIONS[language];
@@ -43,14 +43,40 @@ const StationPage: React.FC<StationPageProps> = ({
                 try {
                     const data = await fetchStationBySlug(slug);
                     if (data) {
-                        setStation(data);
-                        // Fetch related/similar stations based on genre/tags
+                        // Normalize RadioStation to Station
+                        const normalizedStation: Station = {
+                            id: data.stationuuid,
+                            name: data.name,
+                            country: data.country || null,
+                            genre: data.genre || 'Music',
+                            bitrate: data.bitrate || 128,
+                            streamUrl: data.url_resolved,
+                            favicon: data.favicon,
+                            slug: data.slug,
+                            tags: data.tags,
+                            language: data.language,
+                            homepage: data.homepage,
+                            votes: data.votes,
+                            codec: data.codec,
+                            countryCode: data.countryCode
+                        };
+                        setStation(normalizedStation);
+                        
+                        // Fetch and normalize related
                         const related = await fetchRelatedStations(data, 10);
-                        setRelatedStations(Array.isArray(related) ? related : []);
-                        // For "similar", we can try another niche tag or just same genre
-                        setSimilarStations(Array.isArray(related) ? related.slice().reverse() : []); 
-                        // Optionally auto-play if found
-                        // if (data) onPlayStation(data);
+                        const normalizedRelated = (Array.isArray(related) ? related : []).map(r => ({
+                            id: r.stationuuid,
+                            name: r.name,
+                            country: r.country || null,
+                            genre: r.genre || 'Music',
+                            bitrate: r.bitrate || 128,
+                            streamUrl: r.url_resolved,
+                            favicon: r.favicon,
+                            slug: r.slug
+                        } as Station));
+                        
+                        setRelatedStations(normalizedRelated);
+                        setSimilarStations([...normalizedRelated].reverse()); 
                     } else {
                         setStation(null);
                     }
@@ -63,7 +89,7 @@ const StationPage: React.FC<StationPageProps> = ({
             }
         };
         fetchStationData();
-    }, [slug, onPlayStation]);
+    }, [slug]);
 
     // Auto-hide settings after 20 seconds of inactivity
     useEffect(() => {
@@ -182,7 +208,7 @@ const StationPage: React.FC<StationPageProps> = ({
                     ) : (
                         <img 
                             src={station?.favicon || (() => { 
-                                const hostname = safeHostname(station?.url_resolved || station?.url);
+                                const hostname = safeHostname(station?.streamUrl);
                                 return hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=128` : 'https://cdn-icons-png.flaticon.com/512/3103/3103181.png';
                             })()} 
                             alt={station?.name}
@@ -227,14 +253,14 @@ const StationPage: React.FC<StationPageProps> = ({
                 <button 
                     onClick={() => onPlayStation(station)}
                     className={`group relative overflow-hidden px-14 py-5 rounded-full font-black text-sm uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)] mb-12 ${
-                        isPlaying && currentStationId === station.stationuuid 
+                        isPlaying && currentStationId === station.id 
                             ? 'bg-white text-black'
                             : 'bg-gradient-to-r from-primary to-secondary text-white'
                     }`}
                 >
                     <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     <span className="relative z-10 flex items-center gap-3">
-                        {isPlaying && currentStationId === station.stationuuid ? (
+                        {isPlaying && currentStationId === station.id ? (
                             <>
                                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
                                 {t.pause}
@@ -355,11 +381,11 @@ const StationPage: React.FC<StationPageProps> = ({
                         </p>
                         <div className="flex items-center gap-4 pt-4">
                             <button 
-                                onClick={() => onToggleFavorite(station.stationuuid)}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-all ${favorites.includes(station.stationuuid) ? 'bg-rose-500/20 border-rose-500/50 text-rose-500' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}
+                                onClick={() => onToggleFavorite(station.id)}
+                                className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-all ${favorites.includes(station.id) ? 'bg-rose-500/20 border-rose-500/50 text-rose-500' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}
                             >
-                                <svg className={`w-5 h-5 ${favorites.includes(station.stationuuid) ? 'fill-current' : 'none'} stroke-current`} viewBox="0 0 24 24" fill="none" strokeWidth="2"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
-                                <span className="text-xs font-bold uppercase">{favorites.includes(station.stationuuid) ? t.favorited : t.addToFavorites}</span>
+                                <svg className={`w-5 h-5 ${favorites.includes(station.id) ? 'fill-current' : 'none'} stroke-current`} viewBox="0 0 24 24" fill="none" strokeWidth="2"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+                                <span className="text-xs font-bold uppercase">{favorites.includes(station.id) ? t.favorited : t.addToFavorites}</span>
                             </button>
                         </div>
                     </div>
@@ -370,10 +396,10 @@ const StationPage: React.FC<StationPageProps> = ({
                         <h3 className="text-xl font-black text-white uppercase italic">{t.technicalInfo}</h3>
                         {uiMode === 'modern' && (
                              <button 
-                                onClick={() => onToggleFavorite(station.stationuuid)}
-                                className={`p-2 rounded-full border transition-all ${favorites.includes(station.stationuuid) ? 'bg-rose-500/20 border-rose-500/50 text-rose-500' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}
+                                onClick={() => onToggleFavorite(station.id)}
+                                className={`p-2 rounded-full border transition-all ${favorites.includes(station.id) ? 'bg-rose-500/20 border-rose-500/50 text-rose-500' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}
                             >
-                                <svg className={`w-5 h-5 ${favorites.includes(station.stationuuid) ? 'fill-current' : 'none'} stroke-current`} viewBox="0 0 24 24" fill="none" strokeWidth="2"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
+                                <svg className={`w-5 h-5 ${favorites.includes(station.id) ? 'fill-current' : 'none'} stroke-current`} viewBox="0 0 24 24" fill="none" strokeWidth="2"><path d="M12 21l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.18L12 21z"/></svg>
                             </button>
                         )}
                     </div>
@@ -412,11 +438,11 @@ const StationPage: React.FC<StationPageProps> = ({
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                                 {(Array.isArray(relatedStations) ? relatedStations : []).map((s, i) => (
                                     <StationCard 
-                                        key={s.stationuuid} 
+                                        key={s.id} 
                                         station={s} 
                                         index={i} 
-                                        isSelected={currentStationId === s.stationuuid} 
-                                        isFavorite={favorites.includes(s.stationuuid)} 
+                                        isSelected={currentStationId === s.id} 
+                                        isFavorite={favorites.includes(s.id)} 
                                         onPlay={onPlayStation} 
                                         onToggleFavorite={onToggleFavorite} 
                                     />
@@ -436,11 +462,11 @@ const StationPage: React.FC<StationPageProps> = ({
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                                 {(Array.isArray(similarStations) ? similarStations : []).map((s, i) => (
                                     <StationCard 
-                                        key={s.stationuuid} 
+                                        key={s.id} 
                                         station={s} 
                                         index={i} 
-                                        isSelected={currentStationId === s.stationuuid} 
-                                        isFavorite={favorites.includes(s.stationuuid)} 
+                                        isSelected={currentStationId === s.id} 
+                                        isFavorite={favorites.includes(s.id)} 
                                         onPlay={onPlayStation} 
                                         onToggleFavorite={onToggleFavorite} 
                                     />

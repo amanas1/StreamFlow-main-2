@@ -1,4 +1,22 @@
 
+export type Station = {
+  id: string
+  name: string
+  country: string | null
+  genre: string
+  bitrate: number
+  streamUrl: string
+  favicon?: string
+  // Optional metadata for deep views
+  slug?: string
+  tags?: string
+  language?: string
+  homepage?: string
+  votes?: number
+  codec?: string
+  countryCode?: string
+}
+
 export interface RadioStation {
   changeuuid: string;
   stationuuid: string;
