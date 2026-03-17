@@ -1,0 +1,34 @@
+{
+  "cleanUrls": true,
+  "functions": {
+    "api/seo-handler.js": {
+      "includeFiles": "dist/app-template.html"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/seo-handler"
+    },
+    {
+      "source": "/(ru|es|fr|de|zh)",
+      "destination": "/api/seo-handler"
+    },
+    {
+      "source": "/(radio-[^/]*|.*-radio[^/]*|slushat-radio-online|internet-radio|free-online-radio|free-internet-radio)",
+      "destination": "/api/seo-handler"
+    },
+    {
+      "source": "/(ru|es|fr|de|zh)/(radio-[^/]*|.*-radio[^/]*|slushat-radio-online|internet-radio|free-online-radio|free-internet-radio)",
+      "destination": "/api/seo-handler"
+    },
+    {
+      "source": "/(assets|static|public|favicon|icon|manifest.json|robots.txt|kamin.mp3)(.*)",
+      "destination": "/$1$2"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api/seo-handler"
+    }
+  ]
+}

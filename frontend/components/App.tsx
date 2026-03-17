@@ -1080,7 +1080,46 @@ export default function App(): React.JSX.Element {
   // Initial Load - Only once
   useEffect(() => { 
     const initialGenre = GENRES.find(g => g.id === 'hiphop') || GENRES[0];
-    loadCategory(initialGenre, 'genres', false);
+    
+    // Check if current URL is an SEO route
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    let seoSlug = '';
+    if (parts.length > 0) {
+        if (['ru', 'es', 'fr', 'de', 'zh'].includes(parts[0])) {
+            seoSlug = parts[1] || '';
+        } else {
+            seoSlug = parts[0];
+        }
+    }
+
+    const isSeoRoute = seoSlug && (seoSlug.startsWith('radio-') || seoSlug.includes('-radio-') || seoSlug.endsWith('-radio'));
+
+    if (!isSeoRoute) {
+        loadCategory(initialGenre, 'genres', false);
+    } else {
+        // Handle initial SEO load
+        let country = '';
+        let tag = '';
+        if (seoSlug.startsWith('radio-')) country = seoSlug.replace('radio-', '').replace(/-/g, ' ');
+        else if (seoSlug.includes('-radio-')) {
+            const spl = seoSlug.split('-radio-');
+            tag = spl[0].replace(/-/g, ' ');
+            country = spl[1].replace(/-/g, ' ');
+        } else if (seoSlug.endsWith('-radio')) tag = seoSlug.replace('-radio', '').replace(/-/g, ' ');
+
+        if (country || tag) {
+            loadStations(tag || undefined, country || undefined).then(() => {
+                const virtualCat: CategoryInfo = {
+                    id: seoSlug,
+                    name: country ? (country.charAt(0).toUpperCase() + country.slice(1)) : (tag.charAt(0).toUpperCase() + tag.slice(1)),
+                    color: 'from-blue-600 to-indigo-600',
+                    type: 'genre'
+                };
+                setSelectedCategory(virtualCat);
+                setViewMode('genres');
+            });
+        }
+    }
 
     // --- Resume Listening: Restore last station on first user interaction ---
     const resumeLastStation = () => {
@@ -1357,6 +1396,8 @@ export default function App(): React.JSX.Element {
             <Routes>
                 <Route path="/" element={renderHome()} />
                 <Route path="/:lang" element={<LanguageWrapper>{renderHome()}</LanguageWrapper>} />
+                <Route path="/:seoSlug" element={renderHome()} />
+                <Route path="/:lang/:seoSlug" element={<LanguageWrapper>{renderHome()}</LanguageWrapper>} />
                 <Route path="/favorites" element={
                     <>
                         <Helmet>
