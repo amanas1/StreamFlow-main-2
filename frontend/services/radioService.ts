@@ -176,23 +176,37 @@ const filterStations = (data: any[]): RadioStation[] => {
             favicon: apiStation.favicon && apiStation.favicon.charCodeAt(4) === 115 ? apiStation.favicon : ''
         };
 
-        // Deduplication using exact unique keys (User requested: stationuuid, url_resolved, name)
-        const nTrim = n.trim();
-        const dedupeKey = `${station.stationuuid}_${urlLower}_${nTrim}`;
+        // --- IMPROVED DEDUPLICATION (User requested: "remove all duplicates") ---
+        // 1. Unique by normalized URL (ignores mirrors with different params)
+        const normalizedUrl = apiStation.url_resolved.toLowerCase().split('?')[0].replace(/\/+$/, '');
+        // 2. Unique by normalized Name (ignores slight variations in spacing/casing)
+        const normalizedName = (apiStation.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        // Multi-stage check: 
+        // We consider it a duplicate if either the URL is the same OR the Name+Country is the same.
+        const urlKey = `url_${normalizedUrl}`;
+        const nameKey = `name_${normalizedName}_${(apiStation.country || '').toLowerCase()}`;
 
-        if (!uniqueStations.has(dedupeKey)) {
-            uniqueStations.set(dedupeKey, station);
+        if (!uniqueStations.has(urlKey) && !uniqueStations.has(nameKey)) {
+            // Store by both keys to block any future variants
+            uniqueStations.set(urlKey, station);
+            uniqueStations.set(nameKey, station);
+            uniqueStations.set(apiStation.stationuuid, station);
         }
     });
 
     const result = Array.from(uniqueStations.values());
-
-    // 4. Предпочтение более качественных потоков
-    return result.sort((a, b) => {
-        const bitA = Number(a.bitrate || 0);
-        const bitB = Number(b.bitrate || 0);
-        return bitB - bitA; // Highest bitrate first
+    
+    // Final dedupe to ensure each station object is unique in the array (since we stored under multiple keys)
+    const finalSeen = new Set<string>();
+    const dedupedResult = result.filter(s => {
+        if (finalSeen.has(s.stationuuid)) return false;
+        finalSeen.add(s.stationuuid);
+        return true;
     });
+
+    // 4. Sort by quality score (Bitrate + Format)
+    return dedupedResult.sort((a, b) => b.qualityScore - a.qualityScore);
 };
 
 export const fetchStationsByTag = async (tag: string, limit: number = 100): Promise<RadioStation[]> => {

@@ -36,7 +36,8 @@ export interface RadioStation {
   votes: number;
   codec: string;
   bitrate: number;
-  popularityScore: number; // For ranking
+  qualityScore: number;
+  popularityScore: number;
   isFeatured?: boolean;
 }
 

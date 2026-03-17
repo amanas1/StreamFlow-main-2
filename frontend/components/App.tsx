@@ -945,10 +945,25 @@ export default function App(): React.JSX.Element {
   }, [vizSettingsMap]);
 
   const dedupeStations = useCallback((data: Station[]) => {
-    const seen = new Set();
+    const seen = new Set<string>();
     return data.filter(s => {
-      if (!s.id || seen.has(s.id)) return false;
-      seen.add(s.id);
+      // 1. Primary key check
+      if (!s.id || seen.has(`id_${s.id}`)) return false;
+
+      // 2. Normalize components for comparison
+      const normName = (s.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normUrl = (s.streamUrl || '').toLowerCase().split('?')[0].replace(/\/+$/, '');
+      const countryCode = (s.countryCode || '').toLowerCase();
+
+      const nameKey = `name_${normName}_${countryCode}`;
+      const urlKey = `url_${normUrl}`;
+
+      if (seen.has(nameKey) || seen.has(urlKey)) return false;
+
+      // 3. Mark all variants as seen
+      seen.add(`id_${s.id}`);
+      seen.add(nameKey);
+      seen.add(urlKey);
       return true;
     });
   }, []);
