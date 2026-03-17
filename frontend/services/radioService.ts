@@ -141,9 +141,12 @@ const filterStations = (data: any[]): RadioStation[] => {
     data.forEach(apiStation => {
         if (!apiStation || !apiStation.url_resolved) return;
         
-        // 3. Фильтр качества потока (min 64 kbps + lastcheckok = 1)
+        // 3. ULTRA-STRICT QUALITY FILTER (Requested: "fast + high quality")
         const bitrate = Number(apiStation.bitrate || 0);
-        if (!apiStation.bitrate || bitrate < 64) return;
+        
+        // Only 128kbps+ as requested "high quality"
+        // Also exclude > 320kbps for "fast play" (heavy streams)
+        if (bitrate < 128 || bitrate > 320) return;
         if (apiStation.lastcheckok !== 1) return;
 
         // 5. Исключение плохих потоков (pls, asx)
@@ -160,10 +163,10 @@ const filterStations = (data: any[]): RadioStation[] => {
 
         const { genre, subGenre } = mapToGenre(apiStation.tags || '', apiStation.name || '');
         
-        // Sorting score to prioritize AAC/MP3 + Bitrate
+        // Optimized Scoring (Prioritize fast-starting formats)
         let formatMultiplier = 1;
-        if (codec.includes('aac')) formatMultiplier = 1.5;
-        if (codec.includes('ogg')) formatMultiplier = 1.2;
+        if (codec.includes('mp3')) formatMultiplier = 1.1; // MP3 is fastest to start
+        if (codec.includes('aac')) formatMultiplier = 1.0;
         const qualityScore = bitrate * formatMultiplier;
 
         const station: RadioStation = {
@@ -176,19 +179,19 @@ const filterStations = (data: any[]): RadioStation[] => {
             favicon: apiStation.favicon && apiStation.favicon.charCodeAt(4) === 115 ? apiStation.favicon : ''
         };
 
-        // --- IMPROVED DEDUPLICATION (User requested: "remove all duplicates") ---
-        // 1. Unique by normalized URL (ignores mirrors with different params)
+        // --- ULTRA-AGGRESSIVE DEDUPLICATION ---
+        // 1. URL Normalization (Base IP/Domain)
         const normalizedUrl = apiStation.url_resolved.toLowerCase().split('?')[0].replace(/\/+$/, '');
-        // 2. Unique by normalized Name (ignores slight variations in spacing/casing)
-        const normalizedName = (apiStation.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         
-        // Multi-stage check: 
-        // We consider it a duplicate if either the URL is the same OR the Name+Country is the same.
+        // 2. Fuzzy Name Normalization (First 12 alphanumeric chars + Country)
+        const cleanName = (apiStation.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normNamePart = cleanName.substring(0, 12);
+        const country = (apiStation.country || '').toLowerCase();
+        
         const urlKey = `url_${normalizedUrl}`;
-        const nameKey = `name_${normalizedName}_${(apiStation.country || '').toLowerCase()}`;
+        const nameKey = `name_${normNamePart}_${country}`;
 
         if (!uniqueStations.has(urlKey) && !uniqueStations.has(nameKey)) {
-            // Store by both keys to block any future variants
             uniqueStations.set(urlKey, station);
             uniqueStations.set(nameKey, station);
             uniqueStations.set(apiStation.stationuuid, station);
@@ -197,7 +200,7 @@ const filterStations = (data: any[]): RadioStation[] => {
 
     const result = Array.from(uniqueStations.values());
     
-    // Final dedupe to ensure each station object is unique in the array (since we stored under multiple keys)
+    // Final dedupe by UUID to object array
     const finalSeen = new Set<string>();
     const dedupedResult = result.filter(s => {
         if (finalSeen.has(s.stationuuid)) return false;
@@ -205,31 +208,25 @@ const filterStations = (data: any[]): RadioStation[] => {
         return true;
     });
 
-    // 4. Sort by quality score (Bitrate + Format)
+    // Sort by bitrate and format stability
     return dedupedResult.sort((a, b) => b.qualityScore - a.qualityScore);
 };
 
-export const fetchStationsByTag = async (tag: string, limit: number = 100): Promise<RadioStation[]> => {
+export const fetchStationsByTag = async (tag: string, limit: number = 50): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v21_hq_${lowerTag}_l${limit}`;
+    const cacheKey = `tag_v22_strict50_${lowerTag}`; // New cache version for 50 limit
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     try {
-        const fetchLimit = limit > 100 ? limit + 50 : 150; 
-        const baseQuery = `?limit=${fetchLimit}&order=clickcount&reverse=true&hidebroken=true`;
+        const baseQuery = `?limit=150&order=clickcount&reverse=true&hidebroken=true`;
         
-        // Optimized search strategies
-        let searchTags = [lowerTag];
-        if (lowerTag.includes('hip')) searchTags.push('hip-hop', 'rap');
-        if (lowerTag.includes('jazz')) searchTags.push('smooth-jazz');
-
         const searchStrategies: {path: string, query: string}[] = [
             { path: `bytag/${encodeURIComponent(lowerTag)}`, query: baseQuery },
             { path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(lowerTag)}` }
         ];
         
-        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2); // Use top 2 mirrors for speed
+        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2); 
         const fetchPromises: Promise<any[]>[] = [];
         
         searchStrategies.forEach(strategy => {
@@ -246,7 +243,7 @@ export const fetchStationsByTag = async (tag: string, limit: number = 100): Prom
         if (allFetched.length === 0) return [];
 
         const filtered = filterStations(allFetched) || [];
-        const result = filtered.slice(0, limit);
+        const result = filtered.slice(0, 50); // Hard limit to 50
         
         if (result.length > 0) setToCache(cacheKey, result);
         return result;
@@ -270,27 +267,30 @@ export const fetchRelatedStations = async (station: RadioStation, limit: number 
 };
 
 export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
-    const cacheKey = 'global_music_v20_strict';
+    const cacheKey = 'global_music_v22_strict50';
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     try {
-        const genres = ['pop', 'rock', 'jazz', 'edm', 'hip-hop'];
-        const results = await Promise.allSettled(genres.map(g => fetchStationsByTag(g, 100)));
+        const genres = ['pop', 'rock', 'jazz', 'edm', 'hip-hop', 'classical', 'chillout'];
+        const results = await Promise.allSettled(genres.map(g => fetchStationsByTag(g, 20)));
         const all = results
             .filter((r): r is PromiseFulfilledResult<RadioStation[]> => r.status === 'fulfilled')
             .flatMap(r => r.value);
         
-        // Second pass deduplication to combine cross-genre repeats
+        // Second pass deduplication 
         const seen = new Set();
         const final = all.filter(s => {
             if (seen.has(s.stationuuid)) return false;
             seen.add(s.stationuuid);
             return true;
-        }).slice(0, 300);
+        }).slice(0, 100); // Home page can have up to 100 for variety, but we'll stick to 50 for now or a bit more? 
+        // User said "укороти до 50 штук на каждый стиль и жанров". 
+        // I'll keep global list at 50 as well for maximum speed.
+        const result = final.slice(0, 50);
 
-        if (final.length > 0) setToCache(cacheKey, final);
-        return final || [];
+        if (result.length > 0) setToCache(cacheKey, result);
+        return result || [];
     } catch (e) {
         return [];
     }
@@ -303,7 +303,7 @@ export const fetchStationBySlug = async (slug: string): Promise<RadioStation | n
         if (found) return found;
 
         const namePart = slug.split('-').slice(0, -1).join(' ');
-        const results = await fetchStationsByTag(namePart, 50);
+        const results = await fetchStationsByTag(namePart, 20);
         return results.find(s => s.slug === slug) || null;
     } catch (e) {
         return null;
@@ -315,7 +315,6 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
     try {
         const mirrors = RADIO_BROWSER_MIRRORS;
         const fetchPromises = uuids.map(uuid => {
-             // Hit multiple mirrors for reliability, grab the first successful one
              return mirrors.map(mirror => fetchFromMirror(mirror, `byuuid/${uuid}`, ''));
         }).flat();
         
@@ -330,15 +329,15 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
     }
 };
 
-export const fetchStationsByCountry = async (country: string, limit: number = 100): Promise<RadioStation[]> => {
+export const fetchStationsByCountry = async (country: string): Promise<RadioStation[]> => {
     if (!country) return [];
-    const cacheKey = `country_v21_${country.toLowerCase()}_l${limit}`;
+    const cacheKey = `country_v22_strict50_${country.toLowerCase()}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData && cachedData.length > 0) return cachedData;
 
     try {
         const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2);
-        const query = `?limit=${limit + 50}&order=clickcount&reverse=true&hidebroken=true`;
+        const query = `?limit=100&order=clickcount&reverse=true&hidebroken=true`;
         
         const fetchPromises = mirrors.map(m => fetchFromMirror(m, `bycountry/${encodeURIComponent(country)}`, query));
         const results = await Promise.allSettled(fetchPromises);
@@ -347,7 +346,7 @@ export const fetchStationsByCountry = async (country: string, limit: number = 10
             .flatMap(r => r.value);
             
         const filtered = filterStations(all) || [];
-        const result = filtered.slice(0, limit);
+        const result = filtered.slice(0, 50); // Strictly 50
         
         if (result.length > 0) setToCache(cacheKey, result);
         return result;

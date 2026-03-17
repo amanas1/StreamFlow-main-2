@@ -17,6 +17,7 @@ export const useAudioPlayer = () => {
     if (!audioRef.current) {
       const audio = new Audio();
       audio.crossOrigin = "anonymous";
+      audio.preload = "auto";
       audioRef.current = audio;
 
       // Event Listeners
