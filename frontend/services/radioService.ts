@@ -107,6 +107,40 @@ const NON_MUSIC_KEYWORDS = [
     'radio parahumans', 'parahumans', 'audiobook'
 ];
 
+const SEO_SPAM_MARKERS = [
+    'top 100', 'top 200', '24h', '24 hours', 'non-stop', 'dj mix', 'dj charts',
+    'remix radio', 'party radio', 'festival radio', 'ibiza', 'chartmusic',
+    'just music', 'mixtape', 'clubbing', 'beachclub', 'nicht einschalten'
+];
+
+const normalizeStationName = (name: string) => name
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё\u0400-\u04ff\u4e00-\u9fff]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const isLikelySeoSpamStation = (name: string) => {
+    const raw = (name || '').trim();
+    const normalized = normalizeStationName(raw);
+    if (!normalized) return true;
+    if (raw.length > 160) return true;
+
+    const markerHits = SEO_SPAM_MARKERS.reduce((acc, marker) => acc + (normalized.includes(marker) ? 1 : 0), 0);
+    const separatorHits = (raw.match(/[#@|*!>{}<]/g) || []).length;
+    const words = normalized.split(' ').filter(Boolean);
+    const uniqueWords = new Set(words);
+    const uppercaseChars = raw.replace(/[^A-Z]/g, '').length;
+    const alphaChars = raw.replace(/[^A-Za-z]/g, '').length;
+    const uppercaseRatio = alphaChars > 0 ? uppercaseChars / alphaChars : 0;
+
+    if (markerHits >= 3 && raw.length > 70) return true;
+    if (separatorHits >= 10) return true;
+    if (words.length >= 18 && uniqueWords.size / words.length < 0.75) return true;
+    if (uppercaseRatio > 0.72 && raw.length > 28) return true;
+
+    return false;
+};
+
 const fetchFromMirror = async (mirror: string, path: string, query: string): Promise<any[]> => {
     const url = `${mirror}/json/stations/${path}${query}`;
     const controller = new AbortController();
@@ -157,6 +191,7 @@ const filterStations = (data: any[]): RadioStation[] => {
         
         if (RELIGIOUS_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) return;
         if (NON_MUSIC_KEYWORDS.some(kw => t.includes(kw) || n.includes(kw))) return;
+        if (isLikelySeoSpamStation(apiStation.name || '')) return;
 
         const { genre, subGenre } = mapToGenre(apiStation.tags || '', apiStation.name || '');
         
@@ -177,15 +212,30 @@ const filterStations = (data: any[]): RadioStation[] => {
         };
 
         // Deduplication using exact unique keys (User requested: stationuuid, url_resolved, name)
-        const nTrim = n.trim();
-        const dedupeKey = `${station.stationuuid}_${urlLower}_${nTrim}`;
+        const nTrim = normalizeStationName(apiStation.name || '');
+        const primaryDedupeKey = `${station.stationuuid}_${urlLower}_${nTrim}`;
+        const fallbackDedupeKey = `${nTrim}_${(station.country || '').toLowerCase().trim()}`;
 
-        if (!uniqueStations.has(dedupeKey)) {
-            uniqueStations.set(dedupeKey, station);
+        const existingPrimary = uniqueStations.get(primaryDedupeKey);
+        if (!existingPrimary) {
+            const existingFallback = uniqueStations.get(fallbackDedupeKey);
+            if (!existingFallback) {
+                uniqueStations.set(primaryDedupeKey, station);
+                uniqueStations.set(fallbackDedupeKey, station);
+            } else {
+                const existingScore = Number(existingFallback.qualityScore || 0) + Number(existingFallback.votes || 0);
+                const currentScore = Number(station.qualityScore || 0) + Number(station.votes || 0);
+                if (currentScore > existingScore) {
+                    uniqueStations.set(primaryDedupeKey, station);
+                    uniqueStations.set(fallbackDedupeKey, station);
+                }
+            }
         }
     });
 
-    const result = Array.from(uniqueStations.values());
+    const result = Array.from(new Map(
+        Array.from(uniqueStations.values()).map(station => [station.stationuuid, station])
+    ).values());
 
     // 4. Предпочтение более качественных потоков
     return result.sort((a, b) => {

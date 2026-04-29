@@ -48,6 +48,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   // Blink State
   const nextBlinkTimeRef = useRef<number>(0);
   const blinkEndTimeRef = useRef<number>(0);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
 
   const smoothedLowRef = useRef(0);
   const smoothedMidRef = useRef(0);
@@ -168,10 +169,15 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       canvas.style.filter = `brightness(${settings.brightness}%) contrast(${settings.contrast}%) saturate(${settings.saturation}%) hue-rotate(${settings.hue}deg)`;
 
       const bufferLength = analyserNode?.frequencyBinCount || 128;
-      const dataArray = new Uint8Array(bufferLength);
+      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
+        dataArrayRef.current = new Uint8Array(bufferLength);
+      }
+      const dataArray = dataArrayRef.current;
       
       if (analyserNode && isPlaying) {
         analyserNode.getByteFrequencyData(dataArray);
+      } else {
+        dataArray.fill(0);
       }
 
       if (lastVariantRef.current !== variant) {
@@ -201,7 +207,11 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       const sHigh = smoothedHighRef.current;
       
       const beatVal = sLow / 255;
-      const intensity = dataArray.reduce((a,b)=>a+b,0) / (bufferLength || 1); 
+      let intensitySum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        intensitySum += dataArray[i];
+      }
+      const intensity = intensitySum / (bufferLength || 1); 
       const time = Date.now() / 1000 * animationSpeed;
 
       const drawStars = (baseCount: number, syncToBeat: boolean) => {

@@ -23,7 +23,7 @@ const StationCard: React.FC<StationCardProps> = React.memo(({
       onClick={() => onPlay(station)} 
       role="button"
       aria-label={`Play ${station.name}`}
-      className={`group relative rounded-[2rem] p-5 cursor-pointer transition-all border-2 animate-in fade-in slide-in-from-bottom-3 duration-500 bg-black/60 backdrop-blur-md border-[var(--panel-border)] hover:border-white/20 hover:bg-black/80`}
+      className={`group relative rounded-[2rem] p-4 md:p-5 cursor-pointer transition-all border-2 animate-in fade-in slide-in-from-bottom-3 duration-500 bg-black/60 backdrop-blur-md border-[var(--panel-border)] hover:border-white/20 hover:bg-black/80`}
       style={{ animationDelay: `${(index % 5) * 50}ms` }}
     >
       <div className="flex justify-between mb-4">
@@ -52,7 +52,9 @@ const StationCard: React.FC<StationCardProps> = React.memo(({
       </div>
       <button 
         onClick={(e) => { e.stopPropagation(); onPlay(station); }}
-        className={`block text-left w-full font-bold truncate text-sm transition-colors ${isSelected ? 'text-primary' : 'text-[var(--text-base)] group-hover:text-primary'}`}
+        title={station.name}
+        className={`block text-left w-full font-bold text-sm leading-snug transition-colors ${isSelected ? 'text-primary' : 'text-[var(--text-base)] group-hover:text-primary'}`}
+        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5rem' }}
       >
         {station.name}
       </button>

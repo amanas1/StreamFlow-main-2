@@ -95,11 +95,6 @@ const VISUALIZERS_LIST: { id: VisualizerVariant; labelKey: string; defaults?: Vi
     { id: 'viz-journey', labelKey: 'vizJourney' },
 ];
 
-const INITIAL_CHUNK = 48; 
-const PAGE_SIZE = 24;
-const TRICKLE_STEP = 12;
-const AUTO_TRICKLE_LIMIT = 48;
-
 // Replaced with more reliable direct MP3 links
 const AMBIENCE_URLS = {
     rain_soft: '/kamin.mp3',
@@ -206,7 +201,10 @@ export default function App(): React.JSX.Element {
   const [viewMode, setViewMode] = useState<ViewMode>('genres');
   const [selectedCategory, setSelectedCategory] = useState<CategoryInfo | null>(GENRES[0]);
   const [stations, setStations] = useState<RadioStation[]>([]);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_CHUNK);
+  const [viewportSize, setViewportSize] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1440,
+    height: typeof window !== 'undefined' ? window.innerHeight : 900
+  }));
   const [currentStation, setCurrentStation] = useState<RadioStation | null>(null);
 
   // AI State
@@ -217,6 +215,7 @@ export default function App(): React.JSX.Element {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [audioGraphVersion, setAudioGraphVersion] = useState(0);
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
 
   // UI State
@@ -469,10 +468,14 @@ export default function App(): React.JSX.Element {
   
   // Automatic Safe Mode logic
   const [isAppVisible, setIsAppVisible] = useState(true);
-  const isMobile = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth < 1024; // PWA/Mobile threshold
-  }, []);
+  const isPhone = viewportSize.width < 768;
+  const isMobile = viewportSize.width < 1024;
+  const isTabletDock = viewportSize.width >= 768 && viewportSize.width <= 1366 && viewportSize.width > viewportSize.height;
+  const initialChunk = isPhone ? 8 : isTabletDock ? 12 : 24;
+  const pageSize = isPhone ? 6 : isTabletDock ? 10 : 24;
+  const trickleStep = isPhone ? 4 : isTabletDock ? 6 : 12;
+  const autoTrickleLimit = isPhone ? 16 : isTabletDock ? 18 : 48;
+  const [visibleCount, setVisibleCount] = useState(initialChunk);
 
   const isSafeMode = useMemo(() => isMobile && !isAppVisible, [isMobile, isAppVisible]);
   const [isBackgroundOptimized, setIsBackgroundOptimized] = useState(true);
@@ -520,8 +523,25 @@ export default function App(): React.JSX.Element {
   const togglePlayRef = useRef<() => void>(() => {});
   const streamRetryCountRef = useRef(0);
   const stalledTimerRef = useRef<number | null>(null);
+  const initAudioContextRef = useRef<Promise<void> | null>(null);
 
   const t = TRANSLATIONS[language];
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    setVisibleCount(prev => Math.min(Math.max(prev, initialChunk), initialChunk));
+  }, [initialChunk, selectedCategory?.id, viewMode]);
 
 
   useEffect(() => {
@@ -582,14 +602,26 @@ export default function App(): React.JSX.Element {
   // Idempotent Audio Engine Initialization
   const initAudioContextFn = useCallback(async () => {
     if (!audioRef.current) return;
-    try {
-        await audioEngine.init(audioRef.current);
-        audioEngine.setVolume(volume);
-        audioEngine.setFX(fxSettings.reverb);
-        audioEngine.setSafeMode(isSafeMode);
-    } catch (e) {
-        console.error("Audio Engine Init Failed", e);
+    if (initAudioContextRef.current) {
+        return initAudioContextRef.current;
     }
+
+    initAudioContextRef.current = (async () => {
+        try {
+            await audioEngine.init(audioRef.current!);
+            audioEngine.setVolume(volume);
+            audioEngine.setFX(fxSettings.reverb);
+            audioEngine.setSafeMode(isSafeMode);
+            setAudioGraphVersion(prev => prev + 1);
+        } catch (e) {
+            console.error("Audio Engine Init Failed", e);
+            throw e;
+        } finally {
+            initAudioContextRef.current = null;
+        }
+    })();
+
+    return initAudioContextRef.current;
   }, [volume, fxSettings.reverb, isSafeMode]);
   
   const initAudioContext = initAudioContextFn; 
@@ -747,6 +779,7 @@ export default function App(): React.JSX.Element {
   }, [triggerLocationDetection]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
+    void (async () => {
     const rid = ++loadRequestIdRef.current;
     currentStationRef.current = station; 
     
@@ -791,14 +824,12 @@ export default function App(): React.JSX.Element {
     }, 150);
 
     audioEngine.prepareForSwitch();
-    initAudioContext();
-    audioEngine.resume();
     
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
 
     if (isMountedRef.current) {
         setCurrentStation(station);
-        setIsPlaying(true);
+        setIsPlaying(false);
         
         // Navigation logic for Modern UI
         if (uiMode === 'modern') {
@@ -808,10 +839,27 @@ export default function App(): React.JSX.Element {
     }
     
     if (audioRef.current) {
-        audioRef.current.src = station.url_resolved || station.url;
-        audioRef.current.crossOrigin = "anonymous";
-        audioRef.current.playbackRate = fxSettings.speed; 
-        audioRef.current.play().catch(() => {});
+        const audio = audioRef.current;
+        audio.pause();
+        audio.crossOrigin = "anonymous";
+        audio.src = station.url_resolved || station.url;
+        audio.playbackRate = fxSettings.speed;
+
+        try {
+            await initAudioContext();
+            await audioEngine.resume();
+
+            if (rid !== loadRequestIdRef.current) return;
+
+            await audio.play();
+        } catch (e) {
+            console.error('[RADIO] Playback start failed', e);
+            if (rid === loadRequestIdRef.current && isMountedRef.current) {
+                setIsBuffering(false);
+                setIsPlaying(false);
+            }
+            return;
+        }
 
         loadTimeoutRef.current = window.setTimeout(() => {
             if (rid !== loadRequestIdRef.current) return;
@@ -838,6 +886,7 @@ export default function App(): React.JSX.Element {
             }
         }, 3000);
     }
+    })();
   }, [initAudioContext, fxSettings.speed, uiMode, navigate]);
   // Removed language from dependency because we no longer use it for notifications here
 
@@ -984,17 +1033,17 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     if (isLoading) return;
-    if (stations.length > visibleCount && visibleCount < AUTO_TRICKLE_LIMIT) {
-      trickleTimerRef.current = window.setTimeout(() => { setVisibleCount(prev => Math.min(prev + TRICKLE_STEP, stations.length)); }, 180); 
+    if (stations.length > visibleCount && visibleCount < autoTrickleLimit) {
+      trickleTimerRef.current = window.setTimeout(() => { setVisibleCount(prev => Math.min(prev + trickleStep, stations.length)); }, isPhone ? 240 : 180); 
     }
     return () => { if (trickleTimerRef.current) clearTimeout(trickleTimerRef.current); };
-  }, [isLoading, stations.length, visibleCount]);
+  }, [isLoading, stations.length, visibleCount, autoTrickleLimit, trickleStep, isPhone]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
         (entries) => {
             if (entries[0].isIntersecting && !isLoading && stations.length > visibleCount) {
-                setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, stations.length));
+                setVisibleCount((prev) => Math.min(prev + pageSize, stations.length));
             }
         },
         { threshold: 0.1 }
@@ -1003,7 +1052,7 @@ export default function App(): React.JSX.Element {
         observer.observe(loaderRef.current);
     }
     return () => observer.disconnect();
-  }, [isLoading, stations.length, visibleCount]);
+  }, [isLoading, stations.length, visibleCount, pageSize]);
 
   useEffect(() => {
     let angle = 0;
@@ -1223,7 +1272,7 @@ export default function App(): React.JSX.Element {
     setViewMode(mode); 
     setSelectedCategory(category); 
     setIsLoading(true); 
-    setVisibleCount(INITIAL_CHUNK); 
+    setVisibleCount(initialChunk); 
     setStations([]);
     setIsAiCurating(false); 
     
@@ -1264,7 +1313,7 @@ export default function App(): React.JSX.Element {
         }, 8000);
       }
     } catch (e) { if (rid === loadRequestIdRef.current && isMountedRef.current) setIsLoading(false); }
-  }, [handlePlayStation]);
+  }, [handlePlayStation, initialChunk]);
 
   // Initial Load - Only once
   useEffect(() => { 
@@ -1340,9 +1389,9 @@ export default function App(): React.JSX.Element {
         </Helmet>
         {selectedCategory && viewMode !== 'favorites' && (
             <div ref={visualizerRef} className="mb-8">
-                <div className="p-10 h-56 rounded-[2.5rem] relative overflow-hidden flex flex-col justify-end animated-player-border">
+                <div className={`p-6 md:p-10 ${isPhone ? 'h-40' : isTabletDock ? 'h-44' : 'h-56'} rounded-[2.5rem] relative overflow-hidden flex flex-col justify-end animated-player-border`}>
                     <div className={`absolute inset-0 bg-gradient-to-r ${selectedCategory.color} opacity-20 mix-blend-overlay`}></div>
-                    <div className="absolute inset-x-0 bottom-0 top-0 z-0 opacity-40"><AudioVisualizer analyserNode={audioEngine.getAnalyser()} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} danceStyle={danceStyle} isVisible={isAppVisible} /></div>
+                    <div className="absolute inset-x-0 bottom-0 top-0 z-0 opacity-40"><AudioVisualizer key={`home-${audioGraphVersion}`} analyserNode={audioEngine.getAnalyser()} isPlaying={isPlaying} variant={visualizerVariant} settings={vizSettings} visualMode={visualMode} danceStyle={danceStyle} isVisible={isAppVisible} /></div>
                     {/* Category name removed for clean visualizer look */}
                 </div>
                 {/* Trust Line */}
@@ -1351,7 +1400,7 @@ export default function App(): React.JSX.Element {
                 </div>
             </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 pb-32">
+        <div className={`grid ${isPhone ? 'grid-cols-1 gap-4' : isTabletDock ? 'grid-cols-2 gap-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5'} pb-32`}>
             {isLoading || isAiCurating ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="aspect-[1.2] rounded-[2rem] skeleton-loader"></div>) : (
                 (visibleStations || []).map((station, index) => (
                     <StationCard key={station.stationuuid} station={station} index={index} isSelected={currentStation?.stationuuid === station.stationuuid} isFavorite={favorites.includes(station.stationuuid)} onPlay={handlePlayStation} onToggleFavorite={toggleFavorite} />
@@ -1363,7 +1412,7 @@ export default function App(): React.JSX.Element {
                 <div className="animate-pulse flex space-x-1"><div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div><div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div><div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div></div>
             </div>
         )}
-        <SEOContent language={language} />
+        {!isPhone && !isTabletDock && <SEOContent language={language} />}
     </>
   );
 
@@ -1481,6 +1530,7 @@ export default function App(): React.JSX.Element {
         {uiMode === 'modern' && particleSettings && location.pathname.includes('/station/') && (
             <div className="absolute inset-0 z-0 bg-slate-950 pointer-events-none overflow-hidden">
                 <ParticleVisualizer 
+                    key={`modern-${audioGraphVersion}`}
                     analyserNode={audioEngine.getAnalyser()} 
                     isPlaying={isPlaying} 
                     settings={particleSettings}
@@ -1629,7 +1679,7 @@ export default function App(): React.JSX.Element {
                     <DynamicRadioHub setLanguage={setLanguage} onPlay={handlePlayStation} currentStation={currentStation} favorites={favorites} toggleFavorite={toggleFavorite} language={language} uiMode={uiMode} />
                 } />
             </Routes>
-                <footer className="w-full pb-64 pt-20 flex flex-col items-center justify-center gap-10 opacity-80 z-0 relative border-t border-white/5 mt-20">
+                {!isPhone && !isTabletDock && <footer className="w-full pb-64 pt-20 flex flex-col items-center justify-center gap-10 opacity-80 z-0 relative border-t border-white/5 mt-20">
                     <div className="flex flex-col items-center gap-6 w-full px-4 max-w-5xl mx-auto">
                         
                         {/* SEO Internal Linking Block */}
@@ -1669,7 +1719,7 @@ export default function App(): React.JSX.Element {
                             {t.copyRight}
                         </p>
                     </div>
-                </footer>
+                </footer>}
         </div>
 
         {/* Idle View Removed */}
@@ -1710,6 +1760,7 @@ export default function App(): React.JSX.Element {
             setUiMode={setUiMode}
             is8DEnabled={ambience.is8DEnabled}
             onToggle8D={() => setAmbience(prev => ({ ...prev, is8DEnabled: !prev.is8DEnabled }))}
+            isTabletDock={isTabletDock}
         />
 
         <Suspense fallback={null}>

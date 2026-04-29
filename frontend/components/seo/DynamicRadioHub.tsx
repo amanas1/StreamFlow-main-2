@@ -40,7 +40,12 @@ const SEO_SLUG_MAP: Record<string, any> = {
     "free-internet-radio": { type: "landing" },
   
     "jazz-radio-russia": { type: "combo", genre: "jazz", country: "Russia" },
-    "electronic-radio-germany": { type: "combo", genre: "electronic", country: "Germany" }
+    "electronic-radio-germany": { type: "combo", genre: "electronic", country: "Germany" },
+    "jazz-radio-united-states": { type: "combo", genre: "jazz", country: "United States" },
+    "classical-radio-united-kingdom": { type: "combo", genre: "classical", country: "United Kingdom" },
+    "hip-hop-radio-france": { type: "combo", genre: "hip-hop", country: "France" },
+    "rock-radio-australia": { type: "combo", genre: "rock", country: "Australia" },
+    "pop-radio-japan": { type: "combo", genre: "pop", country: "Japan" }
 };
 
 const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, currentStation, favorites, toggleFavorite, language, uiMode }) => {
@@ -352,13 +357,26 @@ const DynamicRadioHub: React.FC<DynamicHubProps> = ({ setLanguage, onPlay, curre
             "description": localizedData.desc,
             "url": canonicalUrl,
             "numberOfItems": stations.length,
+            "isPartOf": {
+                "@type": "WebSite",
+                "name": "AU Radio",
+                "url": "https://auradiochat.com"
+            },
             "mainEntity": {
                 "@type": "ItemList",
                 "itemListElement": (stations || []).slice(0, 10).map((s, idx) => ({
                     "@type": "ListItem",
                     "position": idx + 1,
-                    "url": `https://auradiochat.com/station/${s.stationuuid}`,
-                    "name": s.name
+                    "url": `https://auradiochat.com/station/${s.slug}`,
+                    "name": s.name,
+                    "item": {
+                        "@type": "RadioStation",
+                        "name": s.name,
+                        "url": `https://auradiochat.com/station/${s.slug}`,
+                        "genre": s.genre || undefined,
+                        "contentLocation": s.country || undefined,
+                        "encodingFormat": s.codec || undefined
+                    }
                 }))
             }
         };

@@ -44,6 +44,7 @@ interface PlayerBarProps {
     setUiMode: (mode: UIMode) => void;
     is8DEnabled: boolean;
     onToggle8D: () => void;
+    isTabletDock: boolean;
 }
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -53,14 +54,14 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
     activePresetId, handleApplyPreset, VISUALIZERS_LIST, handlePreviousStation,
     handleNextStation, togglePlay, playButtonRef, locationStatus, favorites,
     toggleFavorite, isRandomMode, setIsRandomMode, volume, setVolume, uiMode, setUiMode,
-    is8DEnabled, onToggle8D
+    is8DEnabled, onToggle8D, isTabletDock
 }) => {
     return (
         <div className={`absolute bottom-2 md:bottom-8 left-0 right-0 px-2 md:px-10 transition-all duration-700 ease-in-out z-20 ${isIdleView ? 'opacity-0 translate-y-20 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'}`}>
-            <div className={`pointer-events-auto w-full md:w-full md:max-w-[1440px] mx-auto rounded-[2rem] md:rounded-[2.5rem] p-3 md:p-6 flex flex-col md:flex-row items-center shadow-2xl transition-all duration-500 ${uiMode === 'modern' ? 'bg-black/40 backdrop-blur-2xl border border-white/10' : 'bg-[var(--player-bar-bg)] border-2 border-[var(--panel-border)]'}`}>
+            <div className={`pointer-events-auto w-full md:w-full md:max-w-[1440px] mx-auto rounded-[2rem] md:rounded-[2.5rem] ${isTabletDock ? 'p-4' : 'p-3 md:p-6'} flex flex-col md:flex-row items-center shadow-2xl transition-all duration-500 ${uiMode === 'modern' ? 'bg-black/40 backdrop-blur-2xl border border-white/10' : 'bg-[var(--player-bar-bg)] border-2 border-[var(--panel-border)]'}`}>
                 
                 {/* ROW 1: STATION INFO (Mobile Only) */}
-                <div className="flex md:hidden items-center gap-3 mb-2 relative z-10 w-full pr-16 bg-black/20 p-1.5 rounded-xl border border-white/5 backdrop-blur-md">
+                <div className={`flex ${isTabletDock ? 'hidden' : 'md:hidden'} items-center gap-3 mb-2 relative z-10 w-full pr-16 bg-black/20 p-1.5 rounded-xl border border-white/5 backdrop-blur-md`}>
                     <div className="w-14 h-14 shrink-0 relative transition-transform active:scale-95 group cursor-pointer" onClick={() => setSidebarOpen(true)}>
                         <div className="w-full h-full flex items-center justify-center relative z-10">
                             <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-full h-full" visualMode={visualMode} />
@@ -90,7 +91,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                 </div>
 
                 {/* ROW 2 (Mobile Only): PRESETS */}
-                <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
+                <div className={`flex ${isTabletDock ? 'hidden' : 'md:hidden'} w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12`}>
                     <button
                         onClick={() => handleApplyPreset('reset')}
                         className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border flex items-center gap-1 ${activePresetId === 'reset' ? 'bg-slate-700 text-white border-slate-600' : 'bg-white/5 text-slate-500 border-white/5 hover:bg-white/10'}`}
@@ -104,7 +105,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                 </div>
 
                 {/* ROW 2.5 (Mobile Only): VISUALIZERS */}
-                <div className="flex md:hidden w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12">
+                <div className={`flex ${isTabletDock ? 'hidden' : 'md:hidden'} w-full overflow-x-auto no-scrollbar gap-1 pb-2 mb-1 mask-linear-fade pr-12`}>
                     {VISUALIZERS_LIST.filter(v => ['stage-dancer', 'mixed-rings', 'galaxy'].includes(v.id)).map(viz => (
                         <button key={viz.id} onClick={() => setVisualizerVariant(viz.id)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 border ${visualizerVariant === viz.id ? 'bg-purple-500 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
                             <span className={visualizerVariant === viz.id ? 'shimmering-text-active' : 'shimmering-text'}>{t[viz.labelKey] || viz.id}</span>
@@ -113,9 +114,9 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                 </div>
 
                 {/* ROW 3: CONTROLS */}
-                <div className="flex items-center justify-between w-full md:w-auto md:gap-4 z-10 px-2 md:px-0 md:mx-4">
+                <div className={`flex items-center justify-between w-full md:w-auto ${isTabletDock ? 'md:gap-10 md:mx-6' : 'md:gap-4 md:mx-4'} z-10 px-2 md:px-0`}>
                     <div className="flex items-center gap-2 md:gap-6">
-                        <button onClick={() => setToolsOpen(!toolsOpen)} className="p-2 transition-all hover:scale-110 active:scale-95 group" title={t.visualizer}>
+                        <button aria-label="Open visualizer settings" onClick={() => setToolsOpen(!toolsOpen)} className="p-2 transition-all hover:scale-110 active:scale-95 group" title={t.visualizer}>
                             <div className="w-5 h-5 flex gap-0.5 items-end justify-center">
                                 <div className="w-1 h-3 bg-gradient-to-t from-green-400 to-blue-500 rounded-full animate-[bounce_1s_infinite]"></div>
                                 <div className="w-1 h-5 bg-gradient-to-t from-purple-400 to-pink-500 rounded-full animate-[bounce_1.2s_infinite]"></div>
@@ -125,20 +126,20 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                     </div>
 
                     <div className="flex items-center gap-3 sm:gap-6">
-                        <button onClick={handlePreviousStation} className="p-2 text-slate-400 hover:text-white transition-colors"><PreviousIcon className="w-6 h-6" /></button>
-                        <button ref={playButtonRef} onClick={togglePlay} className={`w-14 h-14 md:w-14 md:h-14 rounded-full flex flex-col items-center justify-center text-black shadow-xl hover:scale-105 transition-all mx-1 duration-75 relative overflow-hidden group ${isPlaying ? 'bg-white' : 'bg-white/90'}`}>
+                        <button aria-label="Previous station" onClick={handlePreviousStation} className="p-2 text-slate-400 hover:text-white transition-colors"><PreviousIcon className={`${isTabletDock ? 'w-7 h-7' : 'w-6 h-6'}`} /></button>
+                        <button aria-label={isPlaying ? 'Pause radio' : 'Play radio'} ref={playButtonRef} onClick={togglePlay} className={`${isTabletDock ? 'w-16 h-16 md:w-20 md:h-20' : 'w-14 h-14 md:w-14 md:h-14'} rounded-full flex flex-col items-center justify-center text-black shadow-xl hover:scale-105 transition-all mx-1 duration-75 relative overflow-hidden group ${isPlaying ? 'bg-white' : 'bg-white/90'}`}>
                             {isBuffering || locationStatus === 'detecting' ? <LoadingIcon className="animate-spin w-6 h-6 text-primary" /> : isPlaying ? <PauseIcon className="w-6 h-6" /> : <PlayIcon className="w-6 h-6 ml-1" />}
                             {locationStatus === 'detecting' && <div className="absolute top-1 right-2 text-[8px] animate-pulse">🛰️</div>}
                             {locationStatus === 'error' && <div className="absolute top-1 right-2 text-[8px] text-red-500" title="Location detection failed">⚠️</div>}
                         </button>
-                        <button onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className="w-6 h-6" /></button>
+                        <button aria-label="Next station" onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className={`${isTabletDock ? 'w-7 h-7' : 'w-6 h-6'}`} /></button>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
-                        <button onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.stationuuid); }} className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`} disabled={!currentStation}>
+                    <div className={`flex items-center ${isTabletDock ? 'gap-4 md:gap-5' : 'gap-2 md:gap-4'}`}>
+                        <button aria-label="Toggle favorite station" onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.stationuuid); }} className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`} disabled={!currentStation}>
                             <HeartIcon className={`w-6 h-6 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'fill-current' : ''}`} />
                         </button>
-                        <button onClick={() => setIsRandomMode(!isRandomMode)} className={`p-2 transition-all hover:scale-110 active:scale-95 ${isRandomMode ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`} title={t.randomMode}><ShuffleIcon className="w-5 h-5" /></button>
+                        <button aria-label="Toggle random mode" onClick={() => setIsRandomMode(!isRandomMode)} className={`p-2 transition-all hover:scale-110 active:scale-95 ${isRandomMode ? 'text-primary drop-shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]' : 'text-slate-400 hover:text-white'}`} title={t.randomMode}><ShuffleIcon className="w-5 h-5" /></button>
                         
                         <div className="hidden 2xl:flex flex-col items-center gap-1">
                             <div className="flex items-center gap-1.5 bg-black/20 p-1.5 rounded-xl border border-white/5">
@@ -158,7 +159,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                 </div>
 
                 {/* ROW 3: DESKTOP EXTRAS */}
-                <div className="hidden md:flex flex-1 justify-end items-center gap-2 md:gap-4 z-10 pr-6 md:pr-2">
+                <div className={`hidden md:flex flex-1 justify-end items-center ${isTabletDock ? 'gap-4' : 'gap-2 md:gap-4'} z-10 pr-6 md:pr-2`}>
                     {!sidebarOpen && (
                         <div className="hidden md:block w-14 h-14 group cursor-pointer transition-all hover:scale-110 active:scale-95 mr-1" onClick={() => setSidebarOpen(true)} title="Show Sidebar">
                             <DancingAvatar isPlaying={isPlaying && !isBuffering} className="w-full h-full" visualMode={visualMode} />

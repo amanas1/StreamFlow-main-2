@@ -155,11 +155,11 @@ export const GenresPage: React.FC<{ language: Language }> = ({ language }) => {
                         <h3 className="text-white font-bold text-xl mb-2">{t.genresHiphop}</h3>
                         <p className="text-xs">{t.genresHiphopDesc}</p>
                     </Link>
-                    <Link to="/radio/world-radio" className="bg-white/5 p-6 rounded-2xl hover:bg-white/10 transition-all border border-white/5">
+                    <Link to="/world-radio" className="bg-white/5 p-6 rounded-2xl hover:bg-white/10 transition-all border border-white/5">
                         <h3 className="text-white font-bold text-xl mb-2">{t.genresWorld}</h3>
                         <p className="text-xs">{t.genresWorldDesc}</p>
                     </Link>
-                     <Link to="/radio/classical-radio" className="bg-white/5 p-6 rounded-2xl hover:bg-white/10 transition-all border border-white/5">
+                     <Link to="/classical-radio" className="bg-white/5 p-6 rounded-2xl hover:bg-white/10 transition-all border border-white/5">
                         <h3 className="text-white font-bold text-xl mb-2">{t.genresClassical}</h3>
                         <p className="text-xs">{t.genresClassicalDesc}</p>
                     </Link>
