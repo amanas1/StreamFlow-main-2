@@ -169,6 +169,19 @@ function isPlayableWebStreamUrl(streamUrl?: string): boolean {
   }
 }
 
+function getFallbackMessage(language: Language, mode: 'searching' | 'empty'): string {
+  const messages: Record<Language, { searching: string; empty: string }> = {
+    en: { searching: 'Searching for a working station...', empty: 'No working stations found right now.' },
+    ru: { searching: 'Ищем рабочую станцию...', empty: 'Сейчас не найдено рабочих станций.' },
+    es: { searching: 'Buscando una emisora que funcione...', empty: 'Ahora no se encontraron emisoras disponibles.' },
+    fr: { searching: 'Recherche d une station qui fonctionne...', empty: 'Aucune station disponible pour le moment.' },
+    zh: { searching: '正在寻找可用电台...', empty: '当前没有可用电台。' },
+    de: { searching: 'Suche nach einem funktionierenden Sender...', empty: 'Zurzeit wurden keine funktionierenden Sender gefunden.' }
+  };
+
+  return messages[language][mode];
+}
+
 /**
  * VolumeDrum Component
  * A vertical cylindrical volume control with a graduation scale.
@@ -229,6 +242,7 @@ export default function App(): React.JSX.Element {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
   const [audioGraphVersion, setAudioGraphVersion] = useState(0);
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
 
@@ -813,6 +827,7 @@ export default function App(): React.JSX.Element {
 
     setIsPlaying(false);
     setIsBuffering(false);
+    setFallbackMessage(getFallbackMessage(language, 'searching'));
 
     const activeStations = stationsRef.current.filter((candidate) => {
       if (!isPlayableWebStreamUrl(candidate.url_resolved || candidate.url)) return false;
@@ -826,6 +841,7 @@ export default function App(): React.JSX.Element {
 
     if (!activeStations.length) {
       console.warn(`[RADIO] No fallback station available after ${reason}`);
+      setFallbackMessage(getFallbackMessage(language, 'empty'));
       try {
         localStorage.removeItem('auradio_last_station');
       } catch (e) {}
@@ -841,11 +857,12 @@ export default function App(): React.JSX.Element {
     window.setTimeout(() => {
       handlePlayStationRef.current(nextStation);
     }, 80);
-  }, []);
+  }, [language]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
     void (async () => {
     const rid = ++loadRequestIdRef.current;
+    setFallbackMessage(null);
     if (!isPlayableWebStreamUrl(station.url_resolved || station.url)) {
       console.warn('[RADIO] Blocked insecure stream on web:', station.name, station.url_resolved || station.url);
       skipToNextPlayableStation(station, 'insecure-stream');
@@ -1516,6 +1533,7 @@ export default function App(): React.JSX.Element {
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsBuffering(false); 
             setIsPlaying(true); 
+            setFallbackMessage(null);
             if (currentStationRef.current?.stationuuid) {
               failedStationIdsRef.current.delete(currentStationRef.current.stationuuid);
             }
@@ -1804,6 +1822,7 @@ export default function App(): React.JSX.Element {
             handleNextStation={handleNextStation} 
             togglePlay={togglePlay} 
             playButtonRef={playButtonRef} 
+            fallbackMessage={fallbackMessage}
             locationStatus={locationStatus} 
             favorites={favorites} 
             toggleFavorite={toggleFavorite} 

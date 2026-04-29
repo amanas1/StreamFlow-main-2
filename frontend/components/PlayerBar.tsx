@@ -33,6 +33,7 @@ interface PlayerBarProps {
     handleNextStation: () => void;
     togglePlay: () => void;
     playButtonRef: React.RefObject<HTMLButtonElement>;
+    fallbackMessage: string | null;
     locationStatus: string;
     favorites: string[];
     toggleFavorite: (id: string) => void;
@@ -52,7 +53,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
     visualizerVariant, setVisualizerVariant, selectedCategory, currentStation,
     language, setLanguage, t, toolsOpen, setToolsOpen, shareOpen, setShareOpen,
     activePresetId, handleApplyPreset, VISUALIZERS_LIST, handlePreviousStation,
-    handleNextStation, togglePlay, playButtonRef, locationStatus, favorites,
+    handleNextStation, togglePlay, playButtonRef, fallbackMessage, locationStatus, favorites,
     toggleFavorite, isRandomMode, setIsRandomMode, volume, setVolume, uiMode, setUiMode,
     is8DEnabled, onToggle8D, isTabletDock
 }) => {
@@ -80,7 +81,11 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                                 <button onClick={() => setLanguage('ru')} className={`px-2 py-1 text-[10px] font-bold rounded-sm transition-all ${language === 'ru' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'}`}>RU</button>
                             </div>
                         </div>
-                        {isBuffering && <p className="text-[9px] text-primary font-black uppercase tracking-widest leading-tight mt-0.5">Buffering...</p>}
+                        {fallbackMessage ? (
+                            <p className="text-[9px] text-amber-300 font-black uppercase tracking-widest leading-tight mt-0.5">{fallbackMessage}</p>
+                        ) : isBuffering ? (
+                            <p className="text-[9px] text-primary font-black uppercase tracking-widest leading-tight mt-0.5">Buffering...</p>
+                        ) : null}
                     </div>
 
                     <div className="flex items-center gap-1 absolute right-1.5 top-1/2 -translate-y-1/2">
@@ -134,6 +139,12 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                         </button>
                         <button aria-label="Next station" onClick={handleNextStation} className="p-2 text-slate-400 hover:text-white transition-colors"><NextIcon className={`${isTabletDock ? 'w-7 h-7' : 'w-6 h-6'}`} /></button>
                     </div>
+
+                    {fallbackMessage && (
+                        <div className="hidden md:flex max-w-[260px] text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                            {fallbackMessage}
+                        </div>
+                    )}
 
                     <div className={`flex items-center ${isTabletDock ? 'gap-4 md:gap-5' : 'gap-2 md:gap-4'}`}>
                         <button aria-label="Toggle favorite station" onClick={(e) => { e.stopPropagation(); if(currentStation) toggleFavorite(currentStation.stationuuid); }} className={`p-2 transition-all duration-300 hover:scale-110 ${currentStation && favorites.includes(currentStation.stationuuid) ? 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'text-slate-400 hover:text-white'}`} disabled={!currentStation}>
