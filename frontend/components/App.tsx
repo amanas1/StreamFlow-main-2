@@ -542,6 +542,9 @@ export default function App(): React.JSX.Element {
   const loadTimeoutRef = useRef<number | null>(null);
   const stationsRef = useRef<RadioStation[]>([]);
   const failedStationIdsRef = useRef<Set<string>>(new Set());
+  const fallbackInProgressRef = useRef(false);
+  const internalAudioTransitionRef = useRef(false);
+  const internalAudioTransitionTimerRef = useRef<number | null>(null);
 
   const isPlayingRef = useRef(false);
   const isRandomModeRef = useRef(false);
@@ -807,7 +810,23 @@ export default function App(): React.JSX.Element {
     triggerLocationDetection();
   }, [triggerLocationDetection]);
 
+  const markInternalAudioTransition = useCallback((duration: number = 1200) => {
+    internalAudioTransitionRef.current = true;
+    if (internalAudioTransitionTimerRef.current) {
+      clearTimeout(internalAudioTransitionTimerRef.current);
+    }
+    internalAudioTransitionTimerRef.current = window.setTimeout(() => {
+      internalAudioTransitionRef.current = false;
+      internalAudioTransitionTimerRef.current = null;
+    }, duration);
+  }, []);
+
   const skipToNextPlayableStation = useCallback((failedStation?: RadioStation | null, reason: string = 'stream-failure') => {
+    if (fallbackInProgressRef.current) {
+      return;
+    }
+    fallbackInProgressRef.current = true;
+
     const failedId = failedStation?.stationuuid;
 
     if (failedId) {
@@ -820,6 +839,7 @@ export default function App(): React.JSX.Element {
     }
 
     if (audioRef.current) {
+      markInternalAudioTransition(1500);
       audioRef.current.pause();
       audioRef.current.src = '';
       audioRef.current.load();
@@ -842,6 +862,7 @@ export default function App(): React.JSX.Element {
     if (!activeStations.length) {
       console.warn(`[RADIO] No fallback station available after ${reason}`);
       setFallbackMessage(getFallbackMessage(language, 'empty'));
+      fallbackInProgressRef.current = false;
       try {
         localStorage.removeItem('auradio_last_station');
       } catch (e) {}
@@ -857,11 +878,12 @@ export default function App(): React.JSX.Element {
     window.setTimeout(() => {
       handlePlayStationRef.current(nextStation);
     }, 80);
-  }, [language]);
+  }, [language, markInternalAudioTransition]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
     void (async () => {
     const rid = ++loadRequestIdRef.current;
+    fallbackInProgressRef.current = false;
     setFallbackMessage(null);
     if (!isPlayableWebStreamUrl(station.url_resolved || station.url)) {
       console.warn('[RADIO] Blocked insecure stream on web:', station.name, station.url_resolved || station.url);
@@ -929,6 +951,7 @@ export default function App(): React.JSX.Element {
     
     if (audioRef.current) {
         const audio = audioRef.current;
+        markInternalAudioTransition(1200);
         audio.pause();
         audio.crossOrigin = "anonymous";
         audio.src = station.url_resolved || station.url;
@@ -956,7 +979,7 @@ export default function App(): React.JSX.Element {
         }, 3000);
     }
     })();
-  }, [initAudioContext, fxSettings.speed, uiMode, navigate, skipToNextPlayableStation]);
+  }, [initAudioContext, fxSettings.speed, uiMode, navigate, skipToNextPlayableStation, markInternalAudioTransition]);
   // Removed language from dependency because we no longer use it for notifications here
 
   useEffect(() => {
@@ -1487,12 +1510,16 @@ export default function App(): React.JSX.Element {
 
 
   const handleSwitchRecovery = () => {
+    if (fallbackInProgressRef.current || internalAudioTransitionRef.current) {
+        return;
+    }
     const station = currentStationRef.current;
     if (station && streamRetryCountRef.current < 2) {
         streamRetryCountRef.current++;
         console.log(`[StreamRecovery] Recovery attempt #${streamRetryCountRef.current} for ${station.name}...`);
         if (audioRef.current) {
             // Force reload and play
+            markInternalAudioTransition(1000);
             const src = audioRef.current.src;
             audioRef.current.src = '';
             audioRef.current.src = src;
