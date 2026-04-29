@@ -1,7 +1,7 @@
 import { RadioStation } from '../types';
 import { RADIO_BROWSER_MIRRORS } from '../types/constants';
 
-const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v20_hq_';
+const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v21_https_hq_';
 const CACHE_TTL_MINUTES = 30;
 
 interface CacheEntry {
@@ -15,6 +15,14 @@ const slugify = (text: string | undefined | null) => {
     return (text || '').toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '');
+};
+
+const isSecureStreamUrl = (url: string | undefined | null) => {
+    try {
+        return new URL(url || '').protocol === 'https:';
+    } catch (e) {
+        return false;
+    }
 };
 
 const mapToGenre = (tags: string, name: string): { genre: string; subGenre: string } => {
@@ -180,12 +188,15 @@ const filterStations = (data: any[]): RadioStation[] => {
         if (!apiStation.bitrate || bitrate < 64) return;
         if (apiStation.lastcheckok !== 1) return;
 
-        // 5. Исключение плохих потоков (pls, asx)
+        // 5. В веб-проде оставляем только HTTPS-потоки, иначе браузер блокирует mixed content.
+        if (!isSecureStreamUrl(apiStation.url_resolved)) return;
+
+        // 6. Исключение плохих потоков (pls, asx)
         const codec = (apiStation.codec || '').toLowerCase();
         const urlLower = apiStation.url_resolved.toLowerCase();
         if (codec.includes('pls') || codec.includes('asx') || urlLower.endsWith('.pls') || urlLower.endsWith('.asx')) return;
 
-        // 6. Фильтрация нежелательного контента (Music only)
+        // 7. Фильтрация нежелательного контента (Music only)
         const n = (apiStation.name || '').toLowerCase();
         const t = (apiStation.tags || '').toLowerCase();
         
@@ -247,7 +258,7 @@ const filterStations = (data: any[]): RadioStation[] => {
 
 export const fetchStationsByTag = async (tag: string, limit: number = 100): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v21_hq_${lowerTag}_l${limit}`;
+    const cacheKey = `tag_v22_https_hq_${lowerTag}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
@@ -306,7 +317,7 @@ export const fetchRelatedStations = async (station: RadioStation, limit: number 
 };
 
 export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
-    const cacheKey = 'global_music_v20_strict';
+    const cacheKey = 'global_music_v21_https_strict';
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
@@ -368,7 +379,7 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
 
 export const fetchStationsByCountry = async (country: string, limit: number = 100): Promise<RadioStation[]> => {
     if (!country) return [];
-    const cacheKey = `country_v21_${country.toLowerCase()}_l${limit}`;
+    const cacheKey = `country_v22_https_${country.toLowerCase()}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData && cachedData.length > 0) return cachedData;
 

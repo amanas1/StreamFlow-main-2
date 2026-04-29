@@ -155,6 +155,20 @@ function getCountryFlag(country: string): string {
     return COUNTRY_FLAGS[country] || COUNTRY_FLAGS[country.toUpperCase()] || '🌍';
 }
 
+function isPlayableWebStreamUrl(streamUrl?: string): boolean {
+  if (!streamUrl) return false;
+
+  try {
+    const protocol = new URL(streamUrl).protocol;
+    if (window.location.protocol === 'https:') {
+      return protocol === 'https:';
+    }
+    return protocol === 'https:' || protocol === 'http:';
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * VolumeDrum Component
  * A vertical cylindrical volume control with a graduation scale.
@@ -781,6 +795,15 @@ export default function App(): React.JSX.Element {
   const handlePlayStation = useCallback((station: RadioStation) => {
     void (async () => {
     const rid = ++loadRequestIdRef.current;
+    if (!isPlayableWebStreamUrl(station.url_resolved || station.url)) {
+      console.warn('[RADIO] Blocked insecure stream on web:', station.name, station.url_resolved || station.url);
+      if (isMountedRef.current) {
+        setIsBuffering(false);
+        setIsPlaying(false);
+      }
+      return;
+    }
+
     currentStationRef.current = station; 
     
     // --- Resume Listening: Save last station ---
@@ -1326,7 +1349,7 @@ export default function App(): React.JSX.Element {
         const saved = localStorage.getItem('auradio_last_station');
         if (saved) {
           const station = JSON.parse(saved) as RadioStation;
-          if (station && station.url_resolved && station.stationuuid) {
+          if (station && station.url_resolved && station.stationuuid && isPlayableWebStreamUrl(station.url_resolved || station.url)) {
             handlePlayStationRef.current(station);
           }
         }
