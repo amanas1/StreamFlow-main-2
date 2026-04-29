@@ -527,6 +527,7 @@ export default function App(): React.JSX.Element {
   const loaderRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<number | null>(null);
   const stationsRef = useRef<RadioStation[]>([]);
+  const failedStationIdsRef = useRef<Set<string>>(new Set());
 
   const isPlayingRef = useRef(false);
   const isRandomModeRef = useRef(false);
@@ -792,18 +793,66 @@ export default function App(): React.JSX.Element {
     triggerLocationDetection();
   }, [triggerLocationDetection]);
 
+  const skipToNextPlayableStation = useCallback((failedStation?: RadioStation | null, reason: string = 'stream-failure') => {
+    const failedId = failedStation?.stationuuid;
+
+    if (failedId) {
+      failedStationIdsRef.current.add(failedId);
+    }
+
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+      audioRef.current.load();
+    }
+
+    setIsPlaying(false);
+    setIsBuffering(false);
+
+    const activeStations = stationsRef.current.filter((candidate) => {
+      if (!isPlayableWebStreamUrl(candidate.url_resolved || candidate.url)) return false;
+      return !failedStationIdsRef.current.has(candidate.stationuuid);
+    });
+
+    setStations((prev) => prev.filter((candidate) => {
+      if (!isPlayableWebStreamUrl(candidate.url_resolved || candidate.url)) return false;
+      return !failedStationIdsRef.current.has(candidate.stationuuid);
+    }));
+
+    if (!activeStations.length) {
+      console.warn(`[RADIO] No fallback station available after ${reason}`);
+      try {
+        localStorage.removeItem('auradio_last_station');
+      } catch (e) {}
+      return;
+    }
+
+    const currentId = failedStation?.stationuuid || currentStationRef.current?.stationuuid;
+    const currentIndex = currentId ? activeStations.findIndex((candidate) => candidate.stationuuid === currentId) : -1;
+    const nextIndex = currentIndex >= 0 ? currentIndex % activeStations.length : 0;
+    const nextStation = activeStations[nextIndex];
+
+    console.warn(`[RADIO] Fallback to next station after ${reason}: ${nextStation.name}`);
+    window.setTimeout(() => {
+      handlePlayStationRef.current(nextStation);
+    }, 80);
+  }, []);
+
   const handlePlayStation = useCallback((station: RadioStation) => {
     void (async () => {
     const rid = ++loadRequestIdRef.current;
     if (!isPlayableWebStreamUrl(station.url_resolved || station.url)) {
       console.warn('[RADIO] Blocked insecure stream on web:', station.name, station.url_resolved || station.url);
-      if (isMountedRef.current) {
-        setIsBuffering(false);
-        setIsPlaying(false);
-      }
+      skipToNextPlayableStation(station, 'insecure-stream');
       return;
     }
 
+    failedStationIdsRef.current.delete(station.stationuuid);
     currentStationRef.current = station; 
     
     // --- Resume Listening: Save last station ---
@@ -877,9 +926,8 @@ export default function App(): React.JSX.Element {
             await audio.play();
         } catch (e) {
             console.error('[RADIO] Playback start failed', e);
-            if (rid === loadRequestIdRef.current && isMountedRef.current) {
-                setIsBuffering(false);
-                setIsPlaying(false);
+            if (rid === loadRequestIdRef.current) {
+                skipToNextPlayableStation(station, 'play-call-rejected');
             }
             return;
         }
@@ -887,30 +935,11 @@ export default function App(): React.JSX.Element {
         loadTimeoutRef.current = window.setTimeout(() => {
             if (rid !== loadRequestIdRef.current) return;
             console.warn(`[RADIO] Station ${station.name} is too slow. Filtering and skipping.`);
-            
-            if (isMountedRef.current) {
-                setStations(prev => {
-                    const currentIndex = prev.findIndex(s => s.stationuuid === station.stationuuid);
-                    const newList = prev.filter(s => s.stationuuid !== station.stationuuid);
-                    
-                    if (newList.length > 0) {
-                        const nextIndex = currentIndex % newList.length;
-                        setTimeout(() => handlePlayStation(newList[nextIndex]), 10);
-                    }
-                    return newList;
-                });
-                
-                if (audioRef.current) {
-                    audioRef.current.pause();
-                    audioRef.current.src = "";
-                }
-                setIsPlaying(false);
-                setIsBuffering(false);
-            }
+            skipToNextPlayableStation(station, 'startup-timeout');
         }, 3000);
     }
     })();
-  }, [initAudioContext, fxSettings.speed, uiMode, navigate]);
+  }, [initAudioContext, fxSettings.speed, uiMode, navigate, skipToNextPlayableStation]);
   // Removed language from dependency because we no longer use it for notifications here
 
   useEffect(() => {
@@ -1456,7 +1485,7 @@ export default function App(): React.JSX.Element {
     } else if (station) {
         console.log('[StreamRecovery] Max retries reached, skipping station');
         streamRetryCountRef.current = 0;
-        handleNextStation();
+        skipToNextPlayableStation(station, 'max-retries');
     }
   };
 
@@ -1487,6 +1516,9 @@ export default function App(): React.JSX.Element {
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsBuffering(false); 
             setIsPlaying(true); 
+            if (currentStationRef.current?.stationuuid) {
+              failedStationIdsRef.current.delete(currentStationRef.current.stationuuid);
+            }
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
             streamRetryCountRef.current = 0;
         }} 
