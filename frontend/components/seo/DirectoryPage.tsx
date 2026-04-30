@@ -62,7 +62,7 @@ export const DirectoryPage: React.FC<DirectoryPageProps> = ({ language = 'en' })
                     {(topGenres || []).map(genre => (
                         <Link 
                             key={genre.id} 
-                            to={`/radio/${genre.id}-radio`}
+                            to={`/${genre.id}-radio`}
                             className="p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all hover:scale-105 group"
                         >
                             <h3 className="font-bold text-slate-200 group-hover:text-primary">
@@ -85,7 +85,7 @@ export const DirectoryPage: React.FC<DirectoryPageProps> = ({ language = 'en' })
                         return (
                             <Link 
                                 key={country.name} 
-                                to={`/radio/radio-${slug}`}
+                                to={`/radio-${slug}`}
                                 className="p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all hover:scale-105 group"
                             > 
                                 <span className="text-2xl block mb-2 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -106,12 +106,12 @@ export const DirectoryPage: React.FC<DirectoryPageProps> = ({ language = 'en' })
                     {t.featuredCombos}
                 </h2>
                 <div className="flex flex-wrap gap-4">
-                    <Link to="/radio/jazz-radio-usa" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.jazzUSA}</Link>
-                    <Link to="/radio/electronic-radio-germany" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.technoGermany}</Link>
-                    <Link to="/radio/classical-radio-uk" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.classicalUK}</Link>
-                    <Link to="/radio/hip-hop-radio-france" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.hiphopFrance}</Link>
-                    <Link to="/radio/rock-radio-australia" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.rockAustralia}</Link>
-                    <Link to="/radio/pop-radio-japan" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.jPopJapan}</Link>
+                    <Link to="/jazz-radio-united-states" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.jazzUSA}</Link>
+                    <Link to="/electronic-radio-germany" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.technoGermany}</Link>
+                    <Link to="/classical-radio-united-kingdom" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.classicalUK}</Link>
+                    <Link to="/hip-hop-radio-france" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.hiphopFrance}</Link>
+                    <Link to="/rock-radio-australia" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.rockAustralia}</Link>
+                    <Link to="/pop-radio-japan" className="px-5 py-2 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-primary transition-colors text-sm font-bold">{t.jPopJapan}</Link>
                 </div>
             </section>
         </div>

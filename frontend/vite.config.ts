@@ -18,6 +18,19 @@ export default defineConfig(({ mode }) => {
         'process.env': JSON.stringify(env)
       },
       plugins: [react()],
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (!id.includes('node_modules')) return;
+              if (id.includes('react') || id.includes('scheduler')) return 'react-vendor';
+              if (id.includes('react-router') || id.includes('react-helmet-async')) return 'routing-seo';
+              if (id.includes('framer-motion')) return 'motion';
+              if (id.includes('firebase')) return 'firebase';
+            }
+          }
+        }
+      },
       esbuild: {
         // Strip console.log and console.warn from production builds
         // Keeps console.error for critical error reporting

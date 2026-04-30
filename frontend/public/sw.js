@@ -1,5 +1,5 @@
 // Service Worker for AU Radio PWA
-const CACHE_NAME = 'auradiochat-cache-v2';
+const CACHE_NAME = 'auradiochat-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -50,6 +50,13 @@ self.addEventListener('fetch', (event) => {
     event.request.url.includes('socket') ||
     event.request.method !== 'GET'
   ) {
+    return;
+  }
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
     return;
   }
 

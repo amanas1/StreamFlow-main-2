@@ -32,6 +32,10 @@ const SEO_GENRES = [
 ];
 
 const currentDate = new Date().toISOString().split('T')[0];
+const slugify = (text = '') => text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
 
 function generateUrlXml(route, priority) {
     let xml = `  <url>\n`;
@@ -121,8 +125,8 @@ async function generateAll() {
     let stationUrls = '';
     stations.forEach(s => {
         if (s.stationuuid) {
-            // Station routes shouldn't bloat with all language URLs unless needed, but we keep consistency
-            stationUrls += generateUrlXml(`/station/${s.stationuuid}`, '0.5');
+            const stationSlug = `${slugify(s.name)}-${String(s.stationuuid).slice(0, 5)}`;
+            stationUrls += generateUrlXml(`/station/${stationSlug}`, '0.5');
         }
     });
     if (stationUrls) writeSitemapFile('sitemap-stations.xml', stationUrls);
