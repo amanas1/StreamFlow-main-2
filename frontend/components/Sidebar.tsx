@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             if (e.key === 'Enter') {
                                 const val = (e.target as HTMLInputElement).value;
                                 if (val.trim()) {
-                                    loadCategory({ id: 'search', name: val, color: 'from-blue-500 to-cyan-500' } as any, 'genres', true, true);
+                                    loadCategory({ id: 'search', name: val, color: 'from-blue-500 to-cyan-500' } as any, 'genres', false, true);
                                     if (window.innerWidth < 1024) onClose();
                                 }
                             }
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {(['genres', 'eras', 'moods', 'effects'] as const).map(m => (
                         <button 
                             key={m} 
-                            onClick={(e) => { e.stopPropagation(); loadCategory(m === 'genres' ? GENRES[0] : m === 'eras' ? ERAS[0] : m === 'moods' ? MOODS[0] : EFFECTS[0], m, true, true); }} 
+                        onClick={(e) => { e.stopPropagation(); loadCategory(m === 'genres' ? GENRES[0] : m === 'eras' ? ERAS[0] : m === 'moods' ? MOODS[0] : EFFECTS[0], m, false, true); }} 
                             className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${viewMode === m ? 'bg-[var(--selected-item-bg)] text-[var(--text-base)]' : 'text-slate-400'}`}
                         >
                             {t[m]}
@@ -91,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     ))}
                 </div>
                 <button 
-                    onClick={(e) => { e.stopPropagation(); loadCategory(null, 'favorites', true, true); }} 
+                    onClick={(e) => { e.stopPropagation(); loadCategory(null, 'favorites', false, true); }} 
                     className={`w-full py-3 rounded-2xl text-xs font-black border transition-all ${viewMode === 'favorites' ? 'bg-secondary border-secondary text-white' : 'bg-[var(--input-bg)] text-slate-400'}`}
                 >
                     <HeartIcon className="w-4 h-4 inline mr-2" filled={viewMode === 'favorites'} /> {t.favorites}
@@ -124,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {viewMode !== 'favorites' && ((viewMode === 'genres' ? GENRES : viewMode === 'eras' ? ERAS : viewMode === 'moods' ? MOODS : EFFECTS) || []).map((cat) => (
                     <button 
                         key={cat.id} 
-                        onClick={(e) => { e.stopPropagation(); loadCategory(cat, viewMode, true); }} 
+                        onClick={(e) => { e.stopPropagation(); loadCategory(cat, viewMode, false); }} 
                         className={`w-full text-left px-4 py-3.5 rounded-2xl transition-all ${selectedCategory?.id === cat.id ? 'bg-[var(--selected-item-bg)] font-black' : 'text-slate-400 hover:text-[var(--text-base)]'}`}
                     >
                         {t[cat.id] || cat.name}
