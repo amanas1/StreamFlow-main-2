@@ -169,14 +169,14 @@ function isPlayableWebStreamUrl(streamUrl?: string): boolean {
   }
 }
 
-function getFallbackMessage(language: Language, mode: 'searching' | 'empty'): string {
-  const messages: Record<Language, { searching: string; empty: string }> = {
-    en: { searching: 'Searching for a working station...', empty: 'No working stations found right now.' },
-    ru: { searching: 'Ищем рабочую станцию...', empty: 'Сейчас не найдено рабочих станций.' },
-    es: { searching: 'Buscando una emisora que funcione...', empty: 'Ahora no se encontraron emisoras disponibles.' },
-    fr: { searching: 'Recherche d une station qui fonctionne...', empty: 'Aucune station disponible pour le moment.' },
-    zh: { searching: '正在寻找可用电台...', empty: '当前没有可用电台。' },
-    de: { searching: 'Suche nach einem funktionierenden Sender...', empty: 'Zurzeit wurden keine funktionierenden Sender gefunden.' }
+function getFallbackMessage(language: Language, mode: 'unavailable' | 'empty'): string {
+  const messages: Record<Language, { unavailable: string; empty: string }> = {
+    en: { unavailable: 'This station is unavailable. Try another one.', empty: 'No working stations found right now.' },
+    ru: { unavailable: 'Эта станция недоступна. Выберите другую.', empty: 'Сейчас не найдено рабочих станций.' },
+    es: { unavailable: 'Esta emisora no está disponible. Prueba otra.', empty: 'Ahora no se encontraron emisoras disponibles.' },
+    fr: { unavailable: 'Cette station est indisponible. Essayez-en une autre.', empty: 'Aucune station disponible pour le moment.' },
+    zh: { unavailable: '该电台当前不可用，请选择其他电台。', empty: '当前没有可用电台。' },
+    de: { unavailable: 'Dieser Sender ist nicht verfügbar. Bitte wähle einen anderen.', empty: 'Zurzeit wurden keine funktionierenden Sender gefunden.' }
   };
 
   return messages[language][mode];
@@ -822,13 +822,9 @@ export default function App(): React.JSX.Element {
     }, duration);
   }, []);
 
-  const skipToNextPlayableStation = useCallback((failedStation?: RadioStation | null, reason: string = 'stream-failure') => {
-    const now = Date.now();
-    if (now < fallbackCooldownUntilRef.current) {
-      return;
-    }
+  const stopUnavailableStation = useCallback((failedStation?: RadioStation | null, reason: string = 'stream-failure') => {
     fallbackInProgressRef.current = true;
-    fallbackCooldownUntilRef.current = now + 1500;
+    fallbackCooldownUntilRef.current = 0;
 
     const failedId = failedStation?.stationuuid;
 
@@ -850,38 +846,10 @@ export default function App(): React.JSX.Element {
 
     setIsPlaying(false);
     setIsBuffering(false);
-    setFallbackMessage(getFallbackMessage(language, 'searching'));
+    setFallbackMessage(getFallbackMessage(language, 'unavailable'));
+    fallbackInProgressRef.current = false;
 
-    const activeStations = stationsRef.current.filter((candidate) => {
-      if (!isPlayableWebStreamUrl(candidate.url_resolved || candidate.url)) return false;
-      return !failedStationIdsRef.current.has(candidate.stationuuid);
-    });
-
-    setStations((prev) => prev.filter((candidate) => {
-      if (!isPlayableWebStreamUrl(candidate.url_resolved || candidate.url)) return false;
-      return !failedStationIdsRef.current.has(candidate.stationuuid);
-    }));
-
-    if (!activeStations.length) {
-      console.warn(`[RADIO] No fallback station available after ${reason}`);
-      setFallbackMessage(getFallbackMessage(language, 'empty'));
-      fallbackInProgressRef.current = false;
-      fallbackCooldownUntilRef.current = 0;
-      try {
-        localStorage.removeItem('auradio_last_station');
-      } catch (e) {}
-      return;
-    }
-
-    const currentId = failedStation?.stationuuid || currentStationRef.current?.stationuuid;
-    const currentIndex = currentId ? activeStations.findIndex((candidate) => candidate.stationuuid === currentId) : -1;
-    const nextIndex = currentIndex >= 0 ? currentIndex % activeStations.length : 0;
-    const nextStation = activeStations[nextIndex];
-
-    console.warn(`[RADIO] Fallback to next station after ${reason}: ${nextStation.name}`);
-    window.setTimeout(() => {
-      handlePlayStationRef.current(nextStation);
-    }, 80);
+    console.warn(`[RADIO] Station stopped after ${reason}: ${failedStation?.name || 'unknown station'}`);
   }, [language, markInternalAudioTransition]);
 
   const handlePlayStation = useCallback((station: RadioStation) => {
@@ -892,7 +860,7 @@ export default function App(): React.JSX.Element {
     }
     if (!isPlayableWebStreamUrl(station.url_resolved || station.url)) {
       console.warn('[RADIO] Blocked insecure stream on web:', station.name, station.url_resolved || station.url);
-      skipToNextPlayableStation(station, 'insecure-stream');
+      stopUnavailableStation(station, 'insecure-stream');
       return;
     }
 
@@ -972,19 +940,19 @@ export default function App(): React.JSX.Element {
         } catch (e) {
             console.error('[RADIO] Playback start failed', e);
             if (rid === loadRequestIdRef.current) {
-                skipToNextPlayableStation(station, 'play-call-rejected');
+                stopUnavailableStation(station, 'play-call-rejected');
             }
             return;
         }
 
         loadTimeoutRef.current = window.setTimeout(() => {
             if (rid !== loadRequestIdRef.current) return;
-            console.warn(`[RADIO] Station ${station.name} is too slow. Filtering and skipping.`);
-            skipToNextPlayableStation(station, 'startup-timeout');
-        }, 3000);
+            console.warn(`[RADIO] Station ${station.name} did not start in time.`);
+            stopUnavailableStation(station, 'startup-timeout');
+        }, 10000);
     }
     })();
-  }, [initAudioContext, fxSettings.speed, uiMode, navigate, skipToNextPlayableStation, markInternalAudioTransition]);
+  }, [initAudioContext, fxSettings.speed, uiMode, navigate, stopUnavailableStation, markInternalAudioTransition]);
   // Removed language from dependency because we no longer use it for notifications here
 
   useEffect(() => {
@@ -1532,9 +1500,9 @@ export default function App(): React.JSX.Element {
             audioRef.current.play().catch(() => {});
         }
     } else if (station) {
-        console.log('[StreamRecovery] Max retries reached, skipping station');
+        console.log('[StreamRecovery] Max retries reached, stopping station');
         streamRetryCountRef.current = 0;
-        skipToNextPlayableStation(station, 'max-retries');
+        stopUnavailableStation(station, 'max-retries');
     }
   };
 
