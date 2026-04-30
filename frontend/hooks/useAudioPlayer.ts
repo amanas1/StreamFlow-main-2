@@ -11,7 +11,6 @@ export const useAudioPlayer = () => {
   const [volume, setVolume] = useState(0.8);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const stallRecoveryTimer = useRef<NodeJS.Timeout | null>(null);
 
   const currentStationRef = useRef<Station | null>(null);
   useEffect(() => {
@@ -32,28 +31,10 @@ export const useAudioPlayer = () => {
       
       const onWaiting = () => {
         setIsBuffering(true);
-        // Start stall recovery timer
-        if (stallRecoveryTimer.current) clearTimeout(stallRecoveryTimer.current);
-        stallRecoveryTimer.current = setTimeout(() => {
-          if (audioRef.current && audioRef.current.readyState < 3 && !audioRef.current.paused) {
-            console.warn('[useAudioPlayer] Stream stalled. Auto-recovering...');
-            const src = audioRef.current.src;
-            audioRef.current.src = '';
-            audioRef.current.load();
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.src = src;
-                audioRef.current.load();
-                audioRef.current.play().catch(e => console.error('Recovery play failed:', e));
-              }
-            }, 100);
-          }
-        }, 8000); // 8 seconds before forcing a reconnect
       };
 
       const onPlaying = () => {
         setIsBuffering(false);
-        if (stallRecoveryTimer.current) clearTimeout(stallRecoveryTimer.current);
       };
       
       const onLoadStart = () => setIsLoading(true);
@@ -61,32 +42,11 @@ export const useAudioPlayer = () => {
       
       const onError = () => {
         console.error('[useAudioPlayer] Audio playback error', audio.error);
-        setError('Playback error');
+        if (audio.error?.name !== 'NotAllowedError') {
+            setError('Playback error');
+        }
         setIsLoading(false);
         setIsBuffering(false);
-        if (stallRecoveryTimer.current) clearTimeout(stallRecoveryTimer.current);
-        
-        // Auto-recovery for Network Errors (e.g. dropped connection)
-        if (audio.error && (audio.error.code === 2 || audio.error.code === 3 || audio.error.code === 4)) {
-           console.warn('[useAudioPlayer] Attempting error recovery...');
-           setTimeout(() => {
-             if (audioRef.current && currentStationRef.current) {
-                 const src = audioRef.current.src;
-                 audioRef.current.src = '';
-                 audioRef.current.load();
-                 setTimeout(() => {
-                    if (audioRef.current && currentStationRef.current) {
-                        // Append cache-buster to bypass dead cached connections
-                        const urlObj = new URL(currentStationRef.current.streamUrl);
-                        urlObj.searchParams.set('t', Date.now().toString());
-                        audioRef.current.src = urlObj.toString();
-                        audioRef.current.load();
-                        audioRef.current.play().catch(() => {});
-                    }
-                 }, 200);
-             }
-           }, 3000);
-        }
       };
 
       audio.addEventListener('play', onPlay);
@@ -110,7 +70,6 @@ export const useAudioPlayer = () => {
         audio.removeEventListener('loadstart', onLoadStart);
         audio.removeEventListener('canplay', onCanPlay);
         audio.removeEventListener('error', onError);
-        if (stallRecoveryTimer.current) clearTimeout(stallRecoveryTimer.current);
       };
     }
   }, []); // Run only once on mount

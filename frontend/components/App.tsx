@@ -727,6 +727,8 @@ export default function App(): React.JSX.Element {
     return () => clearInterval(checkAlarm);
   }, [alarm, isPlaying, currentStation, stations, handlePlayStation]);
 
+  // Automatic play of first station removed per user request
+
   const togglePlayHandler = useCallback(async () => {
     if (!currentStation) {
         if (stations.length) handlePlayStation(stations[0]);
@@ -1111,7 +1113,7 @@ export default function App(): React.JSX.Element {
     const isSeoRoute = seoSlug && (seoSlug.startsWith('radio-') || seoSlug.includes('-radio-') || seoSlug.endsWith('-radio'));
 
     if (!isSeoRoute) {
-        loadCategory(initialGenre, 'genres', true); // Auto-play random station on initial load
+        loadCategory(initialGenre, 'genres', false); // No auto-play on initial load
     } else {
         // Handle initial SEO load
         let country = '';
@@ -1137,29 +1139,7 @@ export default function App(): React.JSX.Element {
         }
     }
 
-    // --- Auto Play Fallback: Play a random station on first user interaction if autoplay was blocked by browser ---
-    const autoPlayFallback = () => {
-      // Only play if not already playing and if we have stations loaded
-      if (!isPlayingRef.current && stationsRef.current && stationsRef.current.length > 0) {
-        const randomStation = stationsRef.current[Math.floor(Math.random() * stationsRef.current.length)];
-        handlePlayStationRef.current(randomStation);
-      }
-      // Remove listeners after first interaction
-      window.removeEventListener('click', autoPlayFallback);
-      window.removeEventListener('touchstart', autoPlayFallback);
-      window.removeEventListener('keydown', autoPlayFallback);
-    };
 
-    // Wait for user gesture to comply with browser autoplay policies
-    window.addEventListener('click', autoPlayFallback, { once: true });
-    window.addEventListener('touchstart', autoPlayFallback, { once: true });
-    window.addEventListener('keydown', autoPlayFallback, { once: true });
-
-    return () => {
-      window.removeEventListener('click', autoPlayFallback);
-      window.removeEventListener('touchstart', autoPlayFallback);
-      window.removeEventListener('keydown', autoPlayFallback);
-    };
   }, []); 
 
   useEffect(() => {
