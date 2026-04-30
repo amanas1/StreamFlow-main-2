@@ -1,7 +1,7 @@
 import { RadioStation } from '../types';
 import { RADIO_BROWSER_MIRRORS } from '../types/constants';
 
-const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v24_relax_';
+const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v25_smart_';
 const CACHE_TTL_MINUTES = 30;
 
 interface CacheEntry {
@@ -132,7 +132,7 @@ const fetchFromMirror = async (mirror: string, path: string, query: string): Pro
     return [];
 };
 
-const filterStations = (data: any[]): RadioStation[] => {
+const filterStations = (data: any[], strictQuality: boolean = true): RadioStation[] => {
     if (!Array.isArray(data)) return [];
     
     // 2. Объединение и нормализация станций
@@ -141,12 +141,16 @@ const filterStations = (data: any[]): RadioStation[] => {
     data.forEach(apiStation => {
         if (!apiStation || !apiStation.url_resolved) return;
         
-        // 3. ULTRA-STRICT QUALITY FILTER (Requested: "fast + high quality")
+        // 3. QUALITY FILTER
         const bitrate = Number(apiStation.bitrate || 0);
         
-        // Relaxed bitrate filter: allow unknown (0) and lower bitrates so smaller countries aren't empty.
-        // Still exclude very heavy streams > 500kbps for fast play.
-        if (bitrate > 500) return;
+        if (strictQuality) {
+            // Only 128kbps+ as requested "high quality", max 320kbps for fast play
+            if (bitrate < 128 || bitrate > 320) return;
+        } else {
+            // Relaxed filter: allow unknown (0) and lower bitrates so smaller countries aren't empty.
+            if (bitrate > 500) return;
+        }
         if (apiStation.lastcheckok !== 1) return;
 
         // 5. Исключение плохих потоков (pls, asx) и блокировка HTTP (Mixed Content)
@@ -220,7 +224,7 @@ const filterStations = (data: any[]): RadioStation[] => {
 
 export const fetchStationsByTag = async (tag: string, limit: number = 50): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v24_relax20_${lowerTag}`; 
+    const cacheKey = `tag_v25_smart20_${lowerTag}`; 
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
@@ -248,7 +252,11 @@ export const fetchStationsByTag = async (tag: string, limit: number = 50): Promi
             
         if (allFetched.length === 0) return [];
 
-        const filtered = filterStations(allFetched) || [];
+        let filtered = filterStations(allFetched, true);
+        if (filtered.length < 5) {
+            filtered = filterStations(allFetched, false); // Fallback to relaxed if too few
+        }
+        
         const result = filtered.slice(0, 20); // Hard limit to 20 per user request
         
         if (result.length > 0) setToCache(cacheKey, result);
@@ -273,7 +281,7 @@ export const fetchRelatedStations = async (station: RadioStation, limit: number 
 };
 
 export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
-    const cacheKey = 'global_music_v24_relax20';
+    const cacheKey = 'global_music_v25_smart20';
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
@@ -336,7 +344,7 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
 
 export const fetchStationsByCountry = async (country: string): Promise<RadioStation[]> => {
     if (!country) return [];
-    const cacheKey = `country_v24_relax20_${country.toLowerCase()}`;
+    const cacheKey = `country_v25_smart20_${country.toLowerCase()}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData && cachedData.length > 0) return cachedData;
 
@@ -350,7 +358,11 @@ export const fetchStationsByCountry = async (country: string): Promise<RadioStat
             .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
             .flatMap(r => r.value);
             
-        const filtered = filterStations(all) || [];
+        let filtered = filterStations(all, true);
+        if (filtered.length < 5) {
+            filtered = filterStations(all, false); // Fallback to relaxed if too few stations in this country
+        }
+        
         const result = filtered.slice(0, 20); // Strictly 20
         
         if (result.length > 0) setToCache(cacheKey, result);
