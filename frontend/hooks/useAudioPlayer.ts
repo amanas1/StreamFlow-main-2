@@ -121,6 +121,9 @@ export const useAudioPlayer = () => {
     try {
       setError(null);
       
+      // Synchronously resume to preserve user gesture token
+      audioEngine.resume().catch(console.warn);
+      
       // 1. Fade Out
       audioEngine.prepareForSwitch();
       
@@ -140,7 +143,6 @@ export const useAudioPlayer = () => {
 
           // 3. Play and Fade In (AudioEngine handles ramping via setVolume)
           try {
-             await audioEngine.resume();
              await audioRef.current.play();
              audioEngine.setVolume(volume); 
           } catch (e: any) {
@@ -159,12 +161,14 @@ export const useAudioPlayer = () => {
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current || !currentStation) return;
+    
+    // Synchronous resume to preserve user gesture token
+    audioEngine.resume().catch(console.warn);
+
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioEngine.resume().then(() => {
-          audioRef.current?.play().catch(console.error);
-      });
+      audioRef.current.play().catch(console.error);
     }
   }, [isPlaying, currentStation]);
 
