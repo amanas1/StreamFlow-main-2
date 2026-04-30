@@ -140,6 +140,7 @@ export const useAudioPlayer = () => {
 
           // 3. Play and Fade In (AudioEngine handles ramping via setVolume)
           try {
+             await audioEngine.resume();
              await audioRef.current.play();
              audioEngine.setVolume(volume); 
           } catch (e: any) {
@@ -161,7 +162,9 @@ export const useAudioPlayer = () => {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(console.error);
+      audioEngine.resume().then(() => {
+          audioRef.current?.play().catch(console.error);
+      });
     }
   }, [isPlaying, currentStation]);
 
