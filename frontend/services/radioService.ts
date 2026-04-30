@@ -1,7 +1,7 @@
 import { RadioStation } from '../types';
 import { RADIO_BROWSER_MIRRORS } from '../types/constants';
 
-const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v20_hq_';
+const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v23_hq_20_';
 const CACHE_TTL_MINUTES = 30;
 
 interface CacheEntry {
@@ -215,12 +215,12 @@ const filterStations = (data: any[]): RadioStation[] => {
 
 export const fetchStationsByTag = async (tag: string, limit: number = 50): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v22_strict50_${lowerTag}`; // New cache version for 50 limit
+    const cacheKey = `tag_v23_strict20_${lowerTag}`; 
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     try {
-        const baseQuery = `?limit=150&order=clickcount&reverse=true&hidebroken=true`;
+        const baseQuery = `?limit=100&order=clickcount&reverse=true&hidebroken=true`;
         
         const searchStrategies: {path: string, query: string}[] = [
             { path: `bytag/${encodeURIComponent(lowerTag)}`, query: baseQuery },
@@ -244,7 +244,7 @@ export const fetchStationsByTag = async (tag: string, limit: number = 50): Promi
         if (allFetched.length === 0) return [];
 
         const filtered = filterStations(allFetched) || [];
-        const result = filtered.slice(0, 50); // Hard limit to 50
+        const result = filtered.slice(0, 20); // Hard limit to 20 per user request
         
         if (result.length > 0) setToCache(cacheKey, result);
         return result;
@@ -268,7 +268,7 @@ export const fetchRelatedStations = async (station: RadioStation, limit: number 
 };
 
 export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
-    const cacheKey = 'global_music_v22_strict50';
+    const cacheKey = 'global_music_v23_strict20';
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
@@ -285,10 +285,9 @@ export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
             if (seen.has(s.stationuuid)) return false;
             seen.add(s.stationuuid);
             return true;
-        }).slice(0, 100); // Home page can have up to 100 for variety, but we'll stick to 50 for now or a bit more? 
-        // User said "укороти до 50 штук на каждый стиль и жанров". 
-        // I'll keep global list at 50 as well for maximum speed.
-        const result = final.slice(0, 50);
+        }).slice(0, 50); // Fetch a pool of 50
+        
+        const result = final.slice(0, 20); // Limit global music to 20 stations
 
         if (result.length > 0) setToCache(cacheKey, result);
         return result || [];
@@ -332,7 +331,7 @@ export const fetchStationsByUuids = async (uuids: string[]): Promise<RadioStatio
 
 export const fetchStationsByCountry = async (country: string): Promise<RadioStation[]> => {
     if (!country) return [];
-    const cacheKey = `country_v22_strict50_${country.toLowerCase()}`;
+    const cacheKey = `country_v23_strict20_${country.toLowerCase()}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData && cachedData.length > 0) return cachedData;
 
@@ -347,7 +346,7 @@ export const fetchStationsByCountry = async (country: string): Promise<RadioStat
             .flatMap(r => r.value);
             
         const filtered = filterStations(all) || [];
-        const result = filtered.slice(0, 50); // Strictly 50
+        const result = filtered.slice(0, 20); // Strictly 20
         
         if (result.length > 0) setToCache(cacheKey, result);
         return result;

@@ -101,7 +101,7 @@ const VISUALIZERS_LIST: { id: VisualizerVariant; labelKey: string; defaults?: Vi
     { id: 'viz-journey', labelKey: 'vizJourney' },
 ];
 
-const INITIAL_CHUNK = 48; 
+const INITIAL_CHUNK = 20; 
 const PAGE_SIZE = 24;
 const TRICKLE_STEP = 12;
 const AUTO_TRICKLE_LIMIT = 48;
