@@ -13,6 +13,11 @@ export const useAudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stallRecoveryTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const currentStationRef = useRef<Station | null>(null);
+  useEffect(() => {
+     currentStationRef.current = currentStation;
+  }, [currentStation]);
+
   // Initialize global audio element if not present
   useEffect(() => {
     if (!audioRef.current) {
@@ -65,14 +70,14 @@ export const useAudioPlayer = () => {
         if (audio.error && (audio.error.code === 2 || audio.error.code === 3 || audio.error.code === 4)) {
            console.warn('[useAudioPlayer] Attempting error recovery...');
            setTimeout(() => {
-             if (audioRef.current && currentStation) {
+             if (audioRef.current && currentStationRef.current) {
                  const src = audioRef.current.src;
                  audioRef.current.src = '';
                  audioRef.current.load();
                  setTimeout(() => {
-                    if (audioRef.current) {
+                    if (audioRef.current && currentStationRef.current) {
                         // Append cache-buster to bypass dead cached connections
-                        const urlObj = new URL(currentStation.streamUrl);
+                        const urlObj = new URL(currentStationRef.current.streamUrl);
                         urlObj.searchParams.set('t', Date.now().toString());
                         audioRef.current.src = urlObj.toString();
                         audioRef.current.load();
@@ -108,7 +113,7 @@ export const useAudioPlayer = () => {
         if (stallRecoveryTimer.current) clearTimeout(stallRecoveryTimer.current);
       };
     }
-  }, [currentStation]); // Re-bind if we need currentStation in error handler
+  }, []); // Run only once on mount
 
   const playStation = useCallback(async (station: Station) => {
     if (!audioRef.current) return;
