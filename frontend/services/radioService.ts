@@ -1,7 +1,7 @@
 import { RadioStation } from '../types';
 import { RADIO_BROWSER_MIRRORS } from '../types/constants';
 
-const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v21_https_hq_';
+const CACHE_KEY_PREFIX = 'auradiochat_station_cache_v24_https_stable_';
 const CACHE_TTL_MINUTES = 30;
 
 interface CacheEntry {
@@ -23,6 +23,17 @@ const isSecureStreamUrl = (url: string | undefined | null) => {
     } catch (e) {
         return false;
     }
+};
+
+const scoreStreamQuality = (station: any, bitrate: number, codec: string) => {
+    const clickScore = Number(station.clickcount || 0) * 4;
+    const voteScore = Number(station.votes || 0) * 2;
+    const recentScore = Number(station.clicktrend || 0) * 6;
+    const codecScore = codec.includes('mp3') ? 180 : codec.includes('aac') ? 160 : codec.includes('ogg') ? 120 : 60;
+    const bitrateSweetSpot = Math.max(0, 220 - Math.abs(Math.min(bitrate, 320) - 160));
+    const heavyStreamPenalty = bitrate > 384 ? 260 : 0;
+
+    return clickScore + voteScore + recentScore + codecScore + bitrateSweetSpot - heavyStreamPenalty;
 };
 
 const mapToGenre = (tags: string, name: string): { genre: string; subGenre: string } => {
@@ -183,12 +194,12 @@ const filterStations = (data: any[]): RadioStation[] => {
     data.forEach(apiStation => {
         if (!apiStation || !apiStation.url_resolved) return;
         
-        // 3. Фильтр качества потока (min 64 kbps + lastcheckok = 1)
+        // 3. Фильтр качества потока: не режем нормальные мобильные 48K AAC/MP3.
         const bitrate = Number(apiStation.bitrate || 0);
-        if (!apiStation.bitrate || bitrate < 64) return;
+        if (!apiStation.bitrate || bitrate < 48) return;
         if (apiStation.lastcheckok !== 1) return;
 
-        // 5. В веб-проде оставляем только HTTPS-потоки, иначе браузер блокирует mixed content.
+        // 5. В HTTPS веб-проде HTTP-потоки браузер блокирует как mixed content.
         if (!isSecureStreamUrl(apiStation.url_resolved)) return;
 
         // 6. Исключение плохих потоков (pls, asx)
@@ -206,11 +217,7 @@ const filterStations = (data: any[]): RadioStation[] => {
 
         const { genre, subGenre } = mapToGenre(apiStation.tags || '', apiStation.name || '');
         
-        // Sorting score to prioritize AAC/MP3 + Bitrate
-        let formatMultiplier = 1;
-        if (codec.includes('aac')) formatMultiplier = 1.5;
-        if (codec.includes('ogg')) formatMultiplier = 1.2;
-        const qualityScore = bitrate * formatMultiplier;
+        const qualityScore = scoreStreamQuality(apiStation, bitrate, codec);
 
         const station: RadioStation = {
             ...apiStation,
@@ -248,35 +255,38 @@ const filterStations = (data: any[]): RadioStation[] => {
         Array.from(uniqueStations.values()).map(station => [station.stationuuid, station])
     ).values());
 
-    // 4. Предпочтение более качественных потоков
+    // 4. Предпочитаем популярные MP3/AAC 96-320K, а не самые тяжёлые потоки.
     return result.sort((a, b) => {
-        const bitA = Number(a.bitrate || 0);
-        const bitB = Number(b.bitrate || 0);
-        return bitB - bitA; // Highest bitrate first
+        const scoreA = Number(a.qualityScore || 0) + Number(a.popularityScore || 0);
+        const scoreB = Number(b.qualityScore || 0) + Number(b.popularityScore || 0);
+        return scoreB - scoreA;
     });
 };
 
 export const fetchStationsByTag = async (tag: string, limit: number = 100): Promise<RadioStation[]> => {
     const lowerTag = tag.toLowerCase();
-    const cacheKey = `tag_v22_https_hq_${lowerTag}_l${limit}`;
+    const cacheKey = `tag_v24_https_stable_${lowerTag}_l${limit}`;
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     try {
-        const fetchLimit = limit > 100 ? limit + 50 : 150; 
+        const fetchLimit = Math.min(500, Math.max(300, limit * 3));
         const baseQuery = `?limit=${fetchLimit}&order=clickcount&reverse=true&hidebroken=true`;
         
         // Optimized search strategies
         let searchTags = [lowerTag];
         if (lowerTag.includes('hip')) searchTags.push('hip-hop', 'rap');
         if (lowerTag.includes('jazz')) searchTags.push('smooth-jazz');
+        if (lowerTag === 'edm') searchTags.push('dance', 'electronic');
+        if (lowerTag === 'rnb') searchTags.push('r&b', 'soul');
+        searchTags = Array.from(new Set(searchTags));
 
-        const searchStrategies: {path: string, query: string}[] = [
-            { path: `bytag/${encodeURIComponent(lowerTag)}`, query: baseQuery },
-            { path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(lowerTag)}` }
-        ];
+        const searchStrategies: {path: string, query: string}[] = searchTags.flatMap(searchTag => [
+            { path: `bytag/${encodeURIComponent(searchTag)}`, query: baseQuery },
+            { path: 'search', query: `${baseQuery}&tag=${encodeURIComponent(searchTag)}` }
+        ]);
         
-        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 2); // Use top 2 mirrors for speed
+        const mirrors = RADIO_BROWSER_MIRRORS.slice(0, 3);
         const fetchPromises: Promise<any[]>[] = [];
         
         searchStrategies.forEach(strategy => {
@@ -317,7 +327,7 @@ export const fetchRelatedStations = async (station: RadioStation, limit: number 
 };
 
 export const fetchGlobalMusicStations = async (): Promise<RadioStation[]> => {
-    const cacheKey = 'global_music_v21_https_strict';
+    const cacheKey = 'global_music_v24_https_stable';
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 

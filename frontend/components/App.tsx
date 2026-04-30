@@ -104,6 +104,29 @@ const AMBIENCE_URLS = {
     vinyl: '/kamin.mp3'
 };
 
+const STARTUP_STATION: RadioStation = {
+    changeuuid: 'auradio-startup-radio-paradise',
+    stationuuid: 'auradio-startup-radio-paradise',
+    name: 'Radio Paradise',
+    slug: 'radio-paradise-startup',
+    url: 'https://stream.radioparadise.com/mp3-192',
+    url_resolved: 'https://stream.radioparadise.com/mp3-192',
+    homepage: 'https://radioparadise.com',
+    favicon: '',
+    tags: 'music,pop,rock,alternative',
+    genre: 'Alternative',
+    subGenre: 'Global',
+    country: 'United States',
+    countryCode: 'US',
+    state: '',
+    language: 'english',
+    votes: 1000,
+    codec: 'MP3',
+    bitrate: 192,
+    popularityScore: 1000,
+    isFeatured: true
+};
+
 const ToolsPanel = React.lazy(() => import('./ToolsPanel'));
 const ManualModal = React.lazy(() => import('./ManualModal'));
 const FeedbackModal = React.lazy(() => import('./FeedbackModal'));
@@ -169,14 +192,14 @@ function isPlayableWebStreamUrl(streamUrl?: string): boolean {
   }
 }
 
-function getFallbackMessage(language: Language, mode: 'unavailable' | 'empty'): string {
-  const messages: Record<Language, { unavailable: string; empty: string }> = {
-    en: { unavailable: 'This station is unavailable. Try another one.', empty: 'No working stations found right now.' },
-    ru: { unavailable: 'Эта станция недоступна. Выберите другую.', empty: 'Сейчас не найдено рабочих станций.' },
-    es: { unavailable: 'Esta emisora no está disponible. Prueba otra.', empty: 'Ahora no se encontraron emisoras disponibles.' },
-    fr: { unavailable: 'Cette station est indisponible. Essayez-en une autre.', empty: 'Aucune station disponible pour le moment.' },
-    zh: { unavailable: '该电台当前不可用，请选择其他电台。', empty: '当前没有可用电台。' },
-    de: { unavailable: 'Dieser Sender ist nicht verfügbar. Bitte wähle einen anderen.', empty: 'Zurzeit wurden keine funktionierenden Sender gefunden.' }
+function getFallbackMessage(language: Language, mode: 'unavailable' | 'empty' | 'autoplayBlocked'): string {
+  const messages: Record<Language, { unavailable: string; empty: string; autoplayBlocked: string }> = {
+    en: { unavailable: 'This station is unavailable. Try another one.', empty: 'No working stations found right now.', autoplayBlocked: 'Ready. Press Play to start radio.' },
+    ru: { unavailable: 'Эта станция недоступна. Выберите другую.', empty: 'Сейчас не найдено рабочих станций.', autoplayBlocked: 'Готово. Нажмите Play, чтобы включить радио.' },
+    es: { unavailable: 'Esta emisora no está disponible. Prueba otra.', empty: 'Ahora no se encontraron emisoras disponibles.', autoplayBlocked: 'Listo. Pulsa Play para iniciar la radio.' },
+    fr: { unavailable: 'Cette station est indisponible. Essayez-en une autre.', empty: 'Aucune station disponible pour le moment.', autoplayBlocked: 'Pret. Appuyez sur Play pour lancer la radio.' },
+    zh: { unavailable: '该电台当前不可用，请选择其他电台。', empty: '当前没有可用电台。', autoplayBlocked: '已准备好。点击播放开始收听。' },
+    de: { unavailable: 'Dieser Sender ist nicht verfügbar. Bitte wähle einen anderen.', empty: 'Zurzeit wurden keine funktionierenden Sender gefunden.', autoplayBlocked: 'Bereit. Drücke Play, um das Radio zu starten.' }
   };
 
   return messages[language][mode];
@@ -540,6 +563,7 @@ export default function App(): React.JSX.Element {
   const playButtonRef = useRef<HTMLButtonElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<number | null>(null);
+  const playRequestIdRef = useRef<number>(0);
   const stationsRef = useRef<RadioStation[]>([]);
   const failedStationIdsRef = useRef<Set<string>>(new Set());
   const fallbackInProgressRef = useRef(false);
@@ -548,6 +572,7 @@ export default function App(): React.JSX.Element {
   const internalAudioTransitionTimerRef = useRef<number | null>(null);
 
   const isPlayingRef = useRef(false);
+  const isBufferingRef = useRef(false);
   const isRandomModeRef = useRef(false);
   const isMountedRef = useRef(true);
   const handleNextStationRef = useRef<() => void>(() => {});
@@ -845,6 +870,7 @@ export default function App(): React.JSX.Element {
     }
 
     setIsPlaying(false);
+    isBufferingRef.current = false;
     setIsBuffering(false);
     setFallbackMessage(getFallbackMessage(language, 'unavailable'));
     fallbackInProgressRef.current = false;
@@ -854,7 +880,7 @@ export default function App(): React.JSX.Element {
 
   const handlePlayStation = useCallback((station: RadioStation) => {
     void (async () => {
-    const rid = ++loadRequestIdRef.current;
+    const rid = ++playRequestIdRef.current;
     if (!fallbackInProgressRef.current) {
       setFallbackMessage(null);
     }
@@ -898,7 +924,7 @@ export default function App(): React.JSX.Element {
     streamRetryCountRef.current = 0;
 
     setTimeout(() => {
-        if (rid !== loadRequestIdRef.current) return;
+        if (rid !== playRequestIdRef.current) return;
         if (visualizerRef.current) {
             visualizerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else if (mainContentRef.current) {
@@ -919,6 +945,7 @@ export default function App(): React.JSX.Element {
         if (uiMode === 'modern') {
             navigate(`/station/${station.slug}`);
         }
+        isBufferingRef.current = true;
         setIsBuffering(true);
     }
     
@@ -930,29 +957,52 @@ export default function App(): React.JSX.Element {
         audio.src = station.url_resolved || station.url;
         audio.playbackRate = fxSettings.speed;
 
+        loadTimeoutRef.current = window.setTimeout(() => {
+            if (rid !== playRequestIdRef.current) return;
+            console.warn(`[RADIO] Station ${station.name} did not start in time.`);
+            stopUnavailableStation(station, 'startup-timeout');
+        }, 10000);
+
         try {
             await initAudioContext();
             await audioEngine.resume();
 
-            if (rid !== loadRequestIdRef.current) return;
+            if (rid !== playRequestIdRef.current) return;
 
-            await audio.play();
+            const playPromise = audio.play();
+            if (!navigator.userActivation?.hasBeenActive) {
+                playPromise.catch(() => {});
+                await Promise.race([
+                    playPromise,
+                    new Promise((_, reject) => {
+                        window.setTimeout(() => {
+                            const error = new Error('Autoplay blocked or delayed');
+                            error.name = 'NotAllowedError';
+                            reject(error);
+                        }, 2500);
+                    })
+                ]);
+            } else {
+                await playPromise;
+            }
         } catch (e) {
             console.error('[RADIO] Playback start failed', e);
-            if (rid === loadRequestIdRef.current) {
+            if (rid === playRequestIdRef.current) {
+                if ((e as { name?: string })?.name === 'NotAllowedError') {
+                    setIsBuffering(false);
+                    isBufferingRef.current = false;
+                    setIsPlaying(false);
+                    setFallbackMessage(getFallbackMessage(language, 'autoplayBlocked'));
+                    fallbackInProgressRef.current = false;
+                    return;
+                }
                 stopUnavailableStation(station, 'play-call-rejected');
             }
             return;
         }
-
-        loadTimeoutRef.current = window.setTimeout(() => {
-            if (rid !== loadRequestIdRef.current) return;
-            console.warn(`[RADIO] Station ${station.name} did not start in time.`);
-            stopUnavailableStation(station, 'startup-timeout');
-        }, 10000);
     }
     })();
-  }, [initAudioContext, fxSettings.speed, uiMode, navigate, stopUnavailableStation, markInternalAudioTransition]);
+  }, [initAudioContext, fxSettings.speed, uiMode, navigate, stopUnavailableStation, markInternalAudioTransition, language]);
   // Removed language from dependency because we no longer use it for notifications here
 
   useEffect(() => {
@@ -987,11 +1037,17 @@ export default function App(): React.JSX.Element {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      initAudioContext(); // Ensure context is ready/resumed
-      await audioEngine.resume();
-      audioRef.current.play().catch(() => {});
+      try {
+        await initAudioContext();
+        await audioEngine.resume();
+        await audioRef.current.play();
+        setFallbackMessage(null);
+      } catch (e) {
+        console.warn('[RADIO] Manual play failed', e);
+        setFallbackMessage(getFallbackMessage(language, 'unavailable'));
+      }
     }
-  }, [currentStation, isPlaying, handlePlayStation, stations]);
+  }, [currentStation, isPlaying, handlePlayStation, stations, initAudioContext, language]);
 
     // Persistence and Effects
     useEffect(() => {
@@ -1228,6 +1284,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => { stationsRef.current = stations; }, [stations]);
   useEffect(() => { currentStationRef.current = currentStation; }, [currentStation]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { isBufferingRef.current = isBuffering; }, [isBuffering]);
   useEffect(() => { isRandomModeRef.current = isRandomMode; }, [isRandomMode]);
   useEffect(() => { handleNextStationRef.current = handleNextStation; }, [handleNextStation]);
   useEffect(() => { handlePreviousStationRef.current = handlePreviousStation; }, [handlePreviousStation]);
@@ -1383,10 +1440,12 @@ export default function App(): React.JSX.Element {
   // Initial Load - Only once
   useEffect(() => { 
     const initialGenre = GENRES.find(g => g.id === 'hiphop') || GENRES[0];
+    handlePlayStationRef.current(STARTUP_STATION);
     loadCategory(initialGenre, 'genres', false);
 
-    // --- Resume Listening: Restore last station on first user interaction ---
+    // --- Resume Listening: only restore saved station if startup has not selected one yet ---
     const resumeLastStation = () => {
+      if (currentStationRef.current) return;
       try {
         const saved = localStorage.getItem('auradio_last_station');
         if (saved) {
@@ -1531,6 +1590,7 @@ export default function App(): React.JSX.Element {
         }}
         onPlaying={() => { 
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+            isBufferingRef.current = false;
             setIsBuffering(false); 
             setIsPlaying(true); 
             setFallbackMessage(null);
@@ -1543,13 +1603,17 @@ export default function App(): React.JSX.Element {
             streamRetryCountRef.current = 0;
         }} 
         onPause={() => {
-            if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+            if (!isBufferingRef.current && loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             setIsPlaying(false);
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         }} 
-        onWaiting={() => setIsBuffering(true)}
+        onWaiting={() => {
+            isBufferingRef.current = true;
+            setIsBuffering(true);
+        }}
         onStalled={() => {
             console.warn('[StreamStability] Stream stalled, monitoring for 5s...');
+            isBufferingRef.current = true;
             setIsBuffering(true);
             if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
             loadTimeoutRef.current = window.setTimeout(() => {
