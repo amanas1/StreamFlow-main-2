@@ -149,10 +149,11 @@ const filterStations = (data: any[]): RadioStation[] => {
         if (bitrate < 128 || bitrate > 320) return;
         if (apiStation.lastcheckok !== 1) return;
 
-        // 5. Исключение плохих потоков (pls, asx)
+        // 5. Исключение плохих потоков (pls, asx) и блокировка HTTP (Mixed Content)
         const codec = (apiStation.codec || '').toLowerCase();
         const urlLower = apiStation.url_resolved.toLowerCase();
         if (codec.includes('pls') || codec.includes('asx') || urlLower.endsWith('.pls') || urlLower.endsWith('.asx')) return;
+        if (!urlLower.startsWith('https://')) return; // Ensure HTTPS for glitch-free playback on Vercel
 
         // 6. Фильтрация нежелательного контента (Music only)
         const n = (apiStation.name || '').toLowerCase();

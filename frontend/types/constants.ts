@@ -5,8 +5,8 @@ import { CloudIcon, FireIcon, MusicNoteIcon, GlobeIcon, MoonIcon, HeartIcon } fr
 // Radio browser API mirrors - using central round-robin endpoint
 export const RADIO_BROWSER_MIRRORS = [
     'https://de1.api.radio-browser.info',
-    'https://at1.api.radio-browser.info',
     'https://nl1.api.radio-browser.info',
+    'https://fr1.api.radio-browser.info',
     'https://all.api.radio-browser.info'
 ];
 

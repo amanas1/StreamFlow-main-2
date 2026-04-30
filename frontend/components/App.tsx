@@ -1085,7 +1085,8 @@ export default function App(): React.JSX.Element {
       }
       
       if (loaded.length > 0 && autoPlay) {
-        handlePlayStation(loaded[0]);
+        const randomStation = loaded[Math.floor(Math.random() * loaded.length)];
+        handlePlayStation(randomStation);
       }
     } catch (e) {
       console.error('Failed to load category', e);
@@ -1110,7 +1111,7 @@ export default function App(): React.JSX.Element {
     const isSeoRoute = seoSlug && (seoSlug.startsWith('radio-') || seoSlug.includes('-radio-') || seoSlug.endsWith('-radio'));
 
     if (!isSeoRoute) {
-        loadCategory(initialGenre, 'genres', false);
+        loadCategory(initialGenre, 'genres', true); // Auto-play random station on initial load
     } else {
         // Handle initial SEO load
         let country = '';
@@ -1136,32 +1137,28 @@ export default function App(): React.JSX.Element {
         }
     }
 
-    // --- Resume Listening: Restore last station on first user interaction ---
-    const resumeLastStation = () => {
-      try {
-        const saved = localStorage.getItem('auradio_last_station');
-        if (saved) {
-          const station = JSON.parse(saved) as Station;
-          if (station && station.streamUrl) {
-            handlePlayStationRef.current(station);
-          }
-        }
-      } catch (e) {}
+    // --- Auto Play Fallback: Play a random station on first user interaction if autoplay was blocked by browser ---
+    const autoPlayFallback = () => {
+      // Only play if not already playing and if we have stations loaded
+      if (!isPlayingRef.current && stationsRef.current && stationsRef.current.length > 0) {
+        const randomStation = stationsRef.current[Math.floor(Math.random() * stationsRef.current.length)];
+        handlePlayStationRef.current(randomStation);
+      }
       // Remove listeners after first interaction
-      window.removeEventListener('click', resumeLastStation);
-      window.removeEventListener('touchstart', resumeLastStation);
-      window.removeEventListener('keydown', resumeLastStation);
+      window.removeEventListener('click', autoPlayFallback);
+      window.removeEventListener('touchstart', autoPlayFallback);
+      window.removeEventListener('keydown', autoPlayFallback);
     };
 
     // Wait for user gesture to comply with browser autoplay policies
-    window.addEventListener('click', resumeLastStation, { once: true });
-    window.addEventListener('touchstart', resumeLastStation, { once: true });
-    window.addEventListener('keydown', resumeLastStation, { once: true });
+    window.addEventListener('click', autoPlayFallback, { once: true });
+    window.addEventListener('touchstart', autoPlayFallback, { once: true });
+    window.addEventListener('keydown', autoPlayFallback, { once: true });
 
     return () => {
-      window.removeEventListener('click', resumeLastStation);
-      window.removeEventListener('touchstart', resumeLastStation);
-      window.removeEventListener('keydown', resumeLastStation);
+      window.removeEventListener('click', autoPlayFallback);
+      window.removeEventListener('touchstart', autoPlayFallback);
+      window.removeEventListener('keydown', autoPlayFallback);
     };
   }, []); 
 
